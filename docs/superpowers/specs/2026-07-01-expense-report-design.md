@@ -37,17 +37,18 @@
 | 角色 | 範圍 | 權責 |
 |---|---|---|
 | 員工 employee | 單店 | 拍照上傳、暫存區確認/修改、無單據建帳（附原因） |
-| 店管理者 manager | 單店（**每店多位**） | 打勾稽核（只看未打勾、確認單筆 + 批次/日總額） |
-| 會計 accountant | 全域（1 位） | 紅綠燈核銷、覆核頁；兼系統管理（管分類 / 綁裝置 / 開帳號） |
+| 店管理者 manager | 單店（**每店多位**） | 打勾稽核（只看未打勾、確認單筆 + 累加日總額） |
+| 會計 accountant | 全域（1 位） | 紅綠燈核銷、覆核頁、月結 |
+| 系統管理 super_admin | 全域（**預設 = 業主本人**） | 管分類 / 綁裝置 / 開帳號 / 開店 / 全系統設定 |
 
-> **待 review 確認**：會計兼任系統管理（管分類/綁裝置/開帳號）是本 spec 的假設。若要獨立 super-admin 角色，review 時提出。
+> super_admin 為最高權限、預設就是業主本人；系統管理職責與會計分離（會計專責帳務核銷/月結）。
 
 ---
 
 ## 3. 資料模型（Phase 1）
 
 - **stores**：id, name, code, active, created_at。seed 同名 webapp 店家（獨立資料，不連 webapp DB）。
-- **users**：id, store_id(nullable，會計為 null), name, role(employee|manager|accountant), password_hash, active, created_at。
+- **users**：id, store_id(nullable，會計/super_admin 為 null), name, role(employee|manager|accountant|super_admin), password_hash, active, created_at。
 - **devices**：id, store_id, bound_user_id, token_hash, label, status(active|revoked), fingerprint(**僅稽核用，永不作認證判斷**), last_seen_at, created_at。
 - **enrollment_codes**：id, store_id, code_hash, created_by, expires_at, used_at, device_id(nullable)。一次性綁定碼。
 - **categories**：id, parent_id(nullable), name, level(1=會計科目 / 2=項目), active, sort。2 層、可增可改。seed 自使用者提供的 excel（見附錄 A）。
@@ -96,8 +97,8 @@ pending_ocr ──OCR完成──> draft ──員工送出──> submitted ─
 - **營業日分界：每日 08:00**。
   - `business_date(expense)`：上傳時間（台灣時間）在 **00:00–08:00** → 前一日曆日；否則 → 當日曆日。
   - 即「昨天營業日」= `[昨天 08:00, 今天 08:00)`；活動集中在晚上 20:00 之後（夜間營業型態）。
-- **每日結算一次**：把某營業日區間結掉、算出當日總額，供交接班打勾稽核確認總額。
-- 打勾稽核頁預設只列 `submitted` 且**未打勾**者，顯示批次小計與（依 business_date 的）日總額。
+- **日總額為即時累加**：每有一筆上傳（`submitted`）就加進該 business_date 的累加總額，**不需鎖定批次**。
+- 打勾稽核頁預設只列該店 `submitted` 且**未打勾**者，顯示逐筆金額 + 即時累加日總額；主管逐筆確認後打勾（`audited`）。交接班多次、增量進行。
 
 ---
 
@@ -220,4 +221,5 @@ pending_ocr ──OCR完成──> draft ──員工送出──> submitted ─
 8. 資安：裝置綁定碼+token、R2 SSE、覆核頁即時取圖；retention 用 §6 表
 9. 打勾稽核由店管理者做（每店多位）；兩層覆核
 10. OCR 只抓 品名摘要 / 分類 / 金額；日期不靠 OCR
-11. 營業日 08:00 分界；每日結算 `[昨天08:00, 今天08:00)`
+11. 營業日 08:00 分界；日總額即時累加（每筆上傳即加總），主管逐筆打勾確認，無鎖定批次
+12. 角色新增 super_admin（預設=業主本人），系統管理職責與會計分離
