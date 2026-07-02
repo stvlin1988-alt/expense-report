@@ -1,4 +1,5 @@
 import base64
+import binascii
 import time
 
 from flask import Blueprint, current_app, request, session, jsonify
@@ -53,7 +54,7 @@ def verify():
 
     try:
         img_bytes = base64.b64decode(str(face_image).split(",")[-1])
-    except Exception:
+    except (binascii.Error, ValueError):
         img_bytes = b""
     submitted = encode_face_async(img_bytes)
     if submitted is None:

@@ -78,3 +78,43 @@ def test_verify_candidate_scoped_to_store(monkeypatch, app, seeded):
     r = c.post("/auth/verify", json={"password": "1234", "face_image": "data:x"})
     # 仍應登入 A 店小明（B 店員工不在候選內），驗證未撞臉整批拒
     assert r.get_json()["status"] == "ok"
+
+
+def test_verify_ambiguous(monkeypatch, app, seeded):
+    # 同店兩位員工同密碼、同臉部 encoding，且與送出的 encoding 距離幾乎相同
+    # -> best_match_among 前兩名距離差 < ambiguous_margin -> 整批拒為 ambiguous
+    with app.app_context():
+        store_id = seeded["store_id"]
+        twin = User(name="小明二號", role="employee", store_id=store_id)
+        twin.set_password("1234")
+        twin.face_encoding = _enc(0.0).tobytes()
+        db.session.add(twin)
+        db.session.commit()
+    monkeypatch.setattr("app.auth.routes.encode_face_async", lambda *_a, **_k: _enc(0.0))
+    c = _client_with_device(app)
+    r = c.post("/auth/verify", json={"password": "1234", "face_image": "data:x"})
+    assert r.get_json()["status"] == "ambiguous"
+
+
+def test_verify_store_disabled(monkeypatch, app, seeded):
+    # 密碼+臉都比中，但比中者所屬的店已停用 -> store_disabled
+    with app.app_context():
+        store = Store.query.filter_by(id=seeded["store_id"]).one()
+        store.active = False
+        db.session.commit()
+    monkeypatch.setattr("app.auth.routes.encode_face_async", lambda *_a, **_k: _enc(0.0))
+    c = _client_with_device(app)
+    r = c.post("/auth/verify", json={"password": "1234", "face_image": "data:x"})
+    assert r.get_json()["status"] == "store_disabled"
+
+
+def test_verify_malformed_face_image_no_500(monkeypatch, app, seeded):
+    # base64 解碼失敗時應乾淨降級（收斂後的 except (binascii.Error, ValueError)），不可 500
+    monkeypatch.setattr("app.auth.routes.encode_face_async", lambda *_a, **_k: None)
+    c = _client_with_device(app)
+    r = c.post(
+        "/auth/verify",
+        json={"password": "1234", "face_image": "!!!not-base64!!!"},
+    )
+    assert r.status_code == 200
+    assert "status" in r.get_json()
