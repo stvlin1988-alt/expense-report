@@ -146,12 +146,26 @@ def approve_device(device_id):
     new_user = data.get("new_user")
 
     if new_user:
-        u = User(name=(new_user.get("name") or "").strip(),
-                 role=new_user.get("role") or "employee",
-                 store_id=device.store_id)
-        u.set_password(str(new_user.get("password") or ""))
+        name = (new_user.get("name") or "").strip()
+        password = str(new_user.get("password") or "")
+        role = new_user.get("role") or "employee"
+        if not name or not password:
+            return jsonify(status="error", message="name/password required"), 400
+        if role not in ROLES:
+            return jsonify(status="error", message="invalid role"), 400
+        if actor.role == "manager" and role != "employee":
+            return jsonify(status="error", message="forbidden"), 403
+        u = User(name=name, role=role, store_id=device.store_id)
+        u.set_password(password)
         db.session.add(u); db.session.flush()
         bound_user_id = u.id
+
+    elif bound_user_id is not None:
+        target = db.session.get(User, bound_user_id)
+        if target is None:
+            return jsonify(status="error", message="user not found"), 404
+        if not _manages(actor, target):
+            return jsonify(status="error", message="forbidden"), 403
 
     if bound_user_id is not None:
         # 換機：撤該 user 其他已核准裝置（撤舊發新）

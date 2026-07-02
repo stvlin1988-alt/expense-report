@@ -94,3 +94,57 @@ def test_revoke_device(app):
     assert r.get_json()["status"] == "ok"
     with app.app_context():
         assert db.session.get(Device, ids["pend_a"]).is_revoked is True
+
+
+def test_manager_cannot_create_superadmin_via_approve(app):
+    ids = _base(app)
+    c = _login_as(app, ids["mgr"])
+    r = c.post(f"/admin/devices/{ids['pend_a']}/approve",
+               json={"new_user": {"name": "壞人", "password": "1234", "role": "super_admin"}})
+    assert r.status_code == 403
+    with app.app_context():
+        assert User.query.filter_by(name="壞人").first() is None
+        assert db.session.get(Device, ids["pend_a"]).is_approved is False
+
+
+def test_manager_cannot_rebind_to_other_store_user(app):
+    ids = _base(app)
+    with app.app_context():
+        other_emp = User(name="B店員工", role="employee", store_id=ids["b"])
+        other_emp.set_password("1234")
+        db.session.add(other_emp); db.session.commit()
+        other_dev = Device(client_uid="bPhone", store_id=ids["b"],
+                            is_approved=True, bound_user_id=other_emp.id)
+        db.session.add(other_dev); db.session.commit()
+        other_emp_id, other_dev_id = other_emp.id, other_dev.id
+    c = _login_as(app, ids["mgr"])
+    r = c.post(f"/admin/devices/{ids['pend_a']}/approve",
+               json={"bound_user_id": other_emp_id})
+    assert r.status_code == 403
+    with app.app_context():
+        assert db.session.get(Device, other_dev_id).is_revoked is False
+        pend = db.session.get(Device, ids["pend_a"])
+        assert pend.is_approved is False
+        assert pend.bound_user_id is None
+
+
+def test_manager_cannot_rebind_to_superadmin(app):
+    ids = _base(app)
+    c = _login_as(app, ids["mgr"])
+    r = c.post(f"/admin/devices/{ids['pend_a']}/approve",
+               json={"bound_user_id": ids["sa"]})
+    assert r.status_code == 403
+    with app.app_context():
+        pend = db.session.get(Device, ids["pend_a"])
+        assert pend.is_approved is False
+        assert pend.bound_user_id is None
+
+
+def test_approve_new_user_requires_name_password(app):
+    ids = _base(app)
+    c = _login_as(app, ids["mgr"])
+    r = c.post(f"/admin/devices/{ids['pend_a']}/approve",
+               json={"new_user": {"name": "小明", "role": "employee"}})
+    assert r.status_code == 400
+    with app.app_context():
+        assert db.session.get(Device, ids["pend_a"]).is_approved is False
