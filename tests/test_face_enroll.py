@@ -32,7 +32,7 @@ def test_admin_enrolls_user_face(monkeypatch, app):
     r = c.post("/face/enroll", json={"user_id": emp_id, "face_image": "data:x"})
     assert r.get_json()["status"] == "ok"
     with app.app_context():
-        assert User.query.get(emp_id).face_encoding is not None
+        assert db.session.get(User, emp_id).face_encoding is not None
 
 
 def test_enroll_no_face_detected(monkeypatch, app):
@@ -62,7 +62,7 @@ def test_unauthenticated_cannot_enroll_even_in_seed_mode(app):
     r = c.post("/face/enroll", json={"user_id": emp_id, "face_image": "data:x"})
     assert r.status_code == 401
     with app.app_context():
-        assert User.query.get(emp_id).face_encoding is None
+        assert db.session.get(User, emp_id).face_encoding is None
 
 
 def test_unauthenticated_no_user_id_returns_401(app):
