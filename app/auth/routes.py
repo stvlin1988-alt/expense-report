@@ -10,7 +10,7 @@ from sqlalchemy import or_
 from app.extensions import db, limiter
 from app.models.user import User
 from app.models.device import Device
-from app.devices.routes import UID_COOKIE_NAME, _set_uid_cookie
+from app.devices.routes import UID_COOKIE_NAME, _set_uid_cookie, _clean_str
 from app.face.engine import best_match_among, encode_face_async
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
@@ -22,22 +22,30 @@ def login(user):
     session["_last_request_at"] = int(time.time())
 
 
-@auth_bp.post("/bootstrap")
-def bootstrap():
-    """Seed-only 首次啟用：建立第一位 super_admin + 核准當前裝置。"""
-    already = User.query.filter(
+def _super_admin_with_face_count():
+    return User.query.filter(
         User.role == "super_admin", User.face_encoding.isnot(None)
     ).count()
-    if already > 0:
+
+
+@auth_bp.post("/bootstrap")
+@limiter.limit(
+    "5 per minute",
+    exempt_when=lambda: current_app.config.get("TESTING"),
+)
+def bootstrap():
+    """Seed-only 首次啟用：建立第一位 super_admin + 核准當前裝置。"""
+    if _super_admin_with_face_count() > 0:
         return jsonify(status="already_initialized"), 403
 
     data = request.get_json(silent=True) or {}
-    name = data.get("name")
+    name = _clean_str(data.get("name"), 100)
     password = data.get("password")
+    password = password if isinstance(password, str) else ""
     face_image = data.get("face_image")
 
     if not name or not password:
-        return jsonify(status="error", message="name and password required"), 400
+        return jsonify(status="error", message="name/password required"), 400
     if not face_image:
         return jsonify(status="face_not_found")
 
@@ -54,6 +62,11 @@ def bootstrap():
     owner.face_encoding = np.asarray(encoding, dtype=np.float64).tobytes()
     db.session.add(owner)
     db.session.flush()
+
+    # 競態收斂：flush 後重查，若已有其他 super_admin 搶先建立（race），回滾放棄。
+    if _super_admin_with_face_count() > 1:
+        db.session.rollback()
+        return jsonify(status="already_initialized"), 403
 
     uid = (request.cookies.get(UID_COOKIE_NAME) or "").strip() or None
     device = Device.query.filter_by(client_uid=uid).first() if uid else None

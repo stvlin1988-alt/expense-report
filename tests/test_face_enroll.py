@@ -65,6 +65,16 @@ def test_unauthenticated_cannot_enroll_even_in_seed_mode(app):
         assert User.query.get(emp_id).face_encoding is None
 
 
+def test_unauthenticated_no_user_id_returns_401(app):
+    with app.app_context():
+        db.create_all()
+
+    c = app.test_client()
+    c.set_cookie("device_uid", "devA")  # seed mode, no session actor, no user_id
+    r = c.post("/face/enroll", json={"face_image": "data:x"})
+    assert r.status_code == 401
+
+
 def test_employee_cannot_enroll_others(monkeypatch, app):
     with app.app_context():
         db.create_all()

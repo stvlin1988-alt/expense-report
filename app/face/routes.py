@@ -29,6 +29,9 @@ def enroll():
     target_id = data.get("user_id")
 
     actor = current_user()
+    if actor is None:
+        return jsonify(status="error", message="unauthenticated"), 401
+
     if target_id is None:
         target = actor
     else:
@@ -36,8 +39,6 @@ def enroll():
     if target is None:
         return jsonify(status="error", message="user not found"), 404
 
-    if actor is None:
-        return jsonify(status="error", message="unauthenticated"), 401
     if not _can_enroll(actor, target):
         return jsonify(status="error", message="forbidden"), 403
 

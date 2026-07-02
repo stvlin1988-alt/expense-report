@@ -59,6 +59,43 @@ def test_bootstrap_refused_once_owner_has_face(monkeypatch, app):
         assert User.query.filter_by(role="super_admin").count() == 1
 
 
+def test_bootstrap_rejects_non_string_name(monkeypatch, app):
+    monkeypatch.setattr("app.auth.routes.encode_face_async", lambda *_a, **_k: _enc(1.0))
+    with app.app_context():
+        db.create_all()
+
+    c = app.test_client()
+    c.set_cookie("device_uid", "devBoot4")
+
+    r = c.post(
+        "/auth/bootstrap",
+        json={"name": 123, "password": "pw", "face_image": "data:x"},
+    )
+    assert r.status_code == 400
+
+    with app.app_context():
+        assert User.query.filter_by(role="super_admin").count() == 0
+
+
+def test_bootstrap_truncates_long_name(monkeypatch, app):
+    monkeypatch.setattr("app.auth.routes.encode_face_async", lambda *_a, **_k: _enc(1.0))
+    with app.app_context():
+        db.create_all()
+
+    c = app.test_client()
+    c.set_cookie("device_uid", "devBoot5")
+
+    r = c.post(
+        "/auth/bootstrap",
+        json={"name": "業" * 200, "password": "pw", "face_image": "data:x"},
+    )
+    assert r.get_json()["status"] == "ok"
+
+    with app.app_context():
+        owner = User.query.filter_by(role="super_admin").one()
+        assert len(owner.name) <= 100
+
+
 def test_bootstrap_face_not_found(monkeypatch, app):
     monkeypatch.setattr("app.auth.routes.encode_face_async", lambda *_a, **_k: None)
     with app.app_context():
