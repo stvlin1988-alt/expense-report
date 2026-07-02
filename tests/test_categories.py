@@ -23,3 +23,5 @@ def test_seed_is_idempotent(app):
         seed_categories()
         seed_categories()
         assert Category.query.filter_by(level=1).count() == 11
+        expected_total = len(CATEGORY_DATA) + sum(len(v) for v in CATEGORY_DATA.values())
+        assert Category.query.count() == expected_total
