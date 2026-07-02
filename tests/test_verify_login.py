@@ -108,6 +108,79 @@ def test_verify_store_disabled(monkeypatch, app, seeded):
     assert r.get_json()["status"] == "store_disabled"
 
 
+def test_e2e_new_device_approval_assigns_store_and_enables_employee_login(monkeypatch, app):
+    """End-to-end：新裝置註冊(無 store_id) -> 店長核准建員工 -> device/employee 皆繼承店長 store_id
+    -> 新裝置(已核准)以新員工身分成功登入。驗證 approve_device 一定會設 store_id 的修復。"""
+    import re
+    import time
+
+    with app.app_context():
+        db.create_all()
+        store = Store(name="A店", code="A")
+        db.session.add(store); db.session.commit()
+
+        sa = User(name="業主", role="super_admin")
+        sa.set_password("pw")
+        sa.face_encoding = _enc(1.0).tobytes()
+        mgr = User(name="店長A", role="manager", store_id=store.id)
+        mgr.set_password("pw")
+        db.session.add_all([sa, mgr]); db.session.commit()
+
+        # 一台已核准裝置（super_admin 的），用來脫離 seed mode
+        sa_dev = Device(client_uid="devSA", is_approved=True)
+        mgr_dev = Device(client_uid="devMgr", store_id=store.id, is_approved=True)
+        db.session.add_all([sa_dev, mgr_dev]); db.session.commit()
+
+        mgr_id, store_id = mgr.id, store.id
+
+    # 1) 新裝置註冊，不帶 store_id
+    reg_client = app.test_client()
+    r = reg_client.post("/api/v1/register-device", json={"device_name": "新手機"})
+    assert r.status_code == 200
+    set_cookie = r.headers.get("Set-Cookie", "")
+    m = re.search(r"device_uid=([^;]+)", set_cookie)
+    assert m
+    new_uid = m.group(1)
+
+    with app.app_context():
+        new_device = Device.query.filter_by(client_uid=new_uid).one()
+        new_device_id = new_device.id
+        assert new_device.store_id is None
+        assert new_device.is_approved is False
+
+    # 2) 店長以自己已核准的裝置登入身分，核准新裝置並建立新員工帳號
+    mgr_client = app.test_client()
+    mgr_client.set_cookie("device_uid", "devMgr")
+    with mgr_client.session_transaction() as s:
+        s["user_id"] = mgr_id
+        s["_last_request_at"] = int(time.time())
+
+    r2 = mgr_client.post(
+        f"/admin/devices/{new_device_id}/approve",
+        json={"new_user": {"name": "E2E員工", "password": "pw123", "role": "employee"}},
+    )
+    assert r2.get_json()["status"] == "ok"
+
+    # 3) 斷言：新裝置 store_id、新員工 store_id 都必須等於店長的 store_id（Critical 修復點）
+    with app.app_context():
+        d = db.session.get(Device, new_device_id)
+        assert d.is_approved is True
+        assert d.store_id == store_id
+        emp = db.session.get(User, d.bound_user_id)
+        assert emp is not None
+        assert emp.store_id == store_id
+        # 模擬員工已完成臉部註冊（超出本測試範圍，直接寫入 encoding）
+        emp.face_encoding = _enc(0.0).tobytes()
+        db.session.commit()
+
+    # 4) 新裝置（現已核准）以新員工身分登入
+    monkeypatch.setattr("app.auth.routes.encode_face_async", lambda *_a, **_k: _enc(0.0))
+    emp_client = app.test_client()
+    emp_client.set_cookie("device_uid", new_uid)
+    r3 = emp_client.post("/auth/verify", json={"password": "pw123", "face_image": "data:x"})
+    assert r3.get_json()["status"] == "ok"
+
+
 def test_verify_malformed_face_image_no_500(monkeypatch, app, seeded):
     # base64 解碼失敗時應乾淨降級（收斂後的 except (binascii.Error, ValueError)），不可 500
     monkeypatch.setattr("app.auth.routes.encode_face_async", lambda *_a, **_k: None)

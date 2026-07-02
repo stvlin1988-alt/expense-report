@@ -70,6 +70,17 @@ def test_register_non_string_client_uid_does_not_500(app, client):
     assert r.status_code == 200  # coerced, not crashed
 
 
+def test_register_device_cookie_not_secure_in_dev(app, client):
+    with app.app_context():
+        db.create_all()
+    resp = client.post("/api/v1/register-device",
+                       json={"fingerprint": "fp1", "device_name": "iPad"})
+    assert resp.status_code == 200
+    set_cookie_headers = resp.headers.getlist("Set-Cookie")
+    device_uid_header = next(h for h in set_cookie_headers if h.startswith("device_uid="))
+    assert "Secure" not in device_uid_header
+
+
 def test_register_overlong_values_truncated(app, client):
     with app.app_context():
         db.create_all()

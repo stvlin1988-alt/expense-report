@@ -52,9 +52,54 @@ def test_super_admin_store_filter(app):
 
 def test_manager_cannot_approve_other_store_device(app):
     ids = _base(app)
+    with app.app_context():
+        other_dev = Device(client_uid="bApproved", store_id=ids["b"], is_approved=True)
+        db.session.add(other_dev); db.session.commit()
+        other_dev_id = other_dev.id
     c = _login_as(app, ids["mgr"])
-    r = c.post(f"/admin/devices/{ids['pend_b']}/approve", json={})
+    r = c.post(f"/admin/devices/{other_dev_id}/approve", json={})
     assert r.status_code == 403
+    r2 = c.post(f"/admin/devices/{other_dev_id}/revoke", json={})
+    assert r2.status_code == 403
+
+
+def test_manager_claims_unassigned_pending_device(app):
+    ids = _base(app)
+    with app.app_context():
+        pend = Device(client_uid="unassignedNew", store_id=None, device_name="新機")
+        db.session.add(pend); db.session.commit()
+        pend_id = pend.id
+    c = _login_as(app, ids["mgr"])
+    r = c.post(f"/admin/devices/{pend_id}/approve",
+               json={"new_user": {"name": "小華", "password": "1234", "role": "employee"}})
+    assert r.get_json()["status"] == "ok"
+    with app.app_context():
+        d = db.session.get(Device, pend_id)
+        assert d.is_approved is True
+        assert d.store_id == ids["a"]
+        emp = db.session.get(User, d.bound_user_id)
+        assert emp.name == "小華"
+        assert emp.store_id == ids["a"]
+
+
+def test_super_admin_approve_requires_store(app):
+    ids = _base(app)
+    with app.app_context():
+        pend = Device(client_uid="saPendingBare", store_id=None)
+        db.session.add(pend); db.session.commit()
+        pend_id = pend.id
+    c = _login_as(app, ids["sa"], uid="devSA")
+    r = c.post(f"/admin/devices/{pend_id}/approve", json={})
+    assert r.status_code == 400
+    with app.app_context():
+        assert db.session.get(Device, pend_id).is_approved is False
+
+    r2 = c.post(f"/admin/devices/{pend_id}/approve", json={"store_id": ids["a"]})
+    assert r2.get_json()["status"] == "ok"
+    with app.app_context():
+        d = db.session.get(Device, pend_id)
+        assert d.is_approved is True
+        assert d.store_id == ids["a"]
 
 
 def test_approve_with_new_account_binds_user(app):

@@ -17,7 +17,7 @@ def is_seed_mode():
     admins = User.query.filter_by(role="super_admin").all()
     if not admins:
         return True
-    if Device.query.filter_by(is_approved=True).count() == 0:
+    if Device.query.filter_by(is_approved=True, is_revoked=False).count() == 0:
         return True
     if all(a.face_encoding is None for a in admins):
         return True

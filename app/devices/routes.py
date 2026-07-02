@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone, timedelta
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, current_app, request, jsonify
 
 from app.extensions import db
 from app.models.device import Device
@@ -21,7 +21,9 @@ def _set_uid_cookie(resp, uid):
     resp.set_cookie(
         UID_COOKIE_NAME, uid,
         max_age=UID_COOKIE_MAX_AGE,
-        httponly=True, secure=True, samesite="Lax",
+        httponly=True,
+        secure=current_app.config.get("SESSION_COOKIE_SECURE", False),
+        samesite="Lax",
     )
 
 

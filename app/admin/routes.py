@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from sqlalchemy import and_, or_
 
 from app.extensions import db
 from app.models.user import User, ROLES
@@ -56,6 +57,8 @@ def create_user():
             store_id = int(store_id)
         except (TypeError, ValueError):
             return jsonify(status="error", message="invalid store_id"), 400
+        if db.session.get(Store, store_id) is None:
+            return jsonify(status="error", message="store not found"), 400
     if actor.role == "manager":
         if role != "employee" or store_id != actor.store_id:
             return jsonify(status="error", message="forbidden"), 403
@@ -98,12 +101,21 @@ def change_own_password():
 
 
 def _visible_device_query(actor, store_id_filter=None):
-    q = Device.query
     if actor.role == "manager":
-        return q.filter(Device.store_id == actor.store_id)
+        return (
+            Device.query.outerjoin(User, Device.bound_user_id == User.id)
+            .filter(
+                or_(
+                    Device.store_id == actor.store_id,
+                    and_(Device.store_id.is_(None), Device.is_approved.is_(False)),
+                    User.store_id == actor.store_id,
+                )
+            )
+        )
     # super_admin
+    q = Device.query
     if store_id_filter is not None:
-        return q.filter(Device.store_id == store_id_filter)
+        q = q.filter(Device.store_id == store_id_filter)
     return q
 
 
@@ -111,7 +123,11 @@ def _manages_device(actor, device):
     if actor.role == "super_admin":
         return True
     if actor.role == "manager":
-        return device.store_id == actor.store_id
+        return (
+            (device.store_id is None and not device.is_approved)
+            or device.store_id == actor.store_id
+            or (device.bound_user is not None and device.bound_user.store_id == actor.store_id)
+        )
     return False
 
 
@@ -149,6 +165,8 @@ def approve_device(device_id):
     if new_user is not None and not isinstance(new_user, dict):
         return jsonify(status="error", message="invalid new_user"), 400
 
+    resolved_store_id = None
+
     if new_user:
         name = (new_user.get("name") or "").strip()
         password = str(new_user.get("password") or "")
@@ -157,9 +175,18 @@ def approve_device(device_id):
             return jsonify(status="error", message="name/password required"), 400
         if role not in ROLES:
             return jsonify(status="error", message="invalid role"), 400
-        if actor.role == "manager" and role != "employee":
-            return jsonify(status="error", message="forbidden"), 403
-        u = User(name=name, role=role, store_id=device.store_id)
+        if actor.role == "manager":
+            if role != "employee":
+                return jsonify(status="error", message="forbidden"), 403
+            resolved_store_id = actor.store_id
+        else:  # super_admin
+            try:
+                resolved_store_id = int(new_user.get("store_id"))
+            except (TypeError, ValueError):
+                return jsonify(status="error", message="invalid store_id"), 400
+            if db.session.get(Store, resolved_store_id) is None:
+                return jsonify(status="error", message="store not found"), 400
+        u = User(name=name, role=role, store_id=resolved_store_id)
         u.set_password(password)
         db.session.add(u); db.session.flush()
         bound_user_id = u.id
@@ -174,6 +201,22 @@ def approve_device(device_id):
             return jsonify(status="error", message="user not found"), 404
         if not _manages(actor, target):
             return jsonify(status="error", message="forbidden"), 403
+        resolved_store_id = target.store_id
+
+    else:
+        # 裸核准（不換新機也不換帳號）：裝置歸屬需明確指派
+        if actor.role == "manager":
+            resolved_store_id = actor.store_id
+        else:  # super_admin
+            try:
+                resolved_store_id = int(data.get("store_id"))
+            except (TypeError, ValueError):
+                return jsonify(status="error", message="store_id required"), 400
+            if db.session.get(Store, resolved_store_id) is None:
+                return jsonify(status="error", message="store not found"), 400
+
+    if resolved_store_id is None:
+        return jsonify(status="error", message="store could not be resolved"), 400
 
     if bound_user_id is not None:
         # 換機：撤該 user 其他已核准裝置（撤舊發新）
@@ -185,6 +228,7 @@ def approve_device(device_id):
             old.is_revoked = True
         device.bound_user_id = bound_user_id
 
+    device.store_id = resolved_store_id
     device.is_approved = True
     device.is_revoked = False
     db.session.commit()
