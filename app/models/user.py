@@ -15,6 +15,7 @@ class User(db.Model):
     name = db.Column(db.String(100), nullable=False)
     role = db.Column(db.String(20), nullable=False, default="employee")
     password_hash = db.Column(db.String(255), nullable=True)
+    face_encoding = db.Column(db.LargeBinary, nullable=True)  # 128-d float64 bytes；不存影像
     active = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(
         db.DateTime, nullable=False,
