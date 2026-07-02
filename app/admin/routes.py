@@ -145,6 +145,10 @@ def approve_device(device_id):
     bound_user_id = data.get("bound_user_id")
     new_user = data.get("new_user")
 
+    # Validate new_user: if provided, must be a dict
+    if new_user is not None and not isinstance(new_user, dict):
+        return jsonify(status="error", message="invalid new_user"), 400
+
     if new_user:
         name = (new_user.get("name") or "").strip()
         password = str(new_user.get("password") or "")
@@ -161,6 +165,10 @@ def approve_device(device_id):
         bound_user_id = u.id
 
     elif bound_user_id is not None:
+        try:
+            bound_user_id = int(bound_user_id)
+        except (TypeError, ValueError):
+            return jsonify(status="error", message="invalid bound_user_id"), 400
         target = db.session.get(User, bound_user_id)
         if target is None:
             return jsonify(status="error", message="user not found"), 404

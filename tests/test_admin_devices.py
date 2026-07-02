@@ -148,3 +148,14 @@ def test_approve_new_user_requires_name_password(app):
     assert r.status_code == 400
     with app.app_context():
         assert db.session.get(Device, ids["pend_a"]).is_approved is False
+
+
+def test_approve_bound_user_id_non_int_returns_400(app):
+    ids = _base(app)
+    c = _login_as(app, ids["mgr"])
+    r = c.post(f"/admin/devices/{ids['pend_a']}/approve",
+               json={"bound_user_id": "abc"})
+    assert r.status_code == 400
+    assert r.get_json()["status"] == "error"
+    with app.app_context():
+        assert db.session.get(Device, ids["pend_a"]).is_approved is False
