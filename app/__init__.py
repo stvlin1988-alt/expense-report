@@ -25,4 +25,7 @@ def create_app(config_object=None):
     from app.auth import auth_bp
     app.register_blueprint(auth_bp)
 
+    from app.devices import device_bp
+    app.register_blueprint(device_bp)
+
     return app
