@@ -1,13 +1,11 @@
 from flask import Blueprint, request, jsonify
 
 from app.extensions import db
-from app.models.user import User
+from app.models.user import User, ROLES
 from app.models.store import Store
 from app.auth.decorators import current_user, role_required
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
-
-ROLES = ("employee", "manager", "accountant", "super_admin")
 
 
 def _manages(actor, target):
@@ -16,7 +14,11 @@ def _manages(actor, target):
     if actor.role == "super_admin":
         return True
     if actor.role == "manager":
-        return target.store_id is not None and target.store_id == actor.store_id
+        return (
+            target.role == "employee"
+            and target.store_id is not None
+            and target.store_id == actor.store_id
+        )
     return False
 
 
@@ -47,8 +49,15 @@ def create_user():
         return jsonify(status="error", message="invalid input"), 400
 
     actor = current_user()
-    if actor.role == "manager" and store_id != actor.store_id:
-        return jsonify(status="error", message="forbidden"), 403
+    # normalize store_id to int when present
+    if store_id is not None:
+        try:
+            store_id = int(store_id)
+        except (TypeError, ValueError):
+            return jsonify(status="error", message="invalid store_id"), 400
+    if actor.role == "manager":
+        if role != "employee" or store_id != actor.store_id:
+            return jsonify(status="error", message="forbidden"), 403
 
     user = User(name=name, role=role, store_id=store_id)
     user.set_password(password)

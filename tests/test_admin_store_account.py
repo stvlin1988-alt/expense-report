@@ -83,3 +83,53 @@ def test_self_change_password_requires_old(app):
     assert ok.get_json()["status"] == "ok"
     with app.app_context():
         assert db.session.get(User, ids["mgr"]).check_password("new")
+
+
+def test_manager_cannot_create_non_employee(app):
+    ids = _base(app)
+    c = _login_as(app, ids["mgr"])
+    r = c.post("/admin/users", json={"name": "偽業主", "password": "1234",
+                                     "role": "super_admin", "store_id": ids["a"]})
+    assert r.status_code == 403
+    with app.app_context():
+        assert User.query.filter_by(name="偽業主").first() is None
+
+
+def test_manager_cannot_reset_non_employee_password(app):
+    ids = _base(app)
+    with app.app_context():
+        other_mgr = User(name="另一店長", role="manager", store_id=ids["a"])
+        other_mgr.set_password("old")
+        db.session.add(other_mgr); db.session.commit()
+        other_mgr_id = other_mgr.id
+    c = _login_as(app, ids["mgr"])
+    r = c.post(f"/admin/users/{other_mgr_id}/password", json={"password": "new"})
+    assert r.status_code == 403
+    with app.app_context():
+        assert db.session.get(User, other_mgr_id).check_password("old")
+
+
+def test_manager_cannot_reset_other_store_user_password(app):
+    ids = _base(app)
+    with app.app_context():
+        b = Store(name="B店", code="B"); db.session.add(b); db.session.commit()
+        emp = User(name="外店員工", role="employee", store_id=b.id)
+        emp.set_password("old")
+        db.session.add(emp); db.session.commit()
+        emp_id = emp.id
+    c = _login_as(app, ids["mgr"])
+    r = c.post(f"/admin/users/{emp_id}/password", json={"password": "new"})
+    assert r.status_code == 403
+    with app.app_context():
+        assert db.session.get(User, emp_id).check_password("old")
+
+
+def test_super_admin_can_create_manager(app):
+    ids = _base(app)
+    c = _login_as(app, ids["sa"])
+    r = c.post("/admin/users", json={"name": "新店長", "password": "1234",
+                                     "role": "manager", "store_id": ids["a"]})
+    assert r.get_json()["status"] == "ok"
+    with app.app_context():
+        u = User.query.filter_by(name="新店長").one()
+        assert u.role == "manager" and u.check_password("1234")
