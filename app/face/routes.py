@@ -5,7 +5,6 @@ from flask import Blueprint, request, jsonify
 from app.extensions import db
 from app.models.user import User
 from app.auth.decorators import current_user
-from app.auth.gates import is_seed_mode
 from app.face.engine import encode_face_async
 
 face_bp = Blueprint("face", __name__, url_prefix="/face")
@@ -37,11 +36,9 @@ def enroll():
     if target is None:
         return jsonify(status="error", message="user not found"), 404
 
-    # seed mode：允許本人自錄（bootstrap）；否則需管理權限
-    if is_seed_mode():
-        if actor is not None and not _can_enroll(actor, target):
-            return jsonify(status="error", message="forbidden"), 403
-    elif not _can_enroll(actor, target):
+    if actor is None:
+        return jsonify(status="error", message="unauthenticated"), 401
+    if not _can_enroll(actor, target):
         return jsonify(status="error", message="forbidden"), 403
 
     if not face_image:

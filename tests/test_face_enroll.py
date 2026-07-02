@@ -49,6 +49,22 @@ def test_enroll_no_face_detected(monkeypatch, app):
     assert r.get_json()["status"] == "face_not_found"
 
 
+def test_unauthenticated_cannot_enroll_even_in_seed_mode(app):
+    with app.app_context():
+        db.create_all()
+        store = Store(name="A店", code="A"); db.session.add(store); db.session.commit()
+        emp = User(name="小明", role="employee", store_id=store.id); emp.set_password("pw")
+        db.session.add(emp); db.session.commit()
+        emp_id = emp.id
+
+    c = app.test_client()
+    c.set_cookie("device_uid", "devA")  # 沒有已核准裝置 -> 仍是 seed mode，但無 session actor
+    r = c.post("/face/enroll", json={"user_id": emp_id, "face_image": "data:x"})
+    assert r.status_code == 401
+    with app.app_context():
+        assert User.query.get(emp_id).face_encoding is None
+
+
 def test_employee_cannot_enroll_others(monkeypatch, app):
     with app.app_context():
         db.create_all()

@@ -1,14 +1,16 @@
 import base64
 import binascii
 import time
+import uuid
 
+import numpy as np
 from flask import Blueprint, current_app, request, session, jsonify
 from sqlalchemy import or_
 
-from app.extensions import limiter
+from app.extensions import db, limiter
 from app.models.user import User
 from app.models.device import Device
-from app.devices.routes import UID_COOKIE_NAME
+from app.devices.routes import UID_COOKIE_NAME, _set_uid_cookie
 from app.face.engine import best_match_among, encode_face_async
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
@@ -18,6 +20,56 @@ def login(user):
     session["user_id"] = user.id
     session.permanent = True
     session["_last_request_at"] = int(time.time())
+
+
+@auth_bp.post("/bootstrap")
+def bootstrap():
+    """Seed-only 首次啟用：建立第一位 super_admin + 核准當前裝置。"""
+    already = User.query.filter(
+        User.role == "super_admin", User.face_encoding.isnot(None)
+    ).count()
+    if already > 0:
+        return jsonify(status="already_initialized"), 403
+
+    data = request.get_json(silent=True) or {}
+    name = data.get("name")
+    password = data.get("password")
+    face_image = data.get("face_image")
+
+    if not name or not password:
+        return jsonify(status="error", message="name and password required"), 400
+    if not face_image:
+        return jsonify(status="face_not_found")
+
+    try:
+        img_bytes = base64.b64decode(str(face_image).split(",")[-1])
+    except (binascii.Error, ValueError):
+        img_bytes = b""
+    encoding = encode_face_async(img_bytes)
+    if encoding is None:
+        return jsonify(status="face_not_found")
+
+    owner = User(name=name, role="super_admin", store_id=None)
+    owner.set_password(password)
+    owner.face_encoding = np.asarray(encoding, dtype=np.float64).tobytes()
+    db.session.add(owner)
+    db.session.flush()
+
+    uid = (request.cookies.get(UID_COOKIE_NAME) or "").strip() or None
+    device = Device.query.filter_by(client_uid=uid).first() if uid else None
+    if device is None:
+        uid = uid or uuid.uuid4().hex
+        device = Device(client_uid=uid)
+        db.session.add(device)
+    device.is_approved = True
+    device.is_revoked = False
+    device.bound_user_id = owner.id
+    db.session.commit()
+
+    login(owner)
+    resp = jsonify(status="ok", id=owner.id)
+    _set_uid_cookie(resp, uid)
+    return resp
 
 
 def _candidate_users():
