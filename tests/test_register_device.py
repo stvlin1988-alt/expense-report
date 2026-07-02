@@ -61,3 +61,23 @@ def test_cleanup_removes_stale_pending(app):
         removed = _cleanup_pending_devices()
         assert removed == 1
         assert {d.client_uid for d in Device.query.all()} == {"fresh", "appr"}
+
+
+def test_register_non_string_client_uid_does_not_500(app, client):
+    with app.app_context():
+        db.create_all()
+    r = client.post("/api/v1/register-device", json={"client_uid": 123, "fingerprint": ["x"]})
+    assert r.status_code == 200  # coerced, not crashed
+
+
+def test_register_overlong_values_truncated(app, client):
+    with app.app_context():
+        db.create_all()
+    long_uid = "u" * 200
+    r = client.post("/api/v1/register-device",
+                    json={"client_uid": long_uid, "device_name": "d" * 200})
+    assert r.status_code == 200
+    with app.app_context():
+        d = Device.query.one()
+        assert len(d.client_uid) <= 64
+        assert len(d.device_name) <= 100

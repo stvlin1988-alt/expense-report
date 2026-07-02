@@ -25,6 +25,16 @@ def _set_uid_cookie(resp, uid):
     )
 
 
+def _clean_str(value, max_len):
+    """非字串一律視為缺值；字串去頭尾空白並截斷到欄位長度。"""
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    return value[:max_len]
+
+
 def _cleanup_pending_devices():
     cutoff = datetime.now(timezone.utc) - timedelta(minutes=PENDING_DEVICE_TTL_MINUTES)
     stale = Device.query.filter(
@@ -55,13 +65,16 @@ def register_device():
         _cleanup_pending_devices()
     except Exception:
         db.session.rollback()
+        import logging
+        logging.getLogger(__name__).warning("register-device cleanup failed", exc_info=True)
 
     data = request.get_json(silent=True) or {}
-    fp = (data.get("fingerprint") or "").strip() or None
-    body_uid = (data.get("client_uid") or "").strip() or None
-    device_name = data.get("device_name") or "Unknown"
+    fp = _clean_str(data.get("fingerprint"), 512)
+    body_uid = _clean_str(data.get("client_uid"), 64)
+    device_name = _clean_str(data.get("device_name"), 100) or "Unknown"
 
     uid = _get_cookie_uid() or body_uid
+    uid = uid[:64] if uid else uid
     device = Device.query.filter_by(client_uid=uid).first() if uid else None
 
     if device is None:
