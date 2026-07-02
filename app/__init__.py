@@ -15,4 +15,7 @@ def create_app(config_object=None):
     def health():
         return jsonify(status="ok")
 
+    from app.auth import auth_bp
+    app.register_blueprint(auth_bp)
+
     return app
