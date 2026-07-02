@@ -28,4 +28,7 @@ def create_app(config_object=None):
     from app.devices import device_bp
     app.register_blueprint(device_bp)
 
+    from app.auth.gates import register_gates
+    register_gates(app)
+
     return app
