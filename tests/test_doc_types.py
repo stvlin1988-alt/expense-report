@@ -13,8 +13,13 @@ def test_seed_doc_types(app):
         assert by_name["統一發票"].physical_return_required is False
         assert by_name["收據"].retention_days == 0
         assert by_name["小白單"].physical_return_required is True
+        assert by_name["小白單"].retention_days is None
         assert by_name["水電勞健保規費"].retention_days == 60
         assert by_name["水電勞健保規費"].physical_return_required is True
+        assert by_name["統一發票"].purge_policy == "days_after_upload"
+        assert by_name["收據"].purge_policy == "on_reconcile"
+        assert by_name["小白單"].purge_policy == "attachment_expire"
+        assert by_name["水電勞健保規費"].purge_policy == "days_after_upload"
 
 
 def test_seed_doc_types_idempotent(app):
