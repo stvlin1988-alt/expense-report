@@ -35,4 +35,7 @@ def create_app(config_object=None):
     from app.face.routes import face_bp
     app.register_blueprint(face_bp)
 
+    from app.admin import admin_bp
+    app.register_blueprint(admin_bp)
+
     return app
