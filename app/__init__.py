@@ -12,9 +12,10 @@ def create_app(config_object=None):
             "refusing to start with the insecure default."
         )
 
-    from app.extensions import db, migrate
+    from app.extensions import db, migrate, limiter
     db.init_app(app)
     migrate.init_app(app, db)
+    limiter.init_app(app)
 
     from app import models  # noqa: F401  確保 models 被載入註冊
 

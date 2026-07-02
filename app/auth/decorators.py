@@ -5,7 +5,9 @@ from app.models.user import User
 
 def current_user():
     uid = session.get("user_id")
-    return User.query.get(uid) if uid else None
+    if not uid:
+        return None
+    return User.query.filter_by(id=uid, active=True).first()
 
 
 def role_required(*roles):

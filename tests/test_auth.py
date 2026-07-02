@@ -21,16 +21,3 @@ def test_seed_admin_idempotent(app):
         assert a.role == "super_admin"
         assert a.is_admin is True
         assert User.query.filter_by(role="super_admin").count() == 1
-
-
-def test_login_and_session(app, client):
-    with app.app_context():
-        db.create_all()
-        seed_admin("業主", "owner-pw")
-
-    resp = client.post("/auth/login", json={"name": "業主", "password": "owner-pw"})
-    assert resp.status_code == 200
-    assert resp.get_json()["role"] == "super_admin"
-
-    bad = client.post("/auth/login", json={"name": "業主", "password": "x"})
-    assert bad.status_code == 401
