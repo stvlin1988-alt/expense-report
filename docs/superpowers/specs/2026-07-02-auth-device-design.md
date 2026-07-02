@@ -110,17 +110,48 @@ Task 5 已有 `id, store_id, name, role, password_hash, active, created_at` 與 
 
 ---
 
-## 6. 裝置管理後台
+## 6. 後台管理
 
-**分權（決策 C）**：`super_admin` 全域；`manager` 限本店（`Device.store_id == 自己的 store` 或該裝置綁定 user 屬本店）。`accountant`/`employee` 不可管裝置。
+管理後台限**管理者以上**使用（`manager` / `super_admin`；`accountant` 專責帳務、`employee` 無後台）。所有寫入操作記稽核（沿用/擴充 `audit_log` 或專屬 log，Plan 內定）。
 
-**功能**：
-- **列出**待核准/已核准裝置（依角色 scope）。
-- **核准 + 建新帳號**：核准裝置並同時建立新 user、綁定（`bound_user_id`）。
+### 6.0 權限與可視範圍（scope）
+
+| 功能 | super_admin | manager | 備註 |
+|---|---|---|---|
+| 調店（檢視店別切換） | 全部店，或選單一店只看該店 | 限本店（等同固定） | §6.1 |
+| 新增店 | ✅ | ❌ | 開店為 super_admin 專屬（原 spec §2） |
+| 直接創帳號（公務機共用員工） | 任一店 | 限本店員工 | §6.3 |
+| 修改/重設他人密碼 | 任一被管理 user | 限本店員工 | §6.4 |
+| 修改自己密碼 | ✅ | ✅ | 任何登入者皆可改自己 |
+| 裝置核准/換機/撤銷 | 全域 | 限本店 | §6.5 |
+| 錄入他人人臉 | 任一被管理 user | 限本店員工 | §7 |
+
+- **可視店（visible_stores）**：super_admin = 全部；manager = `[自己的 store]`。使用者/裝置清單與各下拉皆依此 scope。
+
+### 6.1 調店（檢視店別切換）
+- 後台清單（帳號/裝置）依「目前檢視店別」過濾。
+- **super_admin**：預設看全部；可用店別篩選（如 `?store_id=` 或下拉）**只看某一店**。此為**檢視過濾、非持久狀態**（不改自身歸屬、不寫 DB）。
+- **manager**：固定本店，無切換。
+
+### 6.2 店別管理（Store）
+- 沿用 Task 2 的 `stores(id, name, code, active, created_at)`；**store 停用 = `active=False`**，作為 §4 登入時 `store_disabled` 的判定依據（不新增 `login_enabled` 欄位）。
+- **新增店**（super_admin）：提供 `name` + `code`（`code` unique）。店別清單參考 webapp 概念（name 唯一）。
+
+### 6.3 帳號管理 — 直接創帳號（公務機共用員工）
+- 為**使用公務機、不綁個人手機**的員工直接建立帳號：輸入 `name` + 密碼 + `role` + `store` → 建 `User` 並 `set_password`。
+- 這些員工**不走裝置核准/換機流程**；他們在該店**已核准的公務機**上以「密碼＋人臉」登入（§4 候選 scope 到該店即涵蓋）。人臉可於建立後由管理者錄入（§7）。
+- 與 §6.5 的「核准裝置 + 建新帳號」不同：後者綁**個人裝置**、前者為**共用機用戶**、與裝置解耦。
+
+### 6.4 密碼管理
+- **管理者重設他人密碼**：super_admin 對任一被管理 user、manager 對本店員工，`set_password(新密碼)`。
+- **自助改自己密碼**：任何登入者可改自己密碼（需通過目前 session；是否要求重驗舊密碼於 Plan 決定，預設要求）。
+
+### 6.5 裝置管理
+**分權（決策 C）**：`super_admin` 全域；`manager` 限本店（`Device.store_id == 自己的 store` 或裝置綁定 user 屬本店）。
+- **列出**待核准/已核准裝置（依 scope）。
+- **核准 + 建新帳號**：核准**個人裝置**並同時建 user、綁 `bound_user_id`。
 - **核准 + 綁既有帳號（換機）**：核准新裝置綁到既有 user，並把該 user 舊裝置 `is_revoked=True`（撤舊發新）。
 - **撤銷**：`is_revoked=True`。
-
-所有操作寫入稽核（沿用/擴充 `audit_log` 或 device 專屬 log，Plan 內定）。
 
 ---
 
