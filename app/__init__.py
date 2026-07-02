@@ -32,4 +32,7 @@ def create_app(config_object=None):
     from app.auth.gates import register_gates
     register_gates(app)
 
+    from app.face.routes import face_bp
+    app.register_blueprint(face_bp)
+
     return app
