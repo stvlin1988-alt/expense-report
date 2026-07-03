@@ -110,6 +110,10 @@
 
 ## 6. 登入 / bootstrap / 錄臉流程
 
+### 6.0 密碼政策 + 登出行為（2026-07-03 追加）
+- **密碼一律 4 位純數字 PIN**（`^\d{4}$`）。前端輸入框強制（`inputmode=numeric`、`maxlength=4`、即時濾掉非數字），後端在所有「設密碼」入口驗證（`is_valid_pin`）：`/auth/bootstrap`、`/admin/users`、`/admin/users/<id>/password`、`/admin/me/password`、`/admin/devices/<id>/approve`(new_user)。`/auth/verify` **不驗格式**（僅比對，格式不符自然不中）。model `set_password` 不驗（僅路由入口驗，限制 blast radius）。
+- **登出 = 重整頁面**（`location.reload()`）：清 session 後重載 → 回計算機、6 秒暗號窗重新起算、已核准裝置重新取得 `secret_hash`，登出後可立即再按暗號登入（否則舊 6 秒窗早已過期、暗號叫不出登入）。
+
 ### 6.1 登入 modal（一般模式）
 1. 開啟 modal 當下才 `POST /api/v1/register-device`（**不在每次公開瀏覽就註冊**，避免 pending 洗版）——設 `device_uid` cookie、若為新裝置則入 pending 佇列（供 3b 後台核准）。
 2. 自動開相機（沿用 `Camera` helper：`getUserMedia` → 單張畫面 → canvas → base64 jpeg，**不錄影、不進相簿、不落地**）。
