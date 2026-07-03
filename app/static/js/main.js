@@ -2,6 +2,7 @@ import { CalcEngine } from './calculator.js';
 import { convertAll } from './currency.js';
 import { loadRates } from './fx.js';
 import { canonicalToken, buildSequence, matchesSecret, withinWindow } from './secret.js';
+import { openAuth, showAppView } from './auth.js';
 
 const cfg = JSON.parse(document.getElementById('app-config').textContent);
 const engine = new CalcEngine();
@@ -135,10 +136,17 @@ document.querySelector('.keys').addEventListener('click', async (e) => {
   }
 });
 
-// 暫時佔位：Task 11 以 auth.js 覆蓋
-window.__openAuth = window.__openAuth || function (seedMode) {
-  console.log('trigger! seedMode =', seedMode);
-};
+window.__openAuth = openAuth;
+
+// 若伺服器判定本 session 已登入 → 暗號直接回登入後畫面（不需重打密碼）
+// （由 Task 11：登入後畫面）。這裡僅在暗號觸發時判斷，故保留 identity 供 openAuth 分流。
+if (cfg.identity) {
+  const orig = window.__openAuth;
+  window.__openAuth = function (seedMode) {
+    if (cfg.identity) { showAppView(cfg.identity); return; }
+    orig(seedMode);
+  };
+}
 
 initFx();
 renderCalc();
