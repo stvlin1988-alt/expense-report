@@ -1,10 +1,11 @@
 import hashlib
 import os
 
-from flask import (Blueprint, current_app, render_template, session,
+from flask import (Blueprint, current_app, render_template, request, session,
                    send_from_directory)
 
 from app.auth.gates import is_seed_mode
+from app.devices.routes import is_device_authorized, UID_COOKIE_NAME
 from app.models.user import User
 from app.extensions import db
 
@@ -24,10 +25,16 @@ def index():
         u = db.session.get(User, uid)
         if u and u.active:
             identity = {"name": u.name, "role": u.role}
+
+    seed = is_seed_mode()
+    device_uid = (request.cookies.get(UID_COOKIE_NAME) or "").strip() or None
+    approved = is_device_authorized(device_uid)
+    secret_hash = _secret_hash() if (seed or approved) else None
+
     return render_template(
         "index.html",
-        seed_mode=is_seed_mode(),
-        secret_hash=_secret_hash(),
+        seed_mode=seed,
+        secret_hash=secret_hash,
         identity=identity,
     )
 

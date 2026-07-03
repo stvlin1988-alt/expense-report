@@ -55,6 +55,24 @@ def test_index_exempt_even_when_device_unapproved(app):
     assert c.get("/").status_code == 200  # '/' 豁免 device gate
 
 
+def test_secret_hash_null_for_unapproved_device(app):
+    with app.app_context():
+        db.create_all()
+        _make_non_seed()
+    c = app.test_client()
+    c.set_cookie("device_uid", "bad")
+    assert _cfg(c.get("/").data)["secretHash"] is None
+
+
+def test_secret_hash_present_for_approved_device(app):
+    with app.app_context():
+        db.create_all()
+        _make_non_seed()
+    c = app.test_client()
+    c.set_cookie("device_uid", "devOK")
+    assert _cfg(c.get("/").data)["secretHash"] == hashlib.sha256(b"078*2").hexdigest()
+
+
 def test_index_injects_identity_when_logged_in(app):
     with app.app_context():
         db.create_all()

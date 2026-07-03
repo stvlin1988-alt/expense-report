@@ -13,7 +13,13 @@ let mode = 'calc';           // 'calc' | 'fx'
 let seq = [];                // 暗號 token 累積（自載入/清除起）
 let triggerLocked = false;   // 6 秒窗逾時後鎖定
 const loadTs = Date.now();
-setTimeout(() => { triggerLocked = true; }, 6000);
+setTimeout(() => {
+  triggerLocked = true;
+  cfg.secretHash = null;
+  cfg.identity = null;
+  const acEl = document.getElementById('app-config');
+  if (acEl) acEl.textContent = '{}';
+}, 6000);
 
 // ---- 顯示 ----
 function renderCalc() { calcDisplay.textContent = engine.display; }
@@ -95,6 +101,7 @@ function fxClear() { fxState.amount = '0'; renderFx(); }
 
 // ---- 暗號偵測（僅 calc mode）----
 async function checkSecret() {
+  if (!cfg.secretHash) return false;
   if (triggerLocked || mode !== 'calc') return false;
   if (!withinWindow(loadTs, Date.now())) { triggerLocked = true; return false; }
   const ok = await matchesSecret(buildSequence(seq), cfg.secretHash);
