@@ -8,7 +8,7 @@ from flask import Blueprint, current_app, request, session, jsonify
 from sqlalchemy import or_
 
 from app.extensions import db, limiter
-from app.models.user import User
+from app.models.user import User, is_valid_pin
 from app.models.device import Device
 from app.devices.routes import UID_COOKIE_NAME, _set_uid_cookie, _clean_str
 from app.face.engine import best_match_among, encode_face_async
@@ -46,6 +46,8 @@ def bootstrap():
 
     if not name or not password:
         return jsonify(status="error", message="name/password required"), 400
+    if not is_valid_pin(password):
+        return jsonify(status="error", message="pin must be 4 digits"), 400
     if not face_image:
         return jsonify(status="face_not_found")
 

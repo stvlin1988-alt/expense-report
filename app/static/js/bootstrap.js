@@ -16,7 +16,7 @@ function openBootstrap() {
       <div class="modal-box">
         <h2>首次設定</h2>
         <input type="text" id="bs-name" placeholder="姓名" autocomplete="off">
-        <input type="password" id="bs-pw" placeholder="密碼" autocomplete="off">
+        <input type="password" id="bs-pw" placeholder="密碼" inputmode="numeric" maxlength="4" autocomplete="off">
         <video id="bs-video" autoplay playsinline muted></video>
         <canvas id="bs-canvas" style="display:none;"></canvas>
         <button class="modal-btn" id="bs-submit" type="button">建立並登入</button>
@@ -28,6 +28,9 @@ function openBootstrap() {
   const msg = document.getElementById('bs-msg');
   cam.start().catch(() => { msg.textContent = '無法開啟鏡頭'; });
 
+  const pwInput = document.getElementById('bs-pw');
+  pwInput.addEventListener('input', () => { pwInput.value = pwInput.value.replace(/\D/g, '').slice(0, 4); });
+
   document.getElementById('bs-backdrop').addEventListener('click', (ev) => {
     if (ev.target === ev.currentTarget) { cam.stop(); root().innerHTML = ''; }
   });
@@ -35,11 +38,17 @@ function openBootstrap() {
   document.getElementById('bs-submit').addEventListener('click', async () => {
     const btn = document.getElementById('bs-submit');
     btn.disabled = true; msg.textContent = '';
+    const password = pwInput.value;
+    if (!/^\d{4}$/.test(password)) {
+      msg.textContent = '密碼需為 4 位數字';
+      btn.disabled = false;
+      return;
+    }
     const face = cam.isRecording ? cam.capture() : null;
     try {
       const { data } = await postJSON('/auth/bootstrap', {
         name: document.getElementById('bs-name').value.trim(),
-        password: document.getElementById('bs-pw').value,
+        password,
         face_image: face,
       });
       if (data.status === 'ok') {

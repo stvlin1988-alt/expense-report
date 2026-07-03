@@ -157,7 +157,7 @@ def test_e2e_new_device_approval_assigns_store_and_enables_employee_login(monkey
 
     r2 = mgr_client.post(
         f"/admin/devices/{new_device_id}/approve",
-        json={"new_user": {"name": "E2E員工", "password": "pw123", "role": "employee"}},
+        json={"new_user": {"name": "E2E員工", "password": "1357", "role": "employee"}},
     )
     assert r2.get_json()["status"] == "ok"
 
@@ -177,7 +177,7 @@ def test_e2e_new_device_approval_assigns_store_and_enables_employee_login(monkey
     monkeypatch.setattr("app.auth.routes.encode_face_async", lambda *_a, **_k: _enc(0.0))
     emp_client = app.test_client()
     emp_client.set_cookie("device_uid", new_uid)
-    r3 = emp_client.post("/auth/verify", json={"password": "pw123", "face_image": "data:x"})
+    r3 = emp_client.post("/auth/verify", json={"password": "1357", "face_image": "data:x"})
     assert r3.get_json()["status"] == "ok"
 
 

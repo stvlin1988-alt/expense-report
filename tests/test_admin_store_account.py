@@ -68,10 +68,10 @@ def test_manager_resets_own_store_user_password(app):
         db.session.add(emp); db.session.commit()
         emp_id = emp.id
     c = _login_as(app, ids["mgr"])
-    r = c.post(f"/admin/users/{emp_id}/password", json={"password": "new"})
+    r = c.post(f"/admin/users/{emp_id}/password", json={"password": "9999"})
     assert r.get_json()["status"] == "ok"
     with app.app_context():
-        assert db.session.get(User, emp_id).check_password("new")
+        assert db.session.get(User, emp_id).check_password("9999")
 
 
 def test_self_change_password_requires_old(app):
@@ -79,10 +79,10 @@ def test_self_change_password_requires_old(app):
     c = _login_as(app, ids["mgr"])
     bad = c.post("/admin/me/password", json={"old_password": "wrong", "new_password": "x"})
     assert bad.status_code == 400
-    ok = c.post("/admin/me/password", json={"old_password": "pw", "new_password": "new"})
+    ok = c.post("/admin/me/password", json={"old_password": "pw", "new_password": "9999"})
     assert ok.get_json()["status"] == "ok"
     with app.app_context():
-        assert db.session.get(User, ids["mgr"]).check_password("new")
+        assert db.session.get(User, ids["mgr"]).check_password("9999")
 
 
 def test_manager_cannot_create_non_employee(app):
@@ -103,7 +103,7 @@ def test_manager_cannot_reset_non_employee_password(app):
         db.session.add(other_mgr); db.session.commit()
         other_mgr_id = other_mgr.id
     c = _login_as(app, ids["mgr"])
-    r = c.post(f"/admin/users/{other_mgr_id}/password", json={"password": "new"})
+    r = c.post(f"/admin/users/{other_mgr_id}/password", json={"password": "9999"})
     assert r.status_code == 403
     with app.app_context():
         assert db.session.get(User, other_mgr_id).check_password("old")
@@ -118,7 +118,7 @@ def test_manager_cannot_reset_other_store_user_password(app):
         db.session.add(emp); db.session.commit()
         emp_id = emp.id
     c = _login_as(app, ids["mgr"])
-    r = c.post(f"/admin/users/{emp_id}/password", json={"password": "new"})
+    r = c.post(f"/admin/users/{emp_id}/password", json={"password": "9999"})
     assert r.status_code == 403
     with app.app_context():
         assert db.session.get(User, emp_id).check_password("old")
@@ -133,3 +133,15 @@ def test_super_admin_can_create_manager(app):
     with app.app_context():
         u = User.query.filter_by(name="新店長").one()
         assert u.role == "manager" and u.check_password("1234")
+
+
+def test_create_user_rejects_non_pin_password(app):
+    ids = _base(app)
+    c = _login_as(app, ids["sa"])
+    for bad_pw in ("abc", "12345", "123", "12a4"):
+        r = c.post("/admin/users", json={"name": f"壞密碼{bad_pw}", "password": bad_pw,
+                                         "role": "employee", "store_id": ids["a"]})
+        assert r.status_code == 400, bad_pw
+        assert r.get_json()["status"] == "error"
+    with app.app_context():
+        assert User.query.filter(User.name.like("壞密碼%")).count() == 0

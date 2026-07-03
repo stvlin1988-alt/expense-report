@@ -5,6 +5,11 @@ from app.extensions import db
 ROLES = ("employee", "manager", "accountant", "super_admin")
 
 
+def is_valid_pin(pw):
+    """密碼一律 4 位純數字 PIN。僅供路由入口驗證，model 本身不驗。"""
+    return isinstance(pw, str) and len(pw) == 4 and pw.isdigit()
+
+
 class User(db.Model):
     __tablename__ = "users"
 

@@ -78,7 +78,7 @@ function loginModal() {
         <h2>　</h2>
         <video id="m-video" autoplay playsinline muted></video>
         <canvas id="m-canvas" style="display:none;"></canvas>
-        <input type="password" id="m-pw" placeholder="密碼" inputmode="numeric" autocomplete="off">
+        <input type="password" id="m-pw" placeholder="密碼" inputmode="numeric" maxlength="4" autocomplete="off">
         <button class="modal-btn" id="m-submit" type="button">確定</button>
         <div class="modal-msg" id="m-msg"></div>
       </div>
@@ -106,6 +106,8 @@ async function openLoginFlow() {
     // register-device 為 best-effort 入列，網路故障不應阻斷 modal 展開
   }
   try { await cam.start(); } catch (e) { /* 無鏡頭：仍可送出，後端回無害訊息 */ }
+
+  el.pw.addEventListener('input', () => { el.pw.value = el.pw.value.replace(/\D/g, '').slice(0, 4); });
 
   // 背景點擊關閉
   el.backdrop.addEventListener('click', (ev) => {

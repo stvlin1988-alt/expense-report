@@ -19,7 +19,7 @@ def test_bootstrap_creates_owner_enrolls_face_approves_device(monkeypatch, app):
 
     r = c.post(
         "/auth/bootstrap",
-        json={"name": "業主", "password": "pw", "face_image": "data:x"},
+        json={"name": "業主", "password": "1234", "face_image": "data:x"},
     )
     assert r.get_json()["status"] == "ok"
 
@@ -50,7 +50,7 @@ def test_bootstrap_refused_once_owner_has_face(monkeypatch, app):
 
     r = c.post(
         "/auth/bootstrap",
-        json={"name": "冒充者", "password": "pw2", "face_image": "data:x"},
+        json={"name": "冒充者", "password": "5678", "face_image": "data:x"},
     )
     assert r.status_code == 403
     assert r.get_json()["status"] == "already_initialized"
@@ -69,7 +69,7 @@ def test_bootstrap_rejects_non_string_name(monkeypatch, app):
 
     r = c.post(
         "/auth/bootstrap",
-        json={"name": 123, "password": "pw", "face_image": "data:x"},
+        json={"name": 123, "password": "1234", "face_image": "data:x"},
     )
     assert r.status_code == 400
 
@@ -87,7 +87,7 @@ def test_bootstrap_truncates_long_name(monkeypatch, app):
 
     r = c.post(
         "/auth/bootstrap",
-        json={"name": "業" * 200, "password": "pw", "face_image": "data:x"},
+        json={"name": "業" * 200, "password": "1234", "face_image": "data:x"},
     )
     assert r.get_json()["status"] == "ok"
 
@@ -106,9 +106,28 @@ def test_bootstrap_face_not_found(monkeypatch, app):
 
     r = c.post(
         "/auth/bootstrap",
-        json={"name": "業主", "password": "pw", "face_image": "data:x"},
+        json={"name": "業主", "password": "1234", "face_image": "data:x"},
     )
     assert r.get_json()["status"] == "face_not_found"
+
+    with app.app_context():
+        assert User.query.filter_by(role="super_admin").count() == 0
+
+
+def test_bootstrap_rejects_non_pin_password(monkeypatch, app):
+    monkeypatch.setattr("app.auth.routes.encode_face_async", lambda *_a, **_k: _enc(1.0))
+    with app.app_context():
+        db.create_all()
+
+    c = app.test_client()
+    for i, bad_pw in enumerate(("abc", "12345", "123", "12a4")):
+        c.set_cookie("device_uid", f"devBootPin{i}")
+        r = c.post(
+            "/auth/bootstrap",
+            json={"name": "業主", "password": bad_pw, "face_image": "data:x"},
+        )
+        assert r.status_code == 400, bad_pw
+        assert r.get_json()["status"] == "error"
 
     with app.app_context():
         assert User.query.filter_by(role="super_admin").count() == 0

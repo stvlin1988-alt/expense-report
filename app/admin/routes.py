@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from sqlalchemy import and_, or_
 
 from app.extensions import db
-from app.models.user import User, ROLES
+from app.models.user import User, ROLES, is_valid_pin
 from app.models.store import Store
 from app.models.device import Device
 from app.auth.decorators import current_user, role_required
@@ -49,6 +49,8 @@ def create_user():
     store_id = data.get("store_id")
     if not name or not password or role not in ROLES:
         return jsonify(status="error", message="invalid input"), 400
+    if not is_valid_pin(password):
+        return jsonify(status="error", message="pin must be 4 digits"), 400
 
     actor = current_user()
     # normalize store_id to int when present
@@ -76,6 +78,8 @@ def reset_password(user_id):
     new_password = str(data.get("password") or "")
     if not new_password:
         return jsonify(status="error", message="password required"), 400
+    if not is_valid_pin(new_password):
+        return jsonify(status="error", message="pin must be 4 digits"), 400
     target = db.session.get(User, user_id)
     if target is None:
         return jsonify(status="error", message="user not found"), 404
@@ -96,6 +100,8 @@ def change_own_password():
     new_password = str(data.get("new_password") or "")
     if not new_password:
         return jsonify(status="error", message="new password required"), 400
+    if not is_valid_pin(new_password):
+        return jsonify(status="error", message="pin must be 4 digits"), 400
     actor.set_password(new_password); db.session.commit()
     return jsonify(status="ok")
 
@@ -173,6 +179,8 @@ def approve_device(device_id):
         role = new_user.get("role") or "employee"
         if not name or not password:
             return jsonify(status="error", message="name/password required"), 400
+        if not is_valid_pin(password):
+            return jsonify(status="error", message="pin must be 4 digits"), 400
         if role not in ROLES:
             return jsonify(status="error", message="invalid role"), 400
         if actor.role == "manager":
