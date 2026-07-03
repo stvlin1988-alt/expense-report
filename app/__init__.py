@@ -38,4 +38,7 @@ def create_app(config_object=None):
     from app.admin import admin_bp
     app.register_blueprint(admin_bp)
 
+    from app.fx import fx_bp
+    app.register_blueprint(fx_bp)
+
     return app

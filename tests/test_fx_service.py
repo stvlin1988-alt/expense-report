@@ -115,3 +115,27 @@ def test_get_rates_insert_race_falls_back_to_reread(app, monkeypatch):
         assert rates == competing
         assert fetched is not None
         assert FxRate.query.filter_by(base="USD").count() == 1
+
+
+def test_fx_endpoint_ok(app, monkeypatch):
+    monkeypatch.setattr(svc, "_fetch_remote_rates", lambda: dict(SAMPLE))
+    with app.app_context():
+        db.create_all()
+    c = app.test_client()
+    r = c.get("/api/v1/fx")
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["status"] == "ok"
+    assert j["base"] == "USD"
+    assert j["currencies"] == ["TWD", "JPY", "USD", "THB", "EUR"]
+    assert j["rates"]["JPY"] == 155.0
+
+
+def test_fx_endpoint_unavailable(app, monkeypatch):
+    monkeypatch.setattr(svc, "_fetch_remote_rates", lambda: None)
+    with app.app_context():
+        db.create_all()
+    c = app.test_client()
+    r = c.get("/api/v1/fx")
+    assert r.status_code == 200
+    assert r.get_json()["status"] == "unavailable"
