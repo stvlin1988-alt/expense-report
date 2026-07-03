@@ -9,7 +9,7 @@ from app.devices.routes import is_device_authorized, UID_COOKIE_NAME
 IDLE_MAX_SECONDS = 30 * 60
 
 _EXEMPT_PREFIXES = ("/static/", "/api/v1/")
-_EXEMPT_PATHS = ("/health", "/sw.js", "/auth/logout")
+_EXEMPT_PATHS = ("/health", "/sw.js", "/auth/logout", "/")
 
 
 def is_seed_mode():
