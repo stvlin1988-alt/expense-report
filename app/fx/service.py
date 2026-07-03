@@ -3,6 +3,7 @@ import urllib.request
 from datetime import datetime, timezone, timedelta
 
 from flask import current_app
+from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.models.fx_rate import FxRate
@@ -50,10 +51,19 @@ def get_rates():
         if row is None:
             row = FxRate(base=BASE, rates_json=json.dumps(remote), fetched_at=now)
             db.session.add(row)
+            try:
+                db.session.commit()
+            except IntegrityError:
+                # 另一 worker 同時過 TTL 並先建了列，撞 unique(base) → 收斂重讀。
+                db.session.rollback()
+                row = FxRate.query.filter_by(base=BASE).first()
+                if row is not None:
+                    return json.loads(row.rates_json), _aware(row.fetched_at).isoformat()
+                return remote, now.isoformat()
         else:
             row.rates_json = json.dumps(remote)
             row.fetched_at = now
-        db.session.commit()
+            db.session.commit()
         return remote, now.isoformat()
 
     if row is not None:
