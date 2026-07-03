@@ -1,0 +1,55 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, 'PingFang TC', 'Segoe UI', sans-serif;
+  background: #000; color: #fff; min-height: 100vh;
+  display: flex; align-items: flex-end; justify-content: center;
+  user-select: none; -webkit-user-select: none;
+}
+#calc-app { width: 100%; max-width: 420px; padding: 12px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 8px; }
+.tab {
+  flex: 1; padding: 10px; border: none; border-radius: 10px;
+  background: #1c1c1e; color: #999; font-size: 1rem; cursor: pointer;
+}
+.tab.active { background: #2c2c2e; color: #fff; }
+.display {
+  text-align: right; font-size: 3.2rem; font-weight: 300;
+  padding: 16px 12px; min-height: 84px; overflow: hidden;
+  white-space: nowrap; text-overflow: ellipsis;
+}
+.keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.key {
+  aspect-ratio: 1 / 1; border: none; border-radius: 50%;
+  font-size: 1.8rem; background: #333; color: #fff; cursor: pointer;
+}
+.key:active { filter: brightness(1.4); }
+.key.fn { background: #a5a5a5; color: #000; }
+.key.op { background: #ff9500; color: #fff; }
+.key.zero { aspect-ratio: auto; grid-column: span 2; border-radius: 40px; text-align: left; padding-left: 28px; }
+.fx-currencies { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0; }
+.fx-chip { padding: 6px 12px; border-radius: 16px; background: #1c1c1e; color: #999; border: none; cursor: pointer; font-size: .9rem; }
+.fx-chip.active { background: #ff9500; color: #fff; }
+.fx-results { display: flex; flex-direction: column; gap: 6px; padding: 0 12px 8px; }
+.fx-row { display: flex; justify-content: space-between; font-size: 1.1rem; color: #ddd; }
+.fx-updated { text-align: right; font-size: .75rem; color: #666; padding: 0 12px 6px; }
+.fx-unavailable { color: #ff6b6b; text-align: center; padding: 8px; }
+
+/* modal 通用 */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,.7);
+  display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px;
+}
+.modal-box { background: #1c1c1e; color: #fff; border-radius: 16px; padding: 24px; width: 360px; max-width: 95vw; }
+.modal-box h2 { font-size: 1.2rem; margin-bottom: 16px; font-weight: 600; }
+.modal-box input {
+  width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 10px;
+  border: 1px solid #3a3a3c; background: #2c2c2e; color: #fff; font-size: 1rem;
+}
+.modal-box video { width: 100%; border-radius: 10px; background: #000; margin-bottom: 12px; }
+.modal-btn {
+  width: 100%; padding: 13px; border: none; border-radius: 10px;
+  background: #ff9500; color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer;
+}
+.modal-btn.secondary { background: #3a3a3c; }
+.modal-msg { text-align: center; font-size: .9rem; min-height: 1.2em; margin-top: 10px; color: #ff6b6b; }
+.app-view-info { font-size: 1rem; margin-bottom: 16px; line-height: 1.8; }

@@ -1,9 +1,49 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head><meta charset="UTF-8"><title>計算機</title></head>
-<body>
+{% extends "base.html" %}
+{% block body %}
 <script id="app-config" type="application/json">
 {{ {"seedMode": seed_mode, "secretHash": secret_hash, "identity": identity} | tojson }}
 </script>
-</body>
-</html>
+
+<div id="calc-app">
+  <div class="tabs">
+    <button class="tab active" data-tab="calc" type="button">計算機</button>
+    <button class="tab" data-tab="fx" type="button">匯率</button>
+  </div>
+
+  <div id="calc-display" class="display">0</div>
+
+  <div id="fx-panel" hidden>
+    <div id="fx-currencies" class="fx-currencies"></div>
+    <div id="fx-amount" class="display">0</div>
+    <div id="fx-results" class="fx-results"></div>
+    <div id="fx-updated" class="fx-updated"></div>
+  </div>
+
+  <div class="keys">
+    <button class="key fn" data-action="clear" type="button">AC</button>
+    <button class="key fn" data-action="negate" type="button">±</button>
+    <button class="key fn" data-action="percent" type="button">%</button>
+    <button class="key op" data-op="/" type="button">÷</button>
+    <button class="key" data-digit="7" type="button">7</button>
+    <button class="key" data-digit="8" type="button">8</button>
+    <button class="key" data-digit="9" type="button">9</button>
+    <button class="key op" data-op="*" type="button">×</button>
+    <button class="key" data-digit="4" type="button">4</button>
+    <button class="key" data-digit="5" type="button">5</button>
+    <button class="key" data-digit="6" type="button">6</button>
+    <button class="key op" data-op="-" type="button">−</button>
+    <button class="key" data-digit="1" type="button">1</button>
+    <button class="key" data-digit="2" type="button">2</button>
+    <button class="key" data-digit="3" type="button">3</button>
+    <button class="key op" data-op="+" type="button">+</button>
+    <button class="key zero" data-digit="0" type="button">0</button>
+    <button class="key" data-action="dot" type="button">.</button>
+    <button class="key op equals" data-action="equals" type="button">=</button>
+  </div>
+</div>
+
+<div id="modal-root"></div>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}
