@@ -37,22 +37,29 @@ export function showAppView(identity) {
   const msg = document.getElementById('av-msg');
 
   document.getElementById('av-reface').addEventListener('click', async () => {
-    try {
-      if (!cam.isRecording) {
+    if (!cam.isRecording) {
+      try {
         await cam.start();
         document.getElementById('av-video').style.display = 'block';
         msg.textContent = '請對準鏡頭，再按一次「更新人臉」';
-        return;
+      } catch (e) {
+        msg.textContent = '無法開啟鏡頭';
+        msg.style.color = '#ff6b6b';
       }
+      return;
+    }
+    try {
       const face = cam.capture();
       const { data } = await postJSON('/face/enroll', { face_image: face });
       msg.textContent = data.status === 'ok' ? '人臉已更新' : '更新失敗，請重試';
       msg.style.color = data.status === 'ok' ? '#4cd964' : '#ff6b6b';
+    } catch (e) {
+      msg.textContent = '更新失敗，請重試';
+      msg.style.color = '#ff6b6b';
+    } finally {
+      // 無論成功或失敗都關鏡頭：影像不落地
       cam.stop();
       document.getElementById('av-video').style.display = 'none';
-    } catch (e) {
-      msg.textContent = '無法開啟鏡頭';
-      msg.style.color = '#ff6b6b';
     }
   });
 
@@ -109,17 +116,23 @@ async function openLoginFlow() {
     el.submit.disabled = true;
     el.msg.textContent = '';
     const face = cam.isRecording ? cam.capture() : null;
-    const { data } = await postJSON('/auth/verify', {
-      password: el.pw.value, face_image: face,
-    });
-    if (data.status === 'ok') {
-      cam.stop();
-      showAppView({ name: data.name, role: data.role });
-      return;
+    try {
+      const { data } = await postJSON('/auth/verify', {
+        password: el.pw.value, face_image: face,
+      });
+      if (data.status === 'ok') {
+        cam.stop();
+        showAppView({ name: data.name, role: data.role });
+        return;
+      }
+      // 其餘一律隱蔽
+      el.msg.textContent = NEUTRAL_MSG;
+      el.submit.disabled = false;
+    } catch (e) {
+      // 真網路故障（fetch reject）：隱蔽提示 + 恢復可重試
+      el.msg.textContent = NEUTRAL_MSG;
+      el.submit.disabled = false;
     }
-    // 其餘一律隱蔽
-    el.msg.textContent = NEUTRAL_MSG;
-    el.submit.disabled = false;
   }
 
   el.submit.addEventListener('click', submit);

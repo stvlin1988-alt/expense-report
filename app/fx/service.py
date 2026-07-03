@@ -26,10 +26,9 @@ def _fetch_remote_rates():
     if payload.get("result") != "success":
         return None
     rates = payload.get("rates") or {}
-    picked = {c: rates[c] for c in CURRENCIES if c in rates}
-    if any(c not in picked for c in CURRENCIES):
+    if not all(c in rates for c in CURRENCIES):
         return None
-    return picked
+    return {c: rates[c] for c in CURRENCIES}
 
 
 def get_rates():

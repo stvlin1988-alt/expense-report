@@ -21,5 +21,6 @@ test('convertAll 不含 from、涵蓋其他幣', () => {
   assert.equal(out.USD, undefined);
   assert.equal(out.TWD, 32);
   assert.equal(out.JPY, 150);
+  assert.equal(out.THB, 36);
   assert.equal(out.EUR, 0.9);
 });

@@ -139,3 +139,52 @@ def test_fx_endpoint_unavailable(app, monkeypatch):
     r = c.get("/api/v1/fx")
     assert r.status_code == 200
     assert r.get_json()["status"] == "unavailable"
+
+
+class _FakeResponse:
+    """假的 urlopen() context manager，模擬 http.client.HTTPResponse。"""
+
+    def __init__(self, payload):
+        self._body = json.dumps(payload).encode("utf-8")
+
+    def read(self):
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return False
+
+
+def test_fetch_remote_rates_parses_success_payload(app, monkeypatch):
+    payload = {
+        "result": "success",
+        "rates": {
+            "TWD": 32.0, "JPY": 155.0, "USD": 1.0, "THB": 36.0, "EUR": 0.92,
+            "GBP": 0.8,  # 額外幣別應被忽略
+        },
+    }
+    monkeypatch.setattr(svc.urllib.request, "urlopen", lambda *a, **k: _FakeResponse(payload))
+    with app.app_context():
+        got = svc._fetch_remote_rates()
+    assert got == {"TWD": 32.0, "JPY": 155.0, "USD": 1.0, "THB": 36.0, "EUR": 0.92}
+
+
+def test_fetch_remote_rates_none_when_result_not_success(app, monkeypatch):
+    payload = {"result": "error"}
+    monkeypatch.setattr(svc.urllib.request, "urlopen", lambda *a, **k: _FakeResponse(payload))
+    with app.app_context():
+        got = svc._fetch_remote_rates()
+    assert got is None
+
+
+def test_fetch_remote_rates_none_when_currency_missing(app, monkeypatch):
+    payload = {
+        "result": "success",
+        "rates": {"TWD": 32.0, "JPY": 155.0, "USD": 1.0, "EUR": 0.92},  # 缺 THB
+    }
+    monkeypatch.setattr(svc.urllib.request, "urlopen", lambda *a, **k: _FakeResponse(payload))
+    with app.app_context():
+        got = svc._fetch_remote_rates()
+    assert got is None

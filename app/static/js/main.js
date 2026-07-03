@@ -6,7 +6,6 @@ import { openAuth, showAppView } from './auth.js';
 
 const cfg = JSON.parse(document.getElementById('app-config').textContent);
 const engine = new CalcEngine();
-const displayEl = document.getElementById('calc-display');
 const fxPanel = document.getElementById('fx-panel');
 const calcDisplay = document.getElementById('calc-display');
 

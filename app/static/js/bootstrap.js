@@ -36,22 +36,29 @@ function openBootstrap() {
     const btn = document.getElementById('bs-submit');
     btn.disabled = true; msg.textContent = '';
     const face = cam.isRecording ? cam.capture() : null;
-    const { data } = await postJSON('/auth/bootstrap', {
-      name: document.getElementById('bs-name').value.trim(),
-      password: document.getElementById('bs-pw').value,
-      face_image: face,
-    });
-    if (data.status === 'ok') {
-      msg.style.color = '#4cd964'; msg.textContent = '完成，正在進入…';
-      cam.stop();
-      setTimeout(() => location.reload(), 800);
-      return;
+    try {
+      const { data } = await postJSON('/auth/bootstrap', {
+        name: document.getElementById('bs-name').value.trim(),
+        password: document.getElementById('bs-pw').value,
+        face_image: face,
+      });
+      if (data.status === 'ok') {
+        msg.style.color = '#4cd964'; msg.textContent = '完成，正在進入…';
+        cam.stop();
+        setTimeout(() => location.reload(), 800);
+        return;
+      }
+      if (data.status === 'face_not_found') msg.textContent = '未偵測到人臉，請對準鏡頭重試';
+      else if (data.status === 'error') msg.textContent = '請填寫姓名與密碼';
+      else if (data.status === 'already_initialized') { setTimeout(() => location.reload(), 500); }
+      else msg.textContent = '設定失敗，請重試';
+      btn.disabled = false;
+    } catch (e) {
+      // 真網路故障（fetch reject）：中性重試訊息 + 恢復可重試
+      msg.style.color = '#ff6b6b';
+      msg.textContent = '設定失敗，請重試';
+      btn.disabled = false;
     }
-    if (data.status === 'face_not_found') msg.textContent = '未偵測到人臉，請對準鏡頭重試';
-    else if (data.status === 'error') msg.textContent = '請填寫姓名與密碼';
-    else if (data.status === 'already_initialized') { setTimeout(() => location.reload(), 500); }
-    else msg.textContent = '設定失敗，請重試';
-    btn.disabled = false;
   });
 }
 
