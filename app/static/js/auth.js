@@ -66,7 +66,7 @@ export function showAppView(identity) {
   document.getElementById('av-logout').addEventListener('click', async () => {
     cam.stop();
     await postJSON('/auth/logout');
-    clearRoot();
+    location.reload();
   });
 }
 
