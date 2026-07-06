@@ -45,3 +45,45 @@ def test_manager_lists_only_own_store(app):
     r = c.get("/admin/stores")
     codes = {s["code"] for s in r.get_json()["stores"]}
     assert codes == {"A"}
+
+
+def test_super_admin_lists_all_users(app):
+    ids = _base(app)
+    c = _login_as(app, ids["sa"], uid="devSA")
+    r = c.get("/admin/users")
+    body = r.get_json()
+    assert body["status"] == "ok"
+    names = {u["name"] for u in body["users"]}
+    assert {"業主", "店長A", "員工A", "員工B"} <= names
+
+
+def test_super_admin_users_store_filter(app):
+    ids = _base(app)
+    c = _login_as(app, ids["sa"], uid="devSA")
+    r = c.get(f"/admin/users?store_id={ids['b']}")
+    names = {u["name"] for u in r.get_json()["users"]}
+    assert names == {"員工B"}
+
+
+def test_manager_lists_only_own_store_users(app):
+    ids = _base(app)
+    c = _login_as(app, ids["mgr"], uid="devMgr")
+    r = c.get("/admin/users")
+    names = {u["name"] for u in r.get_json()["users"]}
+    assert names == {"店長A", "員工A"}
+    assert "員工B" not in names and "業主" not in names
+
+
+def test_users_payload_has_face_flag_not_encoding(app):
+    ids = _base(app)
+    with app.app_context():
+        u = db.session.get(User, ids["emp"])
+        u.face_encoding = b"\x00" * 16  # 假 encoding
+        db.session.commit()
+    c = _login_as(app, ids["sa"], uid="devSA")
+    r = c.get(f"/admin/users?store_id={ids['a']}")
+    row = next(u for u in r.get_json()["users"] if u["name"] == "員工A")
+    assert row["has_face"] is True
+    assert "face_encoding" not in row and "encoding" not in row
+    other = next(u for u in r.get_json()["users"] if u["name"] == "店長A")
+    assert other["has_face"] is False

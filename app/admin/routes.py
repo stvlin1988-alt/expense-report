@@ -84,6 +84,25 @@ def create_user():
     return jsonify(status="ok", id=user.id)
 
 
+@admin_bp.get("/users")
+@role_required("manager", "super_admin")
+def list_users():
+    actor = current_user()
+    q = User.query
+    if actor.role == "super_admin":
+        store_id_filter = request.args.get("store_id", type=int)
+        if store_id_filter is not None:
+            q = q.filter(User.store_id == store_id_filter)
+    else:  # manager：僅本店
+        q = q.filter(User.store_id == actor.store_id)
+    users = q.order_by(User.id).all()
+    return jsonify(status="ok", users=[
+        {"id": u.id, "name": u.name, "role": u.role, "store_id": u.store_id,
+         "active": u.active, "has_face": u.face_encoding is not None}
+        for u in users
+    ])
+
+
 @admin_bp.post("/users/<int:user_id>/password")
 @role_required("manager", "super_admin")
 def reset_password(user_id):
