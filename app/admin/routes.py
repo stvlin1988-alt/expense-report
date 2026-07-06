@@ -110,13 +110,13 @@ def reset_password(user_id):
     new_password = str(data.get("password") or "")
     if not new_password:
         return jsonify(status="error", message="password required"), 400
-    if not is_valid_pin(new_password):
-        return jsonify(status="error", message="pin must be 4 digits"), 400
     target = db.session.get(User, user_id)
     if target is None:
         return jsonify(status="error", message="user not found"), 404
     if not _manages(current_user(), target):
         return jsonify(status="error", message="forbidden"), 403
+    if not is_valid_pin(new_password):
+        return jsonify(status="error", message="pin must be 4 digits"), 400
     target.set_password(new_password); db.session.commit()
     return jsonify(status="ok")
 
@@ -244,8 +244,6 @@ def approve_device(device_id):
         role = new_user.get("role") or "employee"
         if not name or not password:
             return jsonify(status="error", message="name/password required"), 400
-        if not is_valid_pin(password):
-            return jsonify(status="error", message="pin must be 4 digits"), 400
         if role not in ROLES:
             return jsonify(status="error", message="invalid role"), 400
         if actor.role == "manager":
@@ -259,6 +257,8 @@ def approve_device(device_id):
                 return jsonify(status="error", message="invalid store_id"), 400
             if db.session.get(Store, resolved_store_id) is None:
                 return jsonify(status="error", message="store not found"), 400
+        if not is_valid_pin(password):
+            return jsonify(status="error", message="pin must be 4 digits"), 400
         u = User(name=name, role=role, store_id=resolved_store_id)
         u.set_password(password)
         db.session.add(u); db.session.flush()
