@@ -5,7 +5,6 @@ import uuid
 
 import numpy as np
 from flask import Blueprint, current_app, request, session, jsonify
-from sqlalchemy import or_
 
 from app.extensions import db, limiter
 from app.models.user import User, is_valid_pin
@@ -88,15 +87,10 @@ def bootstrap():
 
 
 def _candidate_users():
-    """該裝置所屬店的在職 user + 全域角色（accountant/super_admin）。"""
-    uid = (request.cookies.get(UID_COOKIE_NAME) or "").strip() or None
-    device = Device.query.filter_by(client_uid=uid).first() if uid else None
-    store_id = device.store_id if device else None
-    q = User.query.filter_by(active=True)
-    conds = [User.role.in_(("accountant", "super_admin"))]
-    if store_id is not None:
-        conds.append(User.store_id == store_id)
-    return q.filter(or_(*conds)).all()
+    """公務機模式：裝置一經核准（由 device gate 保證），任一在職帳號皆為登入候選，
+    不再受裝置所屬店別限制。登入以密碼先過濾、再用人臉在密碼吻合者中找最接近的帳號；
+    帳號之間以密碼區分（同密碼且同臉才會判為撞臉 ambiguous）。"""
+    return User.query.filter_by(active=True).all()
 
 
 @auth_bp.post("/verify")

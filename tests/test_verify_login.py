@@ -95,8 +95,25 @@ def test_verify_face_not_found(monkeypatch, app, seeded):
     assert r.get_json()["status"] == "face_not_found"
 
 
-def test_verify_candidate_scoped_to_store(monkeypatch, app, seeded):
-    # 另一店員工同密碼同臉，不應被 A 店裝置比中
+def test_verify_any_account_on_approved_device(monkeypatch, app, seeded):
+    # 公務機模式：任一在職帳號皆可在已核准裝置登入（不受裝置店別限制），以密碼區分帳號。
+    # 另一店員工用「不同密碼」→ 在 A 店裝置上仍應成功登入該員工。
+    with app.app_context():
+        other = Store(name="B店", code="B"); db.session.add(other); db.session.commit()
+        u = User(name="B小華", role="employee", store_id=other.id)
+        u.set_password("5678"); u.face_encoding = _enc(0.0).tobytes()
+        db.session.add(u); db.session.commit()
+        other_uid = u.id
+    monkeypatch.setattr("app.auth.routes.encode_face_async", lambda *_a, **_k: _enc(0.0))
+    c = _client_with_device(app)  # A 店裝置
+    r = c.post("/auth/verify", json={"password": "5678", "face_image": "data:x"})
+    body = r.get_json()
+    assert body["status"] == "ok"
+    assert body["id"] == other_uid
+
+
+def test_verify_same_password_same_face_ambiguous(monkeypatch, app, seeded):
+    # 公務機模式下，兩帳號同密碼且同臉 → 無法區分 → ambiguous（故密碼須唯一區分帳號）。
     with app.app_context():
         other = Store(name="B店", code="B"); db.session.add(other); db.session.commit()
         u = User(name="B小華", role="employee", store_id=other.id)
@@ -105,8 +122,7 @@ def test_verify_candidate_scoped_to_store(monkeypatch, app, seeded):
     monkeypatch.setattr("app.auth.routes.encode_face_async", lambda *_a, **_k: _enc(0.0))
     c = _client_with_device(app)
     r = c.post("/auth/verify", json={"password": "1234", "face_image": "data:x"})
-    # 仍應登入 A 店小明（B 店員工不在候選內），驗證未撞臉整批拒
-    assert r.get_json()["status"] == "ok"
+    assert r.get_json()["status"] == "ambiguous"
 
 
 def test_verify_ambiguous(monkeypatch, app, seeded):
