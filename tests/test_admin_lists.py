@@ -39,12 +39,13 @@ def test_super_admin_lists_all_stores(app):
     assert codes == {"A", "B"}
 
 
-def test_manager_lists_only_own_store(app):
+def test_manager_lists_all_stores(app):
+    # 主管改「本店帳號」的店別需要目標店清單 → GET /admin/stores 回全部店
     ids = _base(app)
     c = _login_as(app, ids["mgr"], uid="devMgr")
     r = c.get("/admin/stores")
     codes = {s["code"] for s in r.get_json()["stores"]}
-    assert codes == {"A"}
+    assert codes == {"A", "B"}
 
 
 def test_super_admin_lists_all_users(app):
@@ -158,3 +159,99 @@ def test_super_admin_can_deactivate_other_super_admin(app):
     assert r.get_json()["status"] == "ok"
     with app.app_context():
         assert db.session.get(User, sa2_id).active is False
+
+
+# ---- 修改帳號店別/角色（經理改店別+角色；主管改本店員工店別）----
+
+def test_super_admin_changes_any_user_store(app):
+    ids = _base(app)
+    c = _login_as(app, ids["sa"], uid="devSA")
+    r = c.post(f"/admin/users/{ids['emp']}/store", json={"store_id": ids["b"]})
+    assert r.get_json()["status"] == "ok"
+    with app.app_context():
+        assert db.session.get(User, ids["emp"]).store_id == ids["b"]
+
+
+def test_manager_changes_own_store_employee_store(app):
+    ids = _base(app)
+    c = _login_as(app, ids["mgr"], uid="devMgr")
+    r = c.post(f"/admin/users/{ids['emp']}/store", json={"store_id": ids["b"]})
+    assert r.get_json()["status"] == "ok"
+    with app.app_context():
+        assert db.session.get(User, ids["emp"]).store_id == ids["b"]
+
+
+def test_manager_cannot_change_other_store_employee_store(app):
+    ids = _base(app)
+    c = _login_as(app, ids["mgr"], uid="devMgr")
+    r = c.post(f"/admin/users/{ids['emp_b']}/store", json={"store_id": ids["a"]})
+    assert r.status_code == 403
+
+
+def test_manager_cannot_change_non_employee_store(app):
+    ids = _base(app)
+    c = _login_as(app, ids["mgr"], uid="devMgr")
+    r = c.post(f"/admin/users/{ids['sa']}/store", json={"store_id": ids["a"]})
+    assert r.status_code == 403
+
+
+def test_set_store_invalid_store_id(app):
+    ids = _base(app)
+    c = _login_as(app, ids["sa"], uid="devSA")
+    r = c.post(f"/admin/users/{ids['emp']}/store", json={"store_id": 99999})
+    assert r.status_code == 400
+
+
+def test_super_admin_changes_role(app):
+    ids = _base(app)
+    c = _login_as(app, ids["sa"], uid="devSA")
+    r = c.post(f"/admin/users/{ids['emp']}/role", json={"role": "manager"})
+    assert r.get_json()["status"] == "ok"
+    with app.app_context():
+        assert db.session.get(User, ids["emp"]).role == "manager"
+
+
+def test_manager_cannot_change_role(app):
+    ids = _base(app)
+    c = _login_as(app, ids["mgr"], uid="devMgr")
+    r = c.post(f"/admin/users/{ids['emp']}/role", json={"role": "manager"})
+    assert r.status_code == 403
+
+
+def test_cannot_change_own_role(app):
+    ids = _base(app)
+    c = _login_as(app, ids["sa"], uid="devSA")
+    r = c.post(f"/admin/users/{ids['sa']}/role", json={"role": "employee"})
+    assert r.status_code == 400
+    with app.app_context():
+        assert db.session.get(User, ids["sa"]).role == "super_admin"
+
+
+def test_set_role_invalid(app):
+    ids = _base(app)
+    c = _login_as(app, ids["sa"], uid="devSA")
+    r = c.post(f"/admin/users/{ids['emp']}/role", json={"role": "boss"})
+    assert r.status_code == 400
+
+
+def test_super_admin_can_demote_other_super_admin(app):
+    ids = _base(app)
+    with app.app_context():
+        sa2 = User(name="業主2", role="super_admin"); sa2.set_password("pw")
+        db.session.add(sa2); db.session.commit()
+        sa2_id = sa2.id
+    c = _login_as(app, ids["sa"], uid="devSA")
+    r = c.post(f"/admin/users/{sa2_id}/role", json={"role": "employee"})
+    assert r.get_json()["status"] == "ok"
+    with app.app_context():
+        assert db.session.get(User, sa2_id).role == "employee"
+
+
+def test_manager_changes_own_store(app):
+    # 主管可改自己的店別
+    ids = _base(app)
+    c = _login_as(app, ids["mgr"], uid="devMgr")
+    r = c.post(f"/admin/users/{ids['mgr']}/store", json={"store_id": ids["b"]})
+    assert r.get_json()["status"] == "ok"
+    with app.app_context():
+        assert db.session.get(User, ids["mgr"]).store_id == ids["b"]

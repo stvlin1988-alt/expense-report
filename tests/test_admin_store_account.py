@@ -33,11 +33,81 @@ def test_super_admin_creates_store(app):
         assert Store.query.filter_by(code="B").one().name == "B店"
 
 
+def test_super_admin_creates_store_code_only(app):
+    # 只填英文店別代碼；name 未給時後端預設等於 code
+    ids = _base(app)
+    c = _login_as(app, ids["sa"])
+    r = c.post("/admin/stores", json={"code": "Z"})
+    assert r.get_json()["status"] == "ok"
+    with app.app_context():
+        s = Store.query.filter_by(code="Z").one()
+        assert s.name == "Z"
+
+
+def test_create_store_requires_code(app):
+    ids = _base(app)
+    c = _login_as(app, ids["sa"])
+    r = c.post("/admin/stores", json={"name": "只有名字"})
+    assert r.status_code == 400
+
+
 def test_manager_cannot_create_store(app):
     ids = _base(app)
     c = _login_as(app, ids["mgr"])
     r = c.post("/admin/stores", json={"name": "B店", "code": "B"})
     assert r.status_code == 403
+
+
+def test_super_admin_deletes_empty_store(app):
+    ids = _base(app)
+    with app.app_context():
+        empty = Store(name="空店", code="EMPTY"); db.session.add(empty); db.session.commit()
+        empty_id = empty.id
+    c = _login_as(app, ids["sa"])
+    r = c.delete(f"/admin/stores/{empty_id}")
+    assert r.get_json()["status"] == "ok"
+    with app.app_context():
+        assert db.session.get(Store, empty_id) is None
+
+
+def test_cannot_delete_store_with_users(app):
+    # _base 的 A 店有 mgr（本店 user）→ 不可刪
+    ids = _base(app)
+    c = _login_as(app, ids["sa"])
+    r = c.delete(f"/admin/stores/{ids['a']}")
+    assert r.status_code == 409
+    with app.app_context():
+        assert db.session.get(Store, ids["a"]) is not None
+
+
+def test_cannot_delete_store_with_devices(app):
+    # 建一間只有裝置、無 user 的店 → 仍不可刪
+    ids = _base(app)
+    with app.app_context():
+        s = Store(name="有機店", code="DEVONLY"); db.session.add(s); db.session.commit()
+        d = Device(client_uid="devDelTest", store_id=s.id, is_approved=True)
+        db.session.add(d); db.session.commit()
+        s_id = s.id
+    c = _login_as(app, ids["sa"])
+    r = c.delete(f"/admin/stores/{s_id}")
+    assert r.status_code == 409
+
+
+def test_manager_cannot_delete_store(app):
+    ids = _base(app)
+    with app.app_context():
+        empty = Store(name="空店", code="EMPTY2"); db.session.add(empty); db.session.commit()
+        empty_id = empty.id
+    c = _login_as(app, ids["mgr"])
+    r = c.delete(f"/admin/stores/{empty_id}")
+    assert r.status_code == 403
+
+
+def test_delete_nonexistent_store_404(app):
+    ids = _base(app)
+    c = _login_as(app, ids["sa"])
+    r = c.delete("/admin/stores/99999")
+    assert r.status_code == 404
 
 
 def test_manager_creates_own_store_employee(app):

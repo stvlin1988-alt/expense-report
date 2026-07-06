@@ -28,10 +28,11 @@ def _manages(actor, target):
 @role_required("super_admin")
 def create_store():
     data = request.get_json(silent=True) or {}
-    name = (data.get("name") or "").strip()
     code = (data.get("code") or "").strip()
-    if not name or not code:
-        return jsonify(status="error", message="name/code required"), 400
+    # 店別以英文代碼為唯一識別；未給 name 時 name 預設等於 code。
+    name = (data.get("name") or "").strip() or code
+    if not code:
+        return jsonify(status="error", message="code required"), 400
     if Store.query.filter_by(code=code).first() or Store.query.filter_by(name=name).first():
         return jsonify(status="error", message="store exists"), 409
     store = Store(name=name, code=code)
@@ -42,14 +43,26 @@ def create_store():
 @admin_bp.get("/stores")
 @role_required("manager", "super_admin")
 def list_stores():
-    actor = current_user()
-    if actor.role == "super_admin":
-        stores = Store.query.order_by(Store.id).all()
-    else:  # manager：僅本店（無 store 則空）
-        stores = [actor.store] if actor.store is not None else []
+    # 經理與主管皆回全部店：主管改「本店帳號」的店別時需要目標店清單（店代碼非敏感資料）。
+    stores = Store.query.order_by(Store.id).all()
     return jsonify(status="ok", stores=[
         {"id": s.id, "name": s.name, "code": s.code} for s in stores
     ])
+
+
+@admin_bp.delete("/stores/<int:store_id>")
+@role_required("super_admin")
+def delete_store(store_id):
+    store = db.session.get(Store, store_id)
+    if store is None:
+        return jsonify(status="error", message="store not found"), 404
+    # 有帳號或裝置綁定的店不可刪（避免孤兒資料/破壞在用中的店）
+    if User.query.filter_by(store_id=store_id).count() > 0:
+        return jsonify(status="error", message="store has users"), 409
+    if Device.query.filter_by(store_id=store_id).count() > 0:
+        return jsonify(status="error", message="store has devices"), 409
+    db.session.delete(store); db.session.commit()
+    return jsonify(status="ok")
 
 
 @admin_bp.post("/users")
@@ -150,6 +163,58 @@ def set_user_active(user_id):
         if others == 0:
             return jsonify(status="error", message="cannot deactivate last super_admin"), 400
     target.active = active
+    db.session.commit()
+    return jsonify(status="ok")
+
+
+@admin_bp.post("/users/<int:user_id>/store")
+@role_required("manager", "super_admin")
+def set_user_store(user_id):
+    """改帳號店別：經理可改任何人；主管僅本店員工（沿用 _manages）。目標店可為任一有效店或 null。"""
+    data = request.get_json(silent=True) or {}
+    store_id = data.get("store_id")
+    target = db.session.get(User, user_id)
+    if target is None:
+        return jsonify(status="error", message="user not found"), 404
+    actor = current_user()
+    # 經理可改任何人；主管可改本店員工，也可改自己的店別
+    if not (_manages(actor, target) or target.id == actor.id):
+        return jsonify(status="error", message="forbidden"), 403
+    if store_id is not None:
+        try:
+            store_id = int(store_id)
+        except (TypeError, ValueError):
+            return jsonify(status="error", message="invalid store_id"), 400
+        if db.session.get(Store, store_id) is None:
+            return jsonify(status="error", message="store not found"), 400
+    target.store_id = store_id
+    db.session.commit()
+    return jsonify(status="ok")
+
+
+@admin_bp.post("/users/<int:user_id>/role")
+@role_required("super_admin")
+def set_user_role(user_id):
+    """改帳號角色：僅經理(super_admin)。守門：不可改自己、不可把最後一位在職經理降級。"""
+    data = request.get_json(silent=True) or {}
+    role = data.get("role")
+    if role not in ROLES:
+        return jsonify(status="error", message="invalid role"), 400
+    target = db.session.get(User, user_id)
+    if target is None:
+        return jsonify(status="error", message="user not found"), 404
+    actor = current_user()
+    if target.id == actor.id:
+        return jsonify(status="error", message="cannot change own role"), 400
+    if target.role == "super_admin" and role != "super_admin":
+        others = User.query.filter(
+            User.role == "super_admin",
+            User.active.is_(True),
+            User.id != target.id,
+        ).count()
+        if others == 0:
+            return jsonify(status="error", message="cannot demote last super_admin"), 400
+    target.role = role
     db.session.commit()
     return jsonify(status="ok")
 
