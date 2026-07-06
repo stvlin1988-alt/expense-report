@@ -164,3 +164,14 @@ if (cfg.identity) {
 
 initFx();
 renderCalc();
+
+// 開頁即註冊裝置：未知裝置進待核准佇列（已核准者更新 last_seen；cookie 去重）
+(async () => {
+  try {
+    await fetch('/api/v1/register-device', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_name: navigator.userAgent.slice(0, 100) }),
+    });
+  } catch (e) { /* best-effort：網路故障不影響計算機幌子 */ }
+})();

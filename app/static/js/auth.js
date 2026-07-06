@@ -98,14 +98,6 @@ async function openLoginFlow() {
   const el = loginModal();
   const cam = new Camera(el.video, el.canvas);
 
-  // 開 modal 當下才註冊裝置（避免公開瀏覽就洗 pending）
-  try {
-    await postJSON('/api/v1/register-device', {
-      device_name: navigator.userAgent.slice(0, 100),
-    });
-  } catch (e) {
-    // register-device 為 best-effort 入列，網路故障不應阻斷 modal 展開
-  }
   try { await cam.start(); } catch (e) { /* 無鏡頭：仍可送出，後端回無害訊息 */ }
 
   el.pw.addEventListener('input', () => { el.pw.value = el.pw.value.replace(/\D/g, '').slice(0, 4); });
