@@ -135,7 +135,13 @@ def verify():
         return jsonify(status="store_disabled")
 
     login(matched)
-    return jsonify(status="ok", id=matched.id, name=matched.name, role=matched.role)
+    return jsonify(
+        status="ok",
+        id=matched.id,
+        name=matched.name,
+        role=matched.role,
+        store_id=matched.store_id,
+    )
 
 
 @auth_bp.post("/logout")

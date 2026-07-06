@@ -24,7 +24,7 @@ def index():
     if uid:
         u = db.session.get(User, uid)
         if u and u.active:
-            identity = {"id": u.id, "name": u.name, "role": u.role}
+            identity = {"id": u.id, "name": u.name, "role": u.role, "store_id": u.store_id}
 
     seed = is_seed_mode()
     device_uid = (request.cookies.get(UID_COOKIE_NAME) or "").strip() or None

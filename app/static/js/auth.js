@@ -125,7 +125,7 @@ async function openLoginFlow() {
       });
       if (data.status === 'ok') {
         cam.stop();
-        const identity = { id: data.id, name: data.name, role: data.role };
+        const identity = { id: data.id, name: data.name, role: data.role, store_id: data.store_id ?? null };
         if (data.role === 'manager' || data.role === 'super_admin') showAdminPanel(identity);
         else showAppView({ name: data.name, role: data.role });
         return;

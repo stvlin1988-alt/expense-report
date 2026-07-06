@@ -36,6 +36,35 @@ def test_verify_ok(monkeypatch, app, seeded):
     assert r.get_json()["status"] == "ok"
 
 
+def test_verify_ok_returns_store_id(monkeypatch, app, seeded):
+    # 前端 manager 建帳號需靠 verify 回傳的 store_id；缺它會誤送 null 導致後端 403
+    monkeypatch.setattr("app.auth.routes.encode_face_async", lambda *_a, **_k: _enc(0.0))
+    c = _client_with_device(app)
+    r = c.post("/auth/verify", json={"password": "1234", "face_image": "data:x"})
+    body = r.get_json()
+    assert body["status"] == "ok"
+    assert body["store_id"] == seeded["store_id"]
+
+
+def test_verify_ok_super_admin_store_id_null(monkeypatch, app, seeded):
+    # super_admin 無所屬店 -> verify 回傳 store_id 應為 null
+    with app.app_context():
+        sa = User(name="業主", role="super_admin", store_id=None)
+        sa.set_password("1234"); sa.face_encoding = _enc(0.0).tobytes()
+        db.session.add(sa); db.session.commit()
+        # 讓小明無臉，避免同店同臉造成 ambiguous；改以獨立無店裝置比中業主
+        emp = User.query.filter_by(name="小明").one()
+        emp.face_encoding = None
+        dev = Device(client_uid="devSA", store_id=None, is_approved=True)
+        db.session.add(dev); db.session.commit()
+    monkeypatch.setattr("app.auth.routes.encode_face_async", lambda *_a, **_k: _enc(0.0))
+    c = _client_with_device(app, uid="devSA")
+    r = c.post("/auth/verify", json={"password": "1234", "face_image": "data:x"})
+    body = r.get_json()
+    assert body["status"] == "ok"
+    assert body["store_id"] is None
+
+
 def test_verify_wrong_password(app, seeded):
     c = _client_with_device(app)
     r = c.post("/auth/verify", json={"password": "bad", "face_image": "data:x"})
