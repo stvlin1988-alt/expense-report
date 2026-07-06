@@ -82,8 +82,12 @@ Task 5 已有 `id, store_id, name, role, password_hash, active, created_at` 與 
 輸入：`{ password, face_image }`（`face_image` = base64 單張畫面）。**不輸入帳號。**
 
 **步驟**：
-1. **候選 scope（決策 B）**：取「該裝置所屬店」的在職 user（`store_id == device.store_id`）**加上**全域角色（`accountant` / `super_admin`）。公務機在 A 店只比對 A 店的人＋全域角色。
-2. **密碼篩選**：候選中 `check_password(password)` 為真者 → `pin_users`。空 → 回 `wrong_password`（統一 JSON 狀態、不指名帳號，不洩漏「哪個帳號存在」）。
+1. **候選 scope（決策 B — 2026-07-06 修訂為「公務機模式」）**：已核准裝置（由 device gate 保證能到達 `/auth/verify`）上，候選為**所有在職 user**（`active=True`），**不再受裝置所屬店別限制**。
+   - **修訂理由**：公務機＝實體門市多帳號共用手機，需讓任一帳號皆能在該裝置登入；帳號之間以**密碼**唯一區分（見步驟 2），人臉為輔。
+   - **原設計（舊版決策 B，已淘汰）**：候選 scope 到「該裝置所屬店的在職 user（`store_id == device.store_id`）＋全域角色（`accountant`/`super_admin`）」，公務機在 A 店只比對 A 店的人＋全域角色。因共用需求移除此店別限制。
+   - **安全影響**：任一已核准且未撤銷的裝置可登入任一帳號；裝置本身仍須經核准/未撤銷（device gate）才能到達本流程，但**裝置不再作為「限制哪些帳號可登入」的邊界**。門市以「一台裝置＝一組已知帳號密碼」的實體控管取代原本的店別軟性隔離。
+   - **實作**：`_candidate_users()` 回 `User.query.filter_by(active=True).all()`（`app/auth/routes.py`）。
+2. **密碼篩選**：候選中 `check_password(password)` 為真者 → `pin_users`。空 → 回 `wrong_password`（統一 JSON 狀態、不指名帳號，不洩漏「哪個帳號存在」）。**公務機模式下密碼即帳號的區分依據，故各帳號密碼須唯一**；兩帳號同密碼且同臉時步驟 4 會判 `ambiguous` 整批拒。
 3. 分「已錄臉」/「未錄臉」；若無人已錄臉 → 回 `need_face_enroll`（請管理者協助錄臉）。
 4. **人臉比對**：伺服器把 `face_image` 解碼進**記憶體** → `face_recognition` 算單張 encoding（跑在 thread executor + `timeout`，避免 dlib 卡 worker）→ 用 numpy 對候選的 `face_encoding` 算 L2 距離：
    - `threshold = 0.45`：最小距離 > 0.45 → `face_mismatch`。
@@ -139,7 +143,7 @@ Task 5 已有 `id, store_id, name, role, password_hash, active, created_at` 與 
 
 ### 6.3 帳號管理 — 直接創帳號（公務機共用員工）
 - 為**使用公務機、不綁個人手機**的員工直接建立帳號：輸入 `name` + 密碼 + `role` + `store` → 建 `User` 並 `set_password`。
-- 這些員工**不走裝置核准/換機流程**；他們在該店**已核准的公務機**上以「密碼＋人臉」登入（§4 候選 scope 到該店即涵蓋）。人臉可於建立後由管理者錄入（§7）。
+- 這些員工**不走裝置核准/換機流程**；他們在**任一已核准的公務機**上以「密碼＋人臉」登入（§4 公務機模式：已核准裝置放行任一在職帳號）。人臉可於建立後由管理者錄入（§7）。
 - 與 §6.5 的「核准裝置 + 建新帳號」不同：後者綁**個人裝置**、前者為**共用機用戶**、與裝置解耦。
 
 ### 6.4 密碼管理
@@ -216,8 +220,8 @@ Task 5 已有 `id, store_id, name, role, password_hash, active, created_at` 與 
   - best-match 距離挑選為**純函式**（吃候選 encodings + 送入 encoding，回 matched/ambiguous/none），用假 128 維向量單測 threshold 0.45 / margin 0.05 / 撞臉整批拒。
   - `is_seed_mode()` 各條件。
   - idle 逾時計算、`_cleanup_pending_devices` TTL。
-  - 候選 scope（店內 + 全域角色）過濾。
-- **整合**（`face_recognition` **mock**，不真跑 dlib）：register-device（新建/認領/SEEN）、裝置閘擋未核准、seed mode 首次啟用、`/auth/verify` 各回傳狀態、rate-limit、裝置核准/換機（撤舊發新）/撤銷、店隔離。
+  - 候選 scope（公務機模式：已核准裝置放行任一在職帳號；密碼區分帳號、同密碼同臉判 ambiguous）。
+- **整合**（`face_recognition` **mock**，不真跑 dlib）：register-device（新建/認領/SEEN）、裝置閘擋未核准、seed mode 首次啟用、`/auth/verify` 各回傳狀態、rate-limit、裝置核准/換機（撤舊發新）/撤銷。
 - 全程**不真呼叫 dlib**；只在需要時本機手動驗證真臉。
 
 ---
