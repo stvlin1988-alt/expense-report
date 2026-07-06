@@ -1,5 +1,6 @@
 import { Camera } from './camera.js';
 import { showAdminPanel } from './admin.js';
+import { escapeHtml } from './admin_util.js';
 
 const NEUTRAL_MSG = '無法計算，請重試';
 const root = () => document.getElementById('modal-root');
@@ -24,7 +25,7 @@ export function showAppView(identity) {
       <div class="modal-box">
         <h2>已登入</h2>
         <div class="app-view-info">
-          姓名：${identity.name}<br>身分：${roleZh[identity.role] || identity.role}
+          姓名：${escapeHtml(identity.name)}<br>身分：${roleZh[identity.role] || identity.role}
         </div>
         <video id="av-video" autoplay playsinline muted style="display:none;"></video>
         <canvas id="av-canvas" style="display:none;"></canvas>

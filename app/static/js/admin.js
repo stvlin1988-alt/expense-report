@@ -144,6 +144,11 @@ export async function showAdminPanel(identity) {
   function renderActiveTab() {
     const body = document.getElementById('ap-body');
     if (!body) return;
+    const liveVid = body.querySelector('video');
+    if (liveVid && liveVid.srcObject) {
+      liveVid.srcObject.getTracks().forEach((t) => t.stop());
+      liveVid.srcObject = null;
+    }
     body.innerHTML = '';
     if (state.tab === 'accounts') renderAccounts(body, ctx());
     else if (state.tab === 'devices') renderDevices(body, ctx());
