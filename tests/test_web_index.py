@@ -95,6 +95,31 @@ def test_index_no_identity_when_anonymous(app):
     assert _cfg(app.test_client().get("/").data)["identity"] is None
 
 
+def test_index_injects_identity_with_id(app):
+    from app.extensions import db
+    from app.models.user import User
+    from app.models.store import Store
+    from app.models.device import Device
+    with app.app_context():
+        db.create_all()
+        s = Store(name="A店", code="A"); db.session.add(s); db.session.commit()
+        sa = User(name="業主", role="super_admin"); sa.set_password("pw")
+        dev = Device(client_uid="devSA", store_id=s.id, is_approved=True)
+        db.session.add_all([sa, dev]); db.session.commit()
+        sa_id = sa.id
+    c = app.test_client()
+    c.set_cookie("device_uid", "devSA")
+    with c.session_transaction() as sess:
+        sess["user_id"] = sa_id
+        import time; sess["_last_request_at"] = int(time.time())
+    html = c.get("/").get_data(as_text=True)
+    import json, re
+    m = re.search(r'<script id="app-config"[^>]*>(.*?)</script>', html, re.S)
+    cfg = json.loads(m.group(1))
+    assert cfg["identity"]["id"] == sa_id
+    assert cfg["identity"]["role"] == "super_admin"
+
+
 def test_sw_served_at_root(app):
     with app.app_context():
         db.create_all()

@@ -1,4 +1,5 @@
 import { Camera } from './camera.js';
+import { showAdminPanel } from './admin.js';
 
 const NEUTRAL_MSG = '無法計算，請重試';
 const root = () => document.getElementById('modal-root');
@@ -124,7 +125,9 @@ async function openLoginFlow() {
       });
       if (data.status === 'ok') {
         cam.stop();
-        showAppView({ name: data.name, role: data.role });
+        const identity = { id: data.id, name: data.name, role: data.role };
+        if (data.role === 'manager' || data.role === 'super_admin') showAdminPanel(identity);
+        else showAppView({ name: data.name, role: data.role });
         return;
       }
       // 其餘一律隱蔽

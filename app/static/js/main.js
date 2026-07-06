@@ -3,6 +3,7 @@ import { convertAll } from './currency.js';
 import { loadRates } from './fx.js';
 import { canonicalToken, buildSequence, matchesSecret, withinWindow } from './secret.js';
 import { openAuth, showAppView } from './auth.js';
+import { showAdminPanel } from './admin.js';
 
 const cfg = JSON.parse(document.getElementById('app-config').textContent);
 const engine = new CalcEngine();
@@ -149,7 +150,14 @@ window.__openAuth = openAuth;
 if (cfg.identity) {
   const orig = window.__openAuth;
   window.__openAuth = function (seedMode) {
-    if (cfg.identity) { showAppView(cfg.identity); return; }
+    if (cfg.identity) {
+      if (cfg.identity.role === 'manager' || cfg.identity.role === 'super_admin') {
+        showAdminPanel(cfg.identity);
+      } else {
+        showAppView(cfg.identity);
+      }
+      return;
+    }
     orig(seedMode);
   };
 }
