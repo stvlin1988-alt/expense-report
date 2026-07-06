@@ -1,5 +1,5 @@
 import { api } from './admin_api.js';
-import { isValidPin } from './admin_util.js';
+import { isValidPin, escapeHtml } from './admin_util.js';
 import { renderAccounts } from './admin_accounts.js';
 import { renderDevices } from './admin_devices.js';
 
@@ -26,7 +26,7 @@ export async function showAdminPanel(identity) {
     const storeOpts = isSuper
       ? `<select id="ap-store" class="ap-select">
            <option value="">全部店</option>
-           ${state.stores.map((s) => `<option value="${s.id}">${s.name}</option>`).join('')}
+           ${state.stores.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('')}
          </select>`
       : '';
     const tabBtns = tabs.map((t) =>
@@ -36,7 +36,7 @@ export async function showAdminPanel(identity) {
       <div class="admin-panel">
         <header class="ap-head">
           <span class="ap-title">管理後台</span>
-          <span class="ap-who">${identity.name}</span>
+          <span class="ap-who">${escapeHtml(identity.name)}</span>
           ${storeOpts}
           <button class="ap-btn ap-logout" id="ap-logout" type="button">登出</button>
         </header>
@@ -66,7 +66,7 @@ export async function showAdminPanel(identity) {
     if (sel) {
       const cur = sel.value;
       sel.innerHTML = `<option value="">全部店</option>` +
-        state.stores.map((s) => `<option value="${s.id}">${s.name}</option>`).join('');
+        state.stores.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
       sel.value = cur;
     }
   }
@@ -107,7 +107,7 @@ export async function showAdminPanel(identity) {
   function renderStores(container) {
     // 僅 super_admin 進得來（tab 不對其他角色顯示）
     const rows = state.stores.map((s) =>
-      `<tr><td>${s.name}</td><td>${s.code}</td></tr>`).join('');
+      `<tr><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.code)}</td></tr>`).join('');
     container.innerHTML = `
       <table class="ap-table">
         <thead><tr><th>店名</th><th>代碼</th></tr></thead>

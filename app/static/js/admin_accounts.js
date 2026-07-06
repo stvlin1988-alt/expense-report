@@ -1,5 +1,7 @@
 import { Camera } from './camera.js';
-import { isValidPin, roleLabel, filterByStore } from './admin_util.js';
+import {
+  isValidPin, roleLabel, filterByStore, escapeHtml,
+} from './admin_util.js';
 
 export function renderAccounts(container, ctx) {
   const { identity, storeId, stores, api } = ctx;
@@ -37,7 +39,7 @@ export function renderAccounts(container, ctx) {
       const activeBadge = u.active ? '' : '<span class="ap-badge inactive">停用</span>';
       return `
         <tr data-uid="${u.id}" data-role="${u.role}" data-active="${u.active}">
-          <td>${u.name} ${activeBadge}</td>
+          <td>${escapeHtml(u.name)} ${activeBadge}</td>
           <td>${roleLabel(u.role)}</td>
           <td>${u.store_id ?? '—'}</td>
           <td>${face}</td>
@@ -119,7 +121,7 @@ export function renderAccounts(container, ctx) {
       : `<input type="hidden" id="acc-role" value="employee"><span>員工</span>`;
     const storeSel = isSuper
       ? `<select id="acc-store">
-           ${stores.map((s) => `<option value="${s.id}">${s.name}</option>`).join('')}
+           ${stores.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('')}
          </select>`
       : '';
     createEl.innerHTML = `

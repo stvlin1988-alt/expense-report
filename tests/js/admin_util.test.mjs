@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import {
-  isValidPin, roleLabel, filterByStore, deviceStatusLabel, sortPendingFirst, isOk,
+  isValidPin, roleLabel, filterByStore, deviceStatusLabel, sortPendingFirst, isOk, escapeHtml,
 } from '../../app/static/js/admin_util.js';
 
 test('isValidPin 僅接受 4 位純數字', () => {
@@ -50,4 +50,23 @@ test('isOk：200 + status ok', () => {
   assert.equal(isOk(200, { status: 'error' }), false);
   assert.equal(isOk(403, { status: 'ok' }), false);
   assert.equal(isOk(200, null), false);
+});
+
+test('escapeHtml：轉義 XSS payload 防 stored XSS（device_name 等自由文字欄位）', () => {
+  assert.equal(
+    escapeHtml('<img src=x onerror=alert(1)>'),
+    '&lt;img src=x onerror=alert(1)&gt;',
+  );
+});
+
+test('escapeHtml：轉義 & " \'', () => {
+  assert.equal(escapeHtml('&'), '&amp;');
+  assert.equal(escapeHtml('"'), '&quot;');
+  assert.equal(escapeHtml("'"), '&#39;');
+  assert.equal(escapeHtml('a & b < c > d "e" \'f\''), 'a &amp; b &lt; c &gt; d &quot;e&quot; &#39;f&#39;');
+});
+
+test('escapeHtml：null/undefined 回空字串', () => {
+  assert.equal(escapeHtml(null), '');
+  assert.equal(escapeHtml(undefined), '');
 });

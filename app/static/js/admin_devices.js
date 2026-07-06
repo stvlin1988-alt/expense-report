@@ -1,4 +1,6 @@
-import { isValidPin, deviceStatusLabel, sortPendingFirst, roleLabel } from './admin_util.js';
+import {
+  isValidPin, deviceStatusLabel, sortPendingFirst, roleLabel, escapeHtml,
+} from './admin_util.js';
 
 export function renderDevices(container, ctx) {
   const { identity, storeId, stores, api } = ctx;
@@ -42,10 +44,10 @@ export function renderDevices(container, ctx) {
             : '');
       return `
         <tr data-did="${d.id}">
-          <td>${d.device_name || 'Unknown'}</td>
-          <td>…${tail}</td>
+          <td>${escapeHtml(d.device_name || 'Unknown')}</td>
+          <td>…${escapeHtml(tail)}</td>
           <td>${d.store_id ?? '—'}</td>
-          <td>${bound}</td>
+          <td>${escapeHtml(bound)}</td>
           <td><span class="ap-badge ${cls}">${label}</span></td>
           <td class="ap-rowbtns">${actions}</td>
         </tr>`;
@@ -69,8 +71,8 @@ export function renderDevices(container, ctx) {
 
   function showApprove(did, users) {
     const panel = container.querySelector('#dev-approve-panel');
-    const userOpts = users.map((u) => `<option value="${u.id}">${u.name}（${roleLabel(u.role)}）</option>`).join('');
-    const storeOpts = stores.map((s) => `<option value="${s.id}">${s.name}</option>`).join('');
+    const userOpts = users.map((u) => `<option value="${u.id}">${escapeHtml(u.name)}（${roleLabel(u.role)}）</option>`).join('');
+    const storeOpts = stores.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
     panel.innerHTML = `
       <div class="ap-form" style="flex-direction:column;align-items:stretch;">
         <div><strong>核准裝置 #${did}</strong></div>
