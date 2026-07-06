@@ -87,3 +87,74 @@ def test_users_payload_has_face_flag_not_encoding(app):
     assert "face_encoding" not in row and "encoding" not in row
     other = next(u for u in r.get_json()["users"] if u["name"] == "店長A")
     assert other["has_face"] is False
+
+
+def test_super_admin_deactivates_and_reactivates_user(app):
+    ids = _base(app)
+    c = _login_as(app, ids["sa"], uid="devSA")
+    r = c.post(f"/admin/users/{ids['emp']}/active", json={"active": False})
+    assert r.get_json()["status"] == "ok"
+    with app.app_context():
+        assert db.session.get(User, ids["emp"]).active is False
+    r2 = c.post(f"/admin/users/{ids['emp']}/active", json={"active": True})
+    assert r2.get_json()["status"] == "ok"
+    with app.app_context():
+        assert db.session.get(User, ids["emp"]).active is True
+
+
+def test_active_non_bool_rejected(app):
+    ids = _base(app)
+    c = _login_as(app, ids["sa"], uid="devSA")
+    r = c.post(f"/admin/users/{ids['emp']}/active", json={"active": "yes"})
+    assert r.status_code == 400
+
+
+def test_active_target_not_found(app):
+    ids = _base(app)
+    c = _login_as(app, ids["sa"], uid="devSA")
+    r = c.post("/admin/users/99999/active", json={"active": False})
+    assert r.status_code == 404
+
+
+def test_manager_cannot_deactivate_other_store_or_non_employee(app):
+    ids = _base(app)
+    c = _login_as(app, ids["mgr"], uid="devMgr")
+    # 他店員工 → 403
+    r1 = c.post(f"/admin/users/{ids['emp_b']}/active", json={"active": False})
+    assert r1.status_code == 403
+    # super_admin（非 employee）→ 403
+    r2 = c.post(f"/admin/users/{ids['sa']}/active", json={"active": False})
+    assert r2.status_code == 403
+
+
+def test_cannot_deactivate_self(app):
+    ids = _base(app)
+    c = _login_as(app, ids["mgr"], uid="devMgr")
+    r = c.post(f"/admin/users/{ids['mgr']}/active", json={"active": False})
+    assert r.status_code == 400
+    with app.app_context():
+        assert db.session.get(User, ids["mgr"]).active is True
+
+
+def test_cannot_deactivate_last_super_admin(app):
+    # 唯一 super_admin 停用自己 → 400（自我守門先擋，且為最後 super_admin）
+    ids = _base(app)
+    c = _login_as(app, ids["sa"], uid="devSA")
+    r = c.post(f"/admin/users/{ids['sa']}/active", json={"active": False})
+    assert r.status_code == 400
+    with app.app_context():
+        assert db.session.get(User, ids["sa"]).active is True
+
+
+def test_super_admin_can_deactivate_other_super_admin(app):
+    # 有兩位 super_admin 時可停用另一位（非最後一位）
+    ids = _base(app)
+    with app.app_context():
+        sa2 = User(name="業主2", role="super_admin", active=True); sa2.set_password("pw")
+        db.session.add(sa2); db.session.commit()
+        sa2_id = sa2.id
+    c = _login_as(app, ids["sa"], uid="devSA")
+    r = c.post(f"/admin/users/{sa2_id}/active", json={"active": False})
+    assert r.get_json()["status"] == "ok"
+    with app.app_context():
+        assert db.session.get(User, sa2_id).active is False

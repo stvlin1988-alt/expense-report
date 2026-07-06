@@ -121,6 +121,39 @@ def reset_password(user_id):
     return jsonify(status="ok")
 
 
+@admin_bp.post("/users/<int:user_id>/active")
+@role_required("manager", "super_admin")
+def set_user_active(user_id):
+    data = request.get_json(silent=True) or {}
+    active = data.get("active")
+    if not isinstance(active, bool):
+        return jsonify(status="error", message="active must be bool"), 400
+    target = db.session.get(User, user_id)
+    if target is None:
+        return jsonify(status="error", message="user not found"), 404
+    actor = current_user()
+    if active is False and target.id == actor.id:
+        return jsonify(status="error", message="cannot deactivate self"), 400
+    if not _manages(actor, target):
+        return jsonify(status="error", message="forbidden"), 403
+    if active is False and target.role == "super_admin":
+        # Defence-in-depth (spec §5.3 禁止停用最後一位在職 super_admin)。
+        # 目前結構上被上方自我守門完全遮蔽而不可達：能走到這裡且 target != actor 的
+        # actor 自己必為在職 super_admin（current_user 要求 active=True），故 others>=1；
+        # 而 actor == target 早已被自我守門 400 攔下。刻意保留，避免未來若重構自我守門
+        # 時「最後一位 super_admin」的保護被悄悄拿掉而無人察覺。
+        others = User.query.filter(
+            User.role == "super_admin",
+            User.active.is_(True),
+            User.id != target.id,
+        ).count()
+        if others == 0:
+            return jsonify(status="error", message="cannot deactivate last super_admin"), 400
+    target.active = active
+    db.session.commit()
+    return jsonify(status="ok")
+
+
 @admin_bp.post("/me/password")
 def change_own_password():
     actor = current_user()
