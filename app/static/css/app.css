@@ -54,47 +54,68 @@ body {
 .modal-msg { text-align: center; font-size: .9rem; min-height: 1.2em; margin-top: 10px; color: #ff6b6b; }
 .app-view-info { font-size: 1rem; margin-bottom: 16px; line-height: 1.8; }
 
-/* ---- 管理後台（正常清爽面板；與 covert 計算機樣式區隔）---- */
+/* ---- 管理後台（手機優先；與 covert 計算機樣式區隔）---- */
 .admin-panel {
   position: fixed; inset: 0; background: #f5f6f8; color: #1c1c1e;
   display: flex; flex-direction: column; z-index: 50; overflow: hidden;
+  font-size: 16px; -webkit-text-size-adjust: 100%;
 }
-.ap-head {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 16px; background: #fff; border-bottom: 1px solid #e0e0e0;
+/* 內容欄：桌機置中限寬 900px，手機自然填滿（webapp .container 一致做法）→ 網頁/手機排版一致 */
+.ap-inner { max-width: 900px; margin: 0 auto; width: 100%; }
+.ap-head { background: #fff; border-bottom: 1px solid #e0e0e0; }
+.ap-head-inner {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 16px;
 }
-.ap-title { font-weight: 600; font-size: 17px; }
+.ap-title { font-weight: 600; font-size: 18px; }
 .ap-who { color: #666; font-size: 14px; }
-.ap-head .ap-logout { margin-left: auto; }
+.ap-head-inner .ap-logout { margin-left: auto; }
 .ap-select {
-  padding: 6px 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px;
+  padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; min-height: 44px;
 }
-.ap-tabs { display: flex; gap: 4px; padding: 8px 12px; background: #fff; border-bottom: 1px solid #e0e0e0; }
+.ap-tabs { background: #fff; border-bottom: 1px solid #e0e0e0; }
+.ap-tabs-inner {
+  display: flex; gap: 4px; padding: 8px 16px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
 .ap-tab {
-  padding: 8px 14px; border: none; background: transparent; border-radius: 8px;
-  font-size: 15px; color: #555; cursor: pointer;
+  padding: 10px 16px; border: none; background: transparent; border-radius: 8px;
+  font-size: 16px; color: #555; cursor: pointer; white-space: nowrap; min-height: 44px;
 }
 .ap-tab.active { background: #007aff; color: #fff; }
-.ap-body { flex: 1; overflow-y: auto; padding: 16px; }
-.ap-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; }
-.ap-table th, .ap-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+.ap-body { flex: 1; overflow-y: auto; }
+.ap-body > .ap-inner { padding: 16px; }
+/* 表格包在可橫向捲動的容器：手機上欄多也不會擠爆版面 */
+.ap-table-wrap {
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  background: #fff; border-radius: 10px; border: 1px solid #eee;
+}
+.ap-table { width: 100%; border-collapse: collapse; min-width: 460px; }
+.ap-table th, .ap-table td {
+  padding: 12px 12px; text-align: left; border-bottom: 1px solid #eee;
+  font-size: 15px; white-space: nowrap;
+}
 .ap-table th { background: #fafafa; color: #666; font-weight: 500; }
-.ap-form { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ap-table select {
+  padding: 8px 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; min-height: 38px;
+}
+.ap-form { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .ap-form input, .ap-form select {
-  padding: 8px 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px;
+  padding: 12px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;
+  min-height: 44px; flex: 1 1 auto; min-width: 120px;
 }
 .ap-btn {
-  padding: 8px 16px; border: none; border-radius: 8px; background: #007aff; color: #fff;
-  font-size: 14px; cursor: pointer;
+  padding: 11px 18px; border: none; border-radius: 8px; background: #007aff; color: #fff;
+  font-size: 16px; cursor: pointer; min-height: 44px;
 }
 .ap-btn.secondary { background: #8e8e93; }
 .ap-btn.danger { background: #ff3b30; }
 .ap-btn:disabled { opacity: 0.5; }
-.ap-msg { width: 100%; font-size: 13px; min-height: 18px; }
-.ap-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+.ap-msg { width: 100%; font-size: 14px; min-height: 20px; }
+.ap-badge { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 13px; }
 .ap-badge.pending { background: #fff3cd; color: #856404; }
 .ap-badge.approved { background: #d4edda; color: #155724; }
 .ap-badge.revoked { background: #f8d7da; color: #721c24; }
 .ap-badge.inactive { background: #e2e3e5; color: #6c757d; }
 .ap-rowbtns { display: flex; gap: 6px; flex-wrap: wrap; }
+.ap-rowbtns .ap-btn { padding: 8px 12px; font-size: 14px; min-height: 38px; }
+.ap-face-status { font-size: 14px; }
 .ap-video { width: 100%; max-width: 320px; border-radius: 8px; margin-top: 8px; }

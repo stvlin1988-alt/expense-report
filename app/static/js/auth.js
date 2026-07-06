@@ -19,7 +19,7 @@ async function postJSON(url, body) {
 // 登入後占位畫面（前端 view state，不換網址）
 export function showAppView(identity) {
   clearRoot();
-  const roleZh = { employee: '員工', manager: '店長', accountant: '會計', super_admin: '業主' };
+  const roleZh = { employee: '員工', manager: '主管', accountant: '會計', super_admin: '經理' };
   root().innerHTML = `
     <div class="modal-backdrop">
       <div class="modal-box">

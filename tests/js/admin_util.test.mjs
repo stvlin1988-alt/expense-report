@@ -13,8 +13,8 @@ test('isValidPin 僅接受 4 位純數字', () => {
 });
 
 test('roleLabel 對映中文、未知原樣', () => {
-  assert.equal(roleLabel('super_admin'), '業主');
-  assert.equal(roleLabel('manager'), '店長');
+  assert.equal(roleLabel('super_admin'), '經理');
+  assert.equal(roleLabel('manager'), '主管');
   assert.equal(roleLabel('employee'), '員工');
   assert.equal(roleLabel('accountant'), '會計');
   assert.equal(roleLabel('weird'), 'weird');

@@ -34,14 +34,14 @@ export async function showAdminPanel(identity) {
     ).join('');
     return `
       <div class="admin-panel">
-        <header class="ap-head">
+        <header class="ap-head"><div class="ap-inner ap-head-inner">
           <span class="ap-title">管理後台</span>
           <span class="ap-who">${escapeHtml(identity.name)}</span>
           ${storeOpts}
           <button class="ap-btn ap-logout" id="ap-logout" type="button">登出</button>
-        </header>
-        <nav class="ap-tabs">${tabBtns}</nav>
-        <section class="ap-body" id="ap-body"></section>
+        </div></header>
+        <nav class="ap-tabs"><div class="ap-inner ap-tabs-inner">${tabBtns}</div></nav>
+        <section class="ap-body"><div class="ap-inner" id="ap-body"></div></section>
       </div>`;
   }
 
@@ -107,31 +107,45 @@ export async function showAdminPanel(identity) {
   function renderStores(container) {
     // 僅 super_admin 進得來（tab 不對其他角色顯示）
     const rows = state.stores.map((s) =>
-      `<tr><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.code)}</td></tr>`).join('');
+      `<tr><td>${escapeHtml(s.code)}</td>
+           <td class="ap-rowbtns"><button class="ap-btn danger" data-del="${s.id}" type="button">刪除</button></td></tr>`).join('');
     container.innerHTML = `
-      <table class="ap-table">
-        <thead><tr><th>店名</th><th>代碼</th></tr></thead>
-        <tbody>${rows || '<tr><td colspan="2">尚無店別</td></tr>'}</tbody>
-      </table>
+      <div class="ap-table-wrap">
+        <table class="ap-table">
+          <thead><tr><th>店別</th><th>操作</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="2">尚無店別</td></tr>'}</tbody>
+        </table>
+      </div>
       <div class="ap-form">
-        <input type="text" id="st-name" placeholder="店名" autocomplete="off">
-        <input type="text" id="st-code" placeholder="代碼" autocomplete="off">
+        <input type="text" id="st-code" placeholder="店別（英文）" autocomplete="off">
         <button class="ap-btn" id="st-add" type="button">新增店</button>
         <div class="ap-msg" id="st-msg"></div>
       </div>`;
     const msg = container.querySelector('#st-msg');
+    container.querySelectorAll('button[data-del]').forEach((b) => {
+      b.addEventListener('click', async () => {
+        const id = parseInt(b.dataset.del, 10);
+        if (!confirm('確定刪除此店別？（店內有帳號或裝置則無法刪除）')) return;
+        try {
+          const { status, data } = await api.deleteStore(id);
+          if (status === 200 && data.status === 'ok') { await refreshStores(); renderActiveTab(); }
+          else if (status === 409) { msg.style.color = '#c62828'; msg.textContent = '店別有帳號或裝置，無法刪除'; }
+          else { msg.style.color = '#c62828'; msg.textContent = '刪除失敗'; }
+        } catch (e) { msg.style.color = '#c62828'; msg.textContent = '刪除失敗，請重試'; }
+      });
+    });
     container.querySelector('#st-add').addEventListener('click', async () => {
       msg.textContent = '';
-      const name = container.querySelector('#st-name').value.trim();
       const code = container.querySelector('#st-code').value.trim();
-      if (!name || !code) { msg.textContent = '請填店名與代碼'; return; }
+      if (!code) { msg.textContent = '請填店別'; return; }
       try {
-        const { status, data } = await api.createStore(name, code);
+        // 店別以英文代碼為唯一識別；name 帶同 code（後端 name 缺省亦等於 code）
+        const { status, data } = await api.createStore(code, code);
         if (status === 200 && data.status === 'ok') {
           await refreshStores();
           renderActiveTab();
         } else if (status === 409) {
-          msg.style.color = '#c62828'; msg.textContent = '店名或代碼已存在';
+          msg.style.color = '#c62828'; msg.textContent = '店別已存在';
         } else {
           msg.style.color = '#c62828'; msg.textContent = '新增失敗';
         }

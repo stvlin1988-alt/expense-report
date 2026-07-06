@@ -19,9 +19,12 @@ export const api = {
   createUser: (payload) => req('POST', '/admin/users', payload),
   resetPassword: (id, password) => req('POST', `/admin/users/${id}/password`, { password }),
   setActive: (id, active) => req('POST', `/admin/users/${id}/active`, { active }),
+  setUserStore: (id, storeId) => req('POST', `/admin/users/${id}/store`, { store_id: storeId }),
+  setUserRole: (id, role) => req('POST', `/admin/users/${id}/role`, { role }),
   enrollFace: (userId, faceImage) =>
     req('POST', '/face/enroll', { user_id: userId, face_image: faceImage }),
   createStore: (name, code) => req('POST', '/admin/stores', { name, code }),
+  deleteStore: (id) => req('DELETE', `/admin/stores/${id}`),
   approveDevice: (id, payload) => req('POST', `/admin/devices/${id}/approve`, payload),
   revokeDevice: (id) => req('POST', `/admin/devices/${id}/revoke`),
   changeMyPassword: (oldp, newp) =>

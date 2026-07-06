@@ -31,12 +31,14 @@ export function renderDevices(container, ctx) {
 
     const users = await loadUsers();
     const userName = (id) => (users.find((u) => u.id === id) || {}).name || id;
+    const storeMap = Object.fromEntries(stores.map((s) => [s.id, s.code]));
 
     const rows = sortPendingFirst(devices).map((d) => {
       const label = deviceStatusLabel(d);
       const cls = d.is_revoked ? 'revoked' : (d.is_approved ? 'approved' : 'pending');
       const tail = (d.client_uid || '').slice(-6);
       const bound = d.bound_user_id ? userName(d.bound_user_id) : '—';
+      const storeCode = d.store_id != null ? (storeMap[d.store_id] || d.store_id) : '—';
       const actions = (!d.is_approved && !d.is_revoked)
         ? `<button class="ap-btn" data-act="approve" type="button">核准</button>`
         : (d.is_approved && !d.is_revoked
@@ -46,7 +48,7 @@ export function renderDevices(container, ctx) {
         <tr data-did="${d.id}">
           <td>${escapeHtml(d.device_name || 'Unknown')}</td>
           <td>…${escapeHtml(tail)}</td>
-          <td>${d.store_id ?? '—'}</td>
+          <td>${escapeHtml(String(storeCode))}</td>
           <td>${escapeHtml(bound)}</td>
           <td><span class="ap-badge ${cls}">${label}</span></td>
           <td class="ap-rowbtns">${actions}</td>
@@ -54,10 +56,12 @@ export function renderDevices(container, ctx) {
     }).join('');
 
     listEl.innerHTML = `
-      <table class="ap-table">
-        <thead><tr><th>裝置</th><th>UID</th><th>店</th><th>綁定</th><th>狀態</th><th>操作</th></tr></thead>
-        <tbody>${rows || '<tr><td colspan="6">尚無裝置</td></tr>'}</tbody>
-      </table>
+      <div class="ap-table-wrap">
+        <table class="ap-table">
+          <thead><tr><th>裝置</th><th>UID</th><th>店</th><th>綁定</th><th>狀態</th><th>操作</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="6">尚無裝置</td></tr>'}</tbody>
+        </table>
+      </div>
       <div id="dev-approve-panel"></div>`;
 
     listEl.querySelectorAll('tr[data-did]').forEach((tr) => {
@@ -82,7 +86,7 @@ export function renderDevices(container, ctx) {
         <div class="ap-form">
           <input type="text" id="ap-nu-name" placeholder="姓名" autocomplete="off">
           <input type="password" id="ap-nu-pw" placeholder="4位密碼" inputmode="numeric" maxlength="4" autocomplete="off">
-          ${isSuper ? `<select id="ap-nu-role"><option value="employee">員工</option><option value="manager">店長</option><option value="accountant">會計</option><option value="super_admin">業主</option></select><select id="ap-nu-store">${storeOpts}</select>` : `<input type="hidden" id="ap-nu-role" value="employee">`}
+          ${isSuper ? `<select id="ap-nu-role"><option value="employee">員工</option><option value="manager">主管</option><option value="accountant">會計</option><option value="super_admin">經理</option></select><select id="ap-nu-store">${storeOpts}</select>` : `<input type="hidden" id="ap-nu-role" value="employee">`}
         </div>
         ${isSuper
           ? `<label><input type="radio" name="ap-mode" value="bare"> 裸核准（僅指派店）</label><select id="ap-bare-store">${storeOpts}</select>`

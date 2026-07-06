@@ -3,7 +3,7 @@ export function isValidPin(pw) {
 }
 
 export const ROLE_LABEL = {
-  employee: '員工', manager: '店長', accountant: '會計', super_admin: '業主',
+  employee: '員工', manager: '主管', accountant: '會計', super_admin: '經理',
 };
 
 export function roleLabel(role) {
