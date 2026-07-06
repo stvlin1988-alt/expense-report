@@ -39,6 +39,19 @@ def create_store():
     return jsonify(status="ok", id=store.id)
 
 
+@admin_bp.get("/stores")
+@role_required("manager", "super_admin")
+def list_stores():
+    actor = current_user()
+    if actor.role == "super_admin":
+        stores = Store.query.order_by(Store.id).all()
+    else:  # manager：僅本店（無 store 則空）
+        stores = [actor.store] if actor.store is not None else []
+    return jsonify(status="ok", stores=[
+        {"id": s.id, "name": s.name, "code": s.code} for s in stores
+    ])
+
+
 @admin_bp.post("/users")
 @role_required("manager", "super_admin")
 def create_user():
