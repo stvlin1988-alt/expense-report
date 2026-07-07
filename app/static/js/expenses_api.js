@@ -7,6 +7,7 @@ export const captureUpload = (image) => jsonFetch('/expenses', {
   body: JSON.stringify({ image }),
 });
 export const listPending = () => jsonFetch('/expenses/pending');
+export const listCategories = () => jsonFetch('/expenses/categories');
 export const patchExpense = (id, patch) => jsonFetch(`/expenses/${id}`, {
   method: 'PATCH', headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify(patch),

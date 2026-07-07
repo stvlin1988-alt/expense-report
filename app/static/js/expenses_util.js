@@ -22,6 +22,25 @@ export function parseAmountInput(raw) {
   return { value: n, valid: true };
 }
 
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+// 分類樹 → <optgroup>/<option> 字串（純函式，不依賴 DOM）。
+// 首列固定「未分類」空值 option；selectedId 對應的 option 加 selected。
+export function categoryOptionsHtml(tree, selectedId) {
+  let html = '<option value="">未分類</option>';
+  (tree || []).forEach((grp) => {
+    html += `<optgroup label="${esc(grp.name)}">`;
+    (grp.items || []).forEach((it) => {
+      const sel = String(it.id) === String(selectedId) ? ' selected' : '';
+      html += `<option value="${it.id}"${sel}>${esc(it.name)}</option>`;
+    });
+    html += '</optgroup>';
+  });
+  return html;
+}
+
 export function businessDateDisplay(iso) {
   if (!iso) return '';
   const d = new Date(iso);
