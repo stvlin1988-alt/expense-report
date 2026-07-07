@@ -49,7 +49,9 @@ body {
 .modal-btn {
   width: 100%; padding: 13px; border: none; border-radius: 10px;
   background: #ff9500; color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer;
+  margin-bottom: 8px;
 }
+.modal-btn:last-child { margin-bottom: 0; }
 .modal-btn.secondary { background: #3a3a3c; }
 .modal-msg { text-align: center; font-size: .9rem; min-height: 1.2em; margin-top: 10px; color: #ff6b6b; }
 .app-view-info { font-size: 1rem; margin-bottom: 16px; line-height: 1.8; }
