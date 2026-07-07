@@ -58,6 +58,8 @@ class GeminiProvider(OCRProvider):
             resp = self._call_api(payload)
             text = resp["candidates"][0]["content"]["parts"][0]["text"]
             obj = json.loads(text)
+            if not isinstance(obj, dict):
+                raise ValueError("non-dict response")
         except Exception as e:
             logger.warning("Gemini recognize failed: %s", e)
             return empty

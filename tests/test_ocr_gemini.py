@@ -44,3 +44,13 @@ def test_gemini_bad_json_returns_empty_result(app, monkeypatch):
         r = p.recognize(b"img", "image/jpeg")
         assert r["summary"] is None and r["amount"] is None
         assert r["confidence"] is None
+
+
+def test_gemini_non_dict_json_returns_empty_result(app, monkeypatch):
+    _seed_categories(app)
+    with app.app_context():
+        p = GeminiProvider(app.config)
+        monkeypatch.setattr(p, "_call_api", lambda payload: {"candidates": [{"content": {"parts": [{"text": "null"}]}}]})
+        r = p.recognize(b"img", "image/jpeg")  # valid JSON but not a dict → must not raise
+        assert r["summary"] is None and r["amount"] is None
+        assert r["confidence"] is None
