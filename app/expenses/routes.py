@@ -1,6 +1,7 @@
 import base64
 import uuid
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 
 from flask import request, jsonify, current_app
 from app.extensions import db
@@ -11,6 +12,7 @@ from app.storage.r2 import get_storage
 from app.expenses import expense_bp
 from app.expenses.tasks import schedule_ocr, reconcile_stale
 from app.expenses.serialize import serialize_expense
+from app.expenses.logic import compute_business_date
 
 
 def _make_key(store_id):
@@ -84,3 +86,68 @@ def detail(eid):
     if err:
         return err
     return jsonify(status="ok", expense=serialize_expense(e, get_storage(), with_main=True))
+
+
+@expense_bp.patch("/<int:eid>")
+def edit(eid):
+    user = current_user()
+    if user is None:
+        return jsonify(status="error", message="unauthenticated"), 401
+    e, err = _load_owned(eid, user)
+    if err:
+        return err
+    if e.status != "draft":
+        return jsonify(status="error", message="not editable"), 409
+    data = request.get_json(silent=True) or {}
+    if "summary" in data:
+        e.summary = data["summary"]
+    if "category_id" in data:
+        e.category_id = data["category_id"]
+        e.is_modified_by_user = True
+    if "amount" in data:
+        try:
+            e.amount = None if data["amount"] is None else Decimal(str(data["amount"]))
+            e.amount_parse_ok = e.amount is not None
+        except (InvalidOperation, ValueError):
+            e.amount = None; e.amount_parse_ok = False
+        e.is_modified_by_user = True
+    db.session.commit()
+    return jsonify(status="ok", expense=serialize_expense(e, get_storage()))
+
+
+@expense_bp.post("/<int:eid>/submit")
+def submit(eid):
+    user = current_user()
+    if user is None:
+        return jsonify(status="error", message="unauthenticated"), 401
+    e, err = _load_owned(eid, user)
+    if err:
+        return err
+    if e.status != "draft":
+        return jsonify(status="error", message="not submittable"), 409
+    e.status = "submitted"
+    e.business_date = compute_business_date(e.created_at)
+    e.submitted_at = datetime.now(timezone.utc)
+    db.session.commit()
+    return jsonify(status="ok")
+
+
+@expense_bp.delete("/<int:eid>")
+def discard(eid):
+    user = current_user()
+    if user is None:
+        return jsonify(status="error", message="unauthenticated"), 401
+    e, err = _load_owned(eid, user)
+    if err:
+        return err
+    if e.status != "draft":
+        return jsonify(status="error", message="not deletable"), 409
+    storage = get_storage()
+    for k in (e.image_key, e.thumb_key):
+        if k:
+            try:
+                storage.delete(k)
+            except Exception:
+                pass
+    db.session.delete(e); db.session.commit()
+    return jsonify(status="ok")
