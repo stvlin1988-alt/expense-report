@@ -33,7 +33,7 @@ class Config:
     # OCR
     OCR_PROVIDER = os.environ.get("OCR_PROVIDER", "mock")
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
     GEMINI_TIMEOUT = int(os.environ.get("GEMINI_TIMEOUT", "30"))
     # 暫存區/燈號
     OCR_STALE_SECONDS = int(os.environ.get("OCR_STALE_SECONDS", "120"))

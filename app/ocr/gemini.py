@@ -26,7 +26,7 @@ def _load_categories():
 
 class GeminiProvider(OCRProvider):
     def __init__(self, cfg):
-        self.model = cfg.get("GEMINI_MODEL", "gemini-2.5-flash")
+        self.model = cfg.get("GEMINI_MODEL", "gemini-3.5-flash")
         self.key = cfg.get("GEMINI_API_KEY", "")
         self.timeout = cfg.get("GEMINI_TIMEOUT", 30)
 
