@@ -30,6 +30,7 @@ def _resized(img: Image.Image, edge: int) -> Image.Image:
 def process_upload_image(raw_bytes: bytes, content_type: str):
     """回 (main_bytes, thumb_bytes)；不支援型別或壞 bytes → (raw_bytes, None)。"""
     if content_type not in _SUPPORTED:
+        logger.warning("process_upload_image: unsupported content_type=%s", content_type)
         return raw_bytes, None
     try:
         img = Image.open(io.BytesIO(raw_bytes))

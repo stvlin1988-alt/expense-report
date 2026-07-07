@@ -1,4 +1,5 @@
 import io
+import logging
 from PIL import Image
 from app.images.image_utils import (
     process_upload_image, process_upload_image_async,
@@ -40,6 +41,15 @@ def test_corrupt_bytes_returns_raw_and_none():
     main, thumb = process_upload_image(b"not-an-image", "image/jpeg")
     assert main == b"not-an-image"
     assert thumb is None
+
+
+def test_unsupported_content_type_returns_raw_and_none(caplog):
+    raw = _jpeg(1000, 800)
+    caplog.set_level(logging.WARNING)
+    main, thumb = process_upload_image(raw, "application/pdf")
+    assert main == raw
+    assert thumb is None
+    assert any("unsupported content_type" in r.message for r in caplog.records)
 
 
 def test_async_matches_sync_dims():
