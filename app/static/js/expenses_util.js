@@ -7,6 +7,21 @@ export function lightLabel(light) {
   return { green: '🟢', yellow: '🟡', red: '🔴' }[light] || '⚪';
 }
 
+// 解析使用者輸入的金額字串（去千分位逗號/空白/前置 NT$、$）。
+// 回傳 { value, valid }；空字串或無法解析成有限數 → { value: null, valid: false }。
+export function parseAmountInput(raw) {
+  const s = String(raw == null ? '' : raw)
+    .trim()
+    .replace(/^NT\$/i, '')
+    .replace(/^\$/, '')
+    .replace(/,/g, '')
+    .replace(/\s/g, '');
+  if (s === '') return { value: null, valid: false };
+  const n = Number(s);
+  if (!Number.isFinite(n)) return { value: null, valid: false };
+  return { value: n, valid: true };
+}
+
 export function businessDateDisplay(iso) {
   if (!iso) return '';
   const d = new Date(iso);

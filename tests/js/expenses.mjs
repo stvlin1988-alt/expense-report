@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatAmount, lightLabel, businessDateDisplay } from '../../app/static/js/expenses_util.js';
+import { formatAmount, lightLabel, businessDateDisplay, parseAmountInput } from '../../app/static/js/expenses_util.js';
 
 test('formatAmount thousands + null', () => {
   assert.equal(formatAmount(1290), '1,290');
@@ -12,6 +12,14 @@ test('lightLabel maps', () => {
   assert.equal(lightLabel('green'), '🟢');
   assert.equal(lightLabel('yellow'), '🟡');
   assert.equal(lightLabel('red'), '🔴');
+});
+
+test('parseAmountInput strips commas / currency / blanks', () => {
+  assert.deepEqual(parseAmountInput('1,200'), { value: 1200, valid: true });
+  assert.deepEqual(parseAmountInput('1200'), { value: 1200, valid: true });
+  assert.deepEqual(parseAmountInput('NT$ 5,230'), { value: 5230, valid: true });
+  assert.deepEqual(parseAmountInput(''), { value: null, valid: false });
+  assert.deepEqual(parseAmountInput('abc'), { value: null, valid: false });
 });
 
 test('businessDateDisplay taiwan', () => {
