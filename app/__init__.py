@@ -44,4 +44,7 @@ def create_app(config_object=None):
     from app.fx import fx_bp
     app.register_blueprint(fx_bp)
 
+    from app.expenses import expense_bp
+    app.register_blueprint(expense_bp)
+
     return app
