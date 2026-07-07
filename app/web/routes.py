@@ -36,6 +36,7 @@ def index():
         seed_mode=seed,
         secret_hash=secret_hash,
         identity=identity,
+        e2e=bool(current_app.config.get("E2E_LOGIN_BYPASS")),
     )
 
 

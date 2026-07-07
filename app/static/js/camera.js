@@ -1,3 +1,7 @@
+// 開發專用：設定後，Camera 不開實體相機，capture() 直接回這張預設圖（測 UI 流程用）。
+let _e2eSample = null;
+export function setE2ESample(dataUrl) { _e2eSample = dataUrl; }
+
 export class Camera {
   constructor(videoEl, canvasEl) {
     this.video = videoEl;
@@ -9,6 +13,7 @@ export class Camera {
 
   async start() {
     if (this.stream) return;
+    if (_e2eSample) { this.stream = 'e2e'; return; } // 開發：跳過相機
     this.stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'user' }, audio: false,
     });
@@ -19,6 +24,7 @@ export class Camera {
 
   capture() {
     if (!this.stream) return null;
+    if (this.stream === 'e2e') return _e2eSample; // 開發：回預設收據圖
     const ctx = this.canvas.getContext('2d');
     this.canvas.width = this.video.videoWidth || 640;
     this.canvas.height = this.video.videoHeight || 480;
@@ -28,7 +34,7 @@ export class Camera {
 
   stop() {
     if (this.stream) {
-      this.stream.getTracks().forEach((t) => t.stop());
+      if (this.stream !== 'e2e') this.stream.getTracks().forEach((t) => t.stop());
       this.stream = null;
     }
   }

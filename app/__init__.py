@@ -47,4 +47,9 @@ def create_app(config_object=None):
     from app.expenses import expense_bp
     app.register_blueprint(expense_bp)
 
+    # 開發專用一鍵登入捷徑：僅在旗標開啟且非 production 時註冊（prod 連路由都沒有）
+    if app.config.get("E2E_LOGIN_BYPASS") and app.config.get("APP_ENV") != "production":
+        from app.dev import dev_bp
+        app.register_blueprint(dev_bp)
+
     return app

@@ -16,6 +16,8 @@ class Config:
 
     # 隱蔽登入暗號（可經 env 改；預設 078*2）
     EXPENSE_TRIGGER_CODE = os.environ.get("EXPENSE_TRIGGER_CODE", "078*2")
+    # 開發專用：跳過密碼/人臉的一鍵登入捷徑。production 一律無效，且需明設此旗標才註冊路由。
+    E2E_LOGIN_BYPASS = os.environ.get("E2E_LOGIN_BYPASS", "").lower() in ("1", "true", "yes")
     # 匯率
     FX_API_URL = os.environ.get("FX_API_URL", "https://open.er-api.com/v6/latest/USD")
     FX_TTL_SECONDS = int(os.environ.get("FX_TTL_SECONDS", str(6 * 3600)))

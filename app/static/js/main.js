@@ -4,8 +4,17 @@ import { loadRates } from './fx.js';
 import { canonicalToken, buildSequence, matchesSecret, withinWindow } from './secret.js';
 import { openAuth, showAppView } from './auth.js';
 import { showAdminPanel } from './admin.js';
+import { setE2ESample } from './camera.js';
 
 const cfg = JSON.parse(document.getElementById('app-config').textContent);
+
+// 開發專用：E2E 模式載入樣本收據，讓拍單不需相機即可測 UI 流程。
+if (cfg.e2e) {
+  fetch('/dev/sample-receipt')
+    .then((r) => r.json())
+    .then((d) => { if (d.image) setE2ESample(d.image); })
+    .catch(() => {});
+}
 const engine = new CalcEngine();
 const fxPanel = document.getElementById('fx-panel');
 const calcDisplay = document.getElementById('calc-display');
