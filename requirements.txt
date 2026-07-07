@@ -9,3 +9,4 @@ numpy==2.*
 Pillow==11.*
 Flask-Limiter==3.*
 gunicorn==23.*
+boto3==1.35.*
