@@ -5,3 +5,4 @@ instance/
 .env
 *.db
 .pytest_cache/
+tests/fixtures/receipts/

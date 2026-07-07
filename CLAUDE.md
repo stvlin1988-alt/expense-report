@@ -14,7 +14,10 @@
 - 前端：PWA（公用手機/員工手機）
 
 ## 啟動 / 開發
-（待補：run_local 腳本、seed、環境變數）
+- 本機啟動：`cp .env.example .env` 填 Gemini/R2 真值 → `FLASK_APP=wsgi.py python3 -m flask db upgrade` → `FLASK_APP=wsgi.py SECRET_KEY=dev python3 -m flask run --port 5001`
+- 測試：後端 `python3 -m pytest -q`；前端純邏輯 `node --test tests/js/*.mjs`
+- OCR/R2 本機真測：`.env` 設 `OCR_PROVIDER=gemini` / `STORAGE_BACKEND=r2`；不設則走 mock。真圖辨識驗證 `python3 tests/manual/verify_ocr.py`
+- ⚠️ 測試完成後刪除 `.env` 內 Gemini/R2 真憑證
 
 ## 鐵律（Phase 1）
 - 影像不落地：手機拍照記憶體直傳、不進相簿；伺服器 OCR 後不留影像
