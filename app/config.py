@@ -30,7 +30,19 @@ class Config:
     R2_ENDPOINT = os.environ.get("R2_ENDPOINT", "")
     R2_URL_EXPIRE_SECONDS = int(os.environ.get("R2_URL_EXPIRE_SECONDS", "300"))
 
+    # OCR
+    OCR_PROVIDER = os.environ.get("OCR_PROVIDER", "mock")
+    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_TIMEOUT = int(os.environ.get("GEMINI_TIMEOUT", "30"))
+    # 暫存區/燈號
+    OCR_STALE_SECONDS = int(os.environ.get("OCR_STALE_SECONDS", "120"))
+    GREEN_THRESHOLD = float(os.environ.get("GREEN_THRESHOLD", "0.85"))
+    EXPENSE_OCR_SYNC = os.environ.get("EXPENSE_OCR_SYNC", "false").lower() == "true"
+
 
 class TestConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    EXPENSE_OCR_SYNC = True
+    OCR_PROVIDER = "mock"
