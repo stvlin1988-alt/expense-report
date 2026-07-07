@@ -26,9 +26,11 @@ def _load_categories():
 
 class GeminiProvider(OCRProvider):
     def __init__(self, cfg):
-        self.model = cfg.get("GEMINI_MODEL", "gemini-3.5-flash")
+        self.model = cfg.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
         self.key = cfg.get("GEMINI_API_KEY", "")
         self.timeout = cfg.get("GEMINI_TIMEOUT", 30)
+        # -1=動態思考、0=關閉。lite 底模需明確開思考才讀得穩手寫金額
+        self.thinking_budget = cfg.get("GEMINI_THINKING_BUDGET", -1)
 
     def _call_api(self, payload):
         url = _ENDPOINT.format(model=self.model, key=self.key)
@@ -50,6 +52,7 @@ class GeminiProvider(OCRProvider):
             "generationConfig": {
                 "responseMimeType": "application/json",
                 "responseSchema": build_response_schema(),
+                "thinkingConfig": {"thinkingBudget": self.thinking_budget},
             },
         }
         empty = {"summary": None, "category_id": None, "amount": None,

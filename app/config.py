@@ -33,8 +33,10 @@ class Config:
     # OCR
     OCR_PROVIDER = os.environ.get("OCR_PROVIDER", "mock")
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
     GEMINI_TIMEOUT = int(os.environ.get("GEMINI_TIMEOUT", "30"))
+    # lite 底模預設不思考；-1=動態思考(手寫/難單金額才讀得穩)，0=關閉
+    GEMINI_THINKING_BUDGET = int(os.environ.get("GEMINI_THINKING_BUDGET", "-1"))
     # 暫存區/燈號
     OCR_STALE_SECONDS = int(os.environ.get("OCR_STALE_SECONDS", "120"))
     GREEN_THRESHOLD = float(os.environ.get("GREEN_THRESHOLD", "0.85"))
