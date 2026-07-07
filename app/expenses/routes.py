@@ -9,7 +9,8 @@ from app.auth.decorators import current_user
 from app.images.image_utils import process_upload_image_async
 from app.storage.r2 import get_storage
 from app.expenses import expense_bp
-from app.expenses.tasks import schedule_ocr
+from app.expenses.tasks import schedule_ocr, reconcile_stale
+from app.expenses.serialize import serialize_expense
 
 
 def _make_key(store_id):
@@ -48,3 +49,38 @@ def capture():
     db.session.add(e); db.session.commit()
     schedule_ocr(e.id, main_bytes, "image/jpeg")
     return jsonify(status="ok", id=e.id), 202
+
+
+def _load_owned(eid, user):
+    e = db.session.get(Expense, eid)
+    if e is None:
+        return None, (jsonify(status="error", message="not found"), 404)
+    if e.created_by != user.id:
+        return None, (jsonify(status="error", message="forbidden"), 403)
+    return e, None
+
+
+@expense_bp.get("/pending")
+def pending():
+    user = current_user()
+    if user is None:
+        return jsonify(status="error", message="unauthenticated"), 401
+    reconcile_stale(user.id)
+    rows = (Expense.query
+            .filter(Expense.created_by == user.id,
+                    Expense.status.in_(["pending_ocr", "draft"]))
+            .order_by(Expense.created_at.desc()).all())
+    storage = get_storage()
+    return jsonify(status="ok",
+                    expenses=[serialize_expense(e, storage) for e in rows])
+
+
+@expense_bp.get("/<int:eid>")
+def detail(eid):
+    user = current_user()
+    if user is None:
+        return jsonify(status="error", message="unauthenticated"), 401
+    e, err = _load_owned(eid, user)
+    if err:
+        return err
+    return jsonify(status="ok", expense=serialize_expense(e, get_storage(), with_main=True))
