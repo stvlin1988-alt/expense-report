@@ -5,7 +5,7 @@ from decimal import Decimal, InvalidOperation
 
 from flask import request, jsonify, current_app
 from app.extensions import db
-from app.models import Expense
+from app.models import Expense, Category
 from app.auth.decorators import current_user
 from app.images.image_utils import process_upload_image_async
 from app.storage.r2 import get_storage
@@ -184,3 +184,21 @@ def no_receipt():
     )
     db.session.add(e); db.session.commit()
     return jsonify(status="ok", id=e.id)
+
+
+@expense_bp.get("/categories")
+def categories():
+    user = current_user()
+    if user is None:
+        return jsonify(status="error", message="unauthenticated"), 401
+    rows = Category.query.filter_by(active=True).order_by(Category.sort).all()
+    children = {}
+    for r in rows:
+        if r.level == 2:
+            children.setdefault(r.parent_id, []).append(r)
+    tree = [
+        {"id": p.id, "name": p.name,
+         "items": [{"id": c.id, "name": c.name} for c in children.get(p.id, [])]}
+        for p in rows if p.level == 1
+    ]
+    return jsonify(status="ok", categories=tree)
