@@ -45,14 +45,21 @@ export async function showPendingView(onBack) {
         <button data-act="submit">送出</button><button data-act="del">丟棄</button>
         <div class="pd-row-err" data-f="err"></div>
       </td>`;
-    const catSelect = tr.querySelector('[data-f="category"]');
-    catSelect.innerHTML = categoryOptionsHtml(tree, e.category_id);
-    catSelect.addEventListener('change', () => {
-      const categoryId = catSelect.value === '' ? null : Number(catSelect.value);
-      patchExpense(e.id, { category_id: categoryId }); // 即時修正、不阻塞送出
-    });
     const rowErr = tr.querySelector('[data-f="err"]');
     const setErr = (t) => { rowErr.textContent = t || ''; };
+    const catSelect = tr.querySelector('[data-f="category"]');
+    catSelect.innerHTML = categoryOptionsHtml(tree, e.category_id);
+    catSelect.addEventListener('change', async () => {
+      setErr('');
+      const categoryId = catSelect.value === '' ? null : Number(catSelect.value);
+      // 即時修正、不阻塞送出；失敗要出聲，否則使用者以為已存
+      try {
+        const { status } = await patchExpense(e.id, { category_id: categoryId });
+        if (status !== 200) setErr('分類儲存失敗，送出前會再試一次');
+      } catch {
+        setErr('分類儲存失敗，送出前會再試一次');
+      }
+    });
     tr.querySelector('[data-act="submit"]').addEventListener('click', async () => {
       setErr('');
       const summary = tr.querySelector('[data-f="summary"]').value;
