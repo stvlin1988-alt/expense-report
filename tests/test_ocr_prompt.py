@@ -14,3 +14,10 @@ def test_response_schema_shape():
     s = build_response_schema()
     props = s["properties"]
     assert {"summary", "category_id", "amount", "confidence", "is_handwritten"} <= set(props)
+
+
+def test_response_schema_types_are_single_strings():
+    # Gemini responseSchema 只接受單一 type 字串 + nullable，type 陣列/union 會回 400。
+    s = build_response_schema()
+    for name, spec in s["properties"].items():
+        assert isinstance(spec["type"], str), f"{name} type 必須是單一字串，不能用 list"

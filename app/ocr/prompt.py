@@ -29,9 +29,10 @@ def build_response_schema():
     return {
         "type": "object",
         "properties": {
+            # Gemini responseSchema 只吃單一 type + nullable，不支援 type 陣列/union
             "summary": {"type": "string"},
-            "category_id": {"type": ["integer", "null"]},
-            "amount": {"type": ["number", "string", "null"]},
+            "category_id": {"type": "integer", "nullable": True},
+            "amount": {"type": "number", "nullable": True},
             "confidence": {"type": "number"},
             "is_handwritten": {"type": "boolean"},
         },
