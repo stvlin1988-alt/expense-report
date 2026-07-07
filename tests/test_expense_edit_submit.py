@@ -64,6 +64,35 @@ def test_patch_rejects_non_draft(app):
     assert c.patch(f"/expenses/{eid}", json={"amount": 9}).status_code == 409
 
 
+def test_patch_rejects_invalid_category_id(app):
+    r2mod._mock_singleton = None
+    sid, uid, cid = _seed(app)
+    eid = _draft(app, sid, uid, amount=100, amount_parse_ok=True)
+    c = _client(app, uid)
+    resp = c.patch(f"/expenses/{eid}", json={"category_id": 99999})
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["status"] == "ok"
+    assert body["expense"]["category_id"] is None
+    assert body["expense"]["is_modified_by_user"] is True
+    with app.app_context():
+        e = db.session.get(Expense, eid)
+        assert e.category_id is None
+        assert e.is_modified_by_user is True
+
+
+def test_submit_rejects_draft_without_valid_amount(app):
+    r2mod._mock_singleton = None
+    sid, uid, cid = _seed(app)
+    eid = _draft(app, sid, uid, amount=None, amount_parse_ok=False)
+    c = _client(app, uid)
+    resp = c.post(f"/expenses/{eid}/submit")
+    assert resp.status_code == 400
+    with app.app_context():
+        e = db.session.get(Expense, eid)
+        assert e.status == "draft"
+
+
 def test_submit_transitions_and_sets_business_date(app):
     r2mod._mock_singleton = None
     sid, uid, cid = _seed(app)

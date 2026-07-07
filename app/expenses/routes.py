@@ -102,7 +102,7 @@ def edit(eid):
     if "summary" in data:
         e.summary = data["summary"]
     if "category_id" in data:
-        e.category_id = data["category_id"]
+        e.category_id = _valid_category_id(data["category_id"])
         e.is_modified_by_user = True
     if "amount" in data:
         try:
@@ -125,6 +125,8 @@ def submit(eid):
         return err
     if e.status != "draft":
         return jsonify(status="error", message="not submittable"), 409
+    if e.amount is None or e.amount_parse_ok is not True:
+        return jsonify(status="error", message="amount required"), 400
     e.status = "submitted"
     e.business_date = compute_business_date(e.created_at)
     e.submitted_at = datetime.now(timezone.utc)

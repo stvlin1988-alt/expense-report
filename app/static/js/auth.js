@@ -22,6 +22,7 @@ async function postJSON(url, body) {
 export function showAppView(identity) {
   clearRoot();
   const roleZh = { employee: '員工', manager: '主管', accountant: '會計', super_admin: '經理' };
+  const isEmployee = identity.role === 'employee';
   root().innerHTML = `
     <div class="modal-backdrop">
       <div class="modal-box">
@@ -31,8 +32,8 @@ export function showAppView(identity) {
         </div>
         <video id="av-video" autoplay playsinline muted style="display:none;"></video>
         <canvas id="av-canvas" style="display:none;"></canvas>
-        <button class="modal-btn" id="av-capture" type="button">拍單</button>
-        <button class="modal-btn" id="av-pending" type="button">暫存區</button>
+        ${isEmployee ? '<button class="modal-btn" id="av-capture" type="button">拍單</button>' : ''}
+        ${isEmployee ? '<button class="modal-btn" id="av-pending" type="button">暫存區</button>' : ''}
         <button class="modal-btn secondary" id="av-reface" type="button">更新人臉</button>
         <div class="modal-msg" id="av-msg" style="color:#4cd964;"></div>
         <button class="modal-btn" id="av-logout" type="button" style="margin-top:10px;">登出</button>
@@ -75,14 +76,16 @@ export function showAppView(identity) {
     location.reload();
   });
 
-  document.getElementById('av-capture').addEventListener('click', () => {
-    cam.stop();
-    showCaptureView(() => showAppView(identity));
-  });
-  document.getElementById('av-pending').addEventListener('click', () => {
-    cam.stop();
-    showPendingView(() => showAppView(identity));
-  });
+  if (isEmployee) {
+    document.getElementById('av-capture').addEventListener('click', () => {
+      cam.stop();
+      showCaptureView(() => showAppView(identity));
+    });
+    document.getElementById('av-pending').addEventListener('click', () => {
+      cam.stop();
+      showPendingView(() => showAppView(identity));
+    });
+  }
 }
 
 function loginModal() {
