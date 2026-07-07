@@ -10,7 +10,7 @@ from app.auth.decorators import current_user
 from app.images.image_utils import process_upload_image_async
 from app.storage.r2 import get_storage
 from app.expenses import expense_bp
-from app.expenses.tasks import schedule_ocr, reconcile_stale
+from app.expenses.tasks import schedule_ocr, reconcile_stale, _valid_category_id
 from app.expenses.serialize import serialize_expense
 from app.expenses.logic import compute_business_date
 
@@ -151,3 +151,34 @@ def discard(eid):
                 pass
     db.session.delete(e); db.session.commit()
     return jsonify(status="ok")
+
+
+@expense_bp.post("/no-receipt")
+def no_receipt():
+    user = current_user()
+    if user is None:
+        return jsonify(status="error", message="unauthenticated"), 401
+    if user.store_id is None:
+        return jsonify(status="error", message="no store"), 400
+    data = request.get_json(silent=True) or {}
+    reason = (data.get("reason") or "").strip()
+    if not reason:
+        return jsonify(status="error", message="reason required"), 400
+    amount, ok = None, False
+    if data.get("amount") is not None:
+        try:
+            amount = Decimal(str(data["amount"])); ok = True
+        except (InvalidOperation, ValueError):
+            ok = False
+    if not ok:
+        return jsonify(status="error", message="amount required"), 400
+    now = datetime.now(timezone.utc)
+    e = Expense(
+        store_id=user.store_id, created_by=user.id, status="submitted",
+        created_at=now, submitted_at=now, business_date=compute_business_date(now),
+        summary=data.get("summary"), category_id=_valid_category_id(data.get("category_id")),
+        amount=amount, amount_parse_ok=True, is_modified_by_user=True,
+        no_receipt_reason=reason,
+    )
+    db.session.add(e); db.session.commit()
+    return jsonify(status="ok", id=e.id)
