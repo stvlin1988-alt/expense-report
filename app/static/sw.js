@@ -7,7 +7,7 @@
  */
 // 靜態資產(js/css)變更時務必 bump 此版本號（如 calc-v2），
 // 否則 cache-first 會讓客戶端持續使用舊檔（見下方 STATIC_URLS 的 cache-first 分支）。
-const CACHE_NAME = 'calc-v10';
+const CACHE_NAME = 'calc-v11';
 const STATIC_URLS = [
   '/',
   '/static/css/app.css',
@@ -18,6 +18,10 @@ const STATIC_URLS = [
   '/static/js/fx.js',
   '/static/js/camera.js',
   '/static/js/auth.js',
+  '/static/js/expenses_util.js',
+  '/static/js/expenses_api.js',
+  '/static/js/capture.js',
+  '/static/js/pending.js',
   '/static/manifest.json',
 ];
 
@@ -49,7 +53,9 @@ self.addEventListener('fetch', (event) => {
   // 認證/影像/匯率：network-first，絕不快取
   if (url.pathname.startsWith('/auth/') ||
       url.pathname.startsWith('/face/') ||
-      url.pathname.startsWith('/api/')) {
+      url.pathname.startsWith('/api/') ||
+      url.pathname === '/expenses' ||
+      url.pathname.startsWith('/expenses/')) {
     event.respondWith(networkFirst(event.request));
     return;
   }
