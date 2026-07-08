@@ -165,3 +165,13 @@ body {
 .au-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.8); display: flex;
   align-items: center; justify-content: center; z-index: 1000; cursor: zoom-out; }
 .au-lightbox img { max-width: 92vw; max-height: 92vh; box-shadow: 0 4px 24px rgba(0,0,0,.5); }
+.au-day-nav { margin: 8px 0; font-size: .9rem; }
+.au-day-nav select { font-size: 16px; padding: 4px; }
+tr.au-int { cursor: pointer; }
+tr.au-int:hover { background: #f5faff; }
+tr.au-open-row { background: #eef6ff; }
+tr.au-open-row td { font-weight: 600; }
+.au-detail > td { background: #fafafa; padding: 8px; }
+.au-detail-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.au-detail-table th, .au-detail-table td { border-bottom: 1px solid #eee; padding: 4px 6px; text-align: left; }
+.au-mod { color: #d17b00; font-size: .75rem; border: 1px solid #d17b00; border-radius: 3px; padding: 0 3px; }
