@@ -10,6 +10,7 @@ export async function showPendingView(onBack) {
   root().innerHTML = `
     <div class="modal-backdrop"><div class="modal-box wide">
       <h2>暫存區</h2>
+      <button class="modal-btn" id="pd-refresh" type="button">↻ 重整</button>
       <button class="modal-btn" id="pd-noreceipt" type="button">＋無單據建帳</button>
       <div id="pd-msg" class="modal-msg"></div>
       <div class="pd-table-wrap">
@@ -21,6 +22,7 @@ export async function showPendingView(onBack) {
       <button class="modal-btn secondary" id="pd-back" type="button">返回</button>
     </div></div>`;
   document.getElementById('pd-back').addEventListener('click', onBack);
+  document.getElementById('pd-refresh').addEventListener('click', () => showPendingView(onBack));
 
   const [{ data }, { data: cat }] = await Promise.all([listPending(), listCategories()]);
   const tree = cat.categories || [];
@@ -37,7 +39,9 @@ export async function showPendingView(onBack) {
       : (e.status === 'pending_ocr' ? '🕓' : '—');
     tr.innerHTML = `
       <td>${thumb}</td>
-      <td><input value="${escapeHtml(e.summary || '')}" data-f="summary"></td>
+      <td>${e.status === 'pending_ocr'
+        ? '<span class="pd-ocring">🕓 辨識中…（稍後按重整）</span>'
+        : `<input value="${escapeHtml(e.summary || '')}" data-f="summary">`}</td>
       <td><select data-f="category"></select></td>
       <td><input value="${e.amount ?? ''}" inputmode="decimal" data-f="amount" style="width:80px"></td>
       <td>${lightLabel(e.light)}</td>

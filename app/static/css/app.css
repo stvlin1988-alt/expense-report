@@ -175,3 +175,4 @@ tr.au-open-row td { font-weight: 600; }
 .au-detail-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
 .au-detail-table th, .au-detail-table td { border-bottom: 1px solid #eee; padding: 4px 6px; text-align: left; }
 .au-mod { color: #d17b00; font-size: .75rem; border: 1px solid #d17b00; border-radius: 3px; padding: 0 3px; }
+.pd-ocring { color: #888; font-size: .85rem; }
