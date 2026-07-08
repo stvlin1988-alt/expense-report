@@ -1,10 +1,14 @@
+from decimal import Decimal, InvalidOperation
+from datetime import datetime, timezone
 from flask import request, jsonify
 from app.extensions import db
 from app.models import Expense, Store
 from app.auth.decorators import current_user, role_required
 from app.expenses.serialize import serialize_expense
+from app.expenses.tasks import _valid_category_id
 from app.storage.r2 import get_storage
 from app.audit import audit_bp
+from app.audit.log import snapshot, log_edit_if_changed, record_check
 
 
 def _scope_store_id(from_body=False):
@@ -50,3 +54,39 @@ def pending():
             "items": [serialize_expense(x, storage) for x in items],
         })
     return jsonify(status="ok", groups=out)
+
+
+def _load_in_scope(eid, store_id):
+    e = db.session.get(Expense, eid)
+    if e is None:
+        return None, (jsonify(status="error", message="not found"), 404)
+    if e.store_id != store_id:
+        return None, (jsonify(status="error", message="forbidden"), 403)
+    return e, None
+
+
+@audit_bp.patch("/<int:eid>")
+@role_required("manager", "super_admin")
+def edit(eid):
+    store_id, err = _scope_store_id()
+    if err:
+        return err
+    e, err = _load_in_scope(eid, store_id)
+    if err:
+        return err
+    if e.status != "submitted":
+        return jsonify(status="error", message="not editable"), 409
+    data = request.get_json(silent=True) or {}
+    before = snapshot(e)
+    if "category_id" in data:
+        e.category_id = _valid_category_id(data["category_id"])
+    if "amount" in data:
+        try:
+            e.amount = None if data["amount"] is None else Decimal(str(data["amount"]))
+            e.amount_parse_ok = e.amount is not None
+        except (InvalidOperation, ValueError):
+            e.amount = None; e.amount_parse_ok = False
+    if log_edit_if_changed(e, current_user().id, before):
+        e.is_modified_by_manager = True
+    db.session.commit()
+    return jsonify(status="ok")
