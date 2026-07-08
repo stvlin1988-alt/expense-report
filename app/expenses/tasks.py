@@ -13,6 +13,12 @@ logger = logging.getLogger(__name__)
 _executor = ThreadPoolExecutor(max_workers=4)
 
 
+def _aware_utc(dt):
+    """SQLite 存 DateTime(timezone=True) 讀回會變 naive；補回 UTC 才能跟
+    tz-aware 的 now()/cutoff 比較（同一個坑在 app/expenses/logic.py 也有）。"""
+    return dt if dt is None or dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
 def _valid_category_id(cid):
     if cid is None:
         return None
@@ -90,9 +96,15 @@ def schedule_ocr(expense_id, image_bytes, content_type):
 
 def reconcile_stale(user_id):
     """暫存區列表拉取時就地收斂：逾時仍 pending_ocr 的單，
-    未達重排上限且原圖還在 → 從 R2 重抓再跑一輪 OCR；否則收斂成 draft+ocr_failed。"""
-    cutoff = datetime.now(timezone.utc) - timedelta(
+    未達重排上限且原圖還在 → 從 R2 重抓再跑一輪 OCR；否則收斂成 draft+ocr_failed。
+    重排節流：ocr_scheduled_at 在節流窗內（近期才排過）→ 略過，避免在途/剛排的
+    那一輪被同一次 list-pull 重複送 OCR（async 模式 schedule_ocr 是 fire-and-forget，
+    重複送會打兩次 Gemini + 產生重複 ocr_log）。"""
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(
         seconds=current_app.config.get("OCR_STALE_SECONDS", 120))
+    throttle_cutoff = now - timedelta(
+        seconds=current_app.config.get("OCR_RESCHEDULE_THROTTLE_SECONDS", 120))
     max_rounds = current_app.config.get("OCR_MAX_ROUNDS", 3)
     stale = (Expense.query
              .filter(Expense.created_by == user_id,
@@ -101,13 +113,24 @@ def reconcile_stale(user_id):
     storage = get_storage()
     changed = False
     for e in stale:
+        scheduled_at = _aware_utc(e.ocr_scheduled_at)
+        eligible = (e.ocr_attempts < max_rounds and e.image_key
+                    and (scheduled_at is None or scheduled_at < throttle_cutoff))
+        if not eligible:
+            if scheduled_at is not None and scheduled_at >= throttle_cutoff:
+                continue   # 節流：近期已排過一輪，交給該輪自然收斂，不重排
+            e.status = "draft"; e.ocr_failed = True; e.amount_parse_ok = False
+            e.ocr_last_error = e.ocr_last_error or "gave_up"
+            changed = True
+            continue
         image_bytes = None
-        if e.ocr_attempts < max_rounds and e.image_key:
-            try:
-                image_bytes = storage.get(e.image_key)
-            except Exception:
-                image_bytes = None
+        try:
+            image_bytes = storage.get(e.image_key)
+        except Exception:
+            image_bytes = None
         if image_bytes:
+            e.ocr_scheduled_at = now
+            changed = True   # 節流時間戳必須 commit，讓並發的 list-pull 看到
             schedule_ocr(e.id, image_bytes, "image/jpeg")   # 跑新一輪（含重試）
         else:
             e.status = "draft"; e.ocr_failed = True; e.amount_parse_ok = False

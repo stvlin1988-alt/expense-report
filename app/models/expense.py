@@ -31,6 +31,7 @@ class Expense(db.Model):
     ocr_attempts = db.Column(db.Integer, nullable=False, default=0)
     ocr_failed = db.Column(db.Boolean, nullable=False, default=False)
     ocr_last_error = db.Column(db.String(32), nullable=True)
+    ocr_scheduled_at = db.Column(db.DateTime(timezone=True), nullable=True)
 
     no_receipt_reason = db.Column(db.Text, nullable=True)
     doc_type_id = db.Column(db.Integer, db.ForeignKey("doc_types.id"), nullable=True)

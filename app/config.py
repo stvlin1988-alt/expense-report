@@ -44,6 +44,7 @@ class Config:
     OCR_MAX_ROUNDS = int(os.environ.get("OCR_MAX_ROUNDS", "3"))
     # 暫存區/燈號
     OCR_STALE_SECONDS = int(os.environ.get("OCR_STALE_SECONDS", "120"))
+    OCR_RESCHEDULE_THROTTLE_SECONDS = int(os.environ.get("OCR_RESCHEDULE_THROTTLE_SECONDS", "120"))
     GREEN_THRESHOLD = float(os.environ.get("GREEN_THRESHOLD", "0.85"))
     EXPENSE_OCR_SYNC = os.environ.get("EXPENSE_OCR_SYNC", "false").lower() == "true"
 

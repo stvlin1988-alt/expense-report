@@ -46,9 +46,10 @@ def capture():
     if thumb_bytes:
         storage.put(thumb_key, thumb_bytes, "image/jpeg")
 
+    now = datetime.now(timezone.utc)
     e = Expense(store_id=user.store_id, created_by=user.id, status="pending_ocr",
                 image_key=key, thumb_key=thumb_key,
-                created_at=datetime.now(timezone.utc))
+                created_at=now, ocr_scheduled_at=now)
     db.session.add(e); db.session.commit()
     schedule_ocr(e.id, main_bytes, "image/jpeg")
     return jsonify(status="ok", id=e.id), 202
@@ -180,6 +181,7 @@ def reocr(eid):
     e.ocr_failed = False
     e.ocr_attempts = 0
     e.ocr_last_error = None
+    e.ocr_scheduled_at = datetime.now(timezone.utc)
     db.session.commit()
     schedule_ocr(e.id, image_bytes, "image/jpeg")
     return jsonify(status="ok"), 202
