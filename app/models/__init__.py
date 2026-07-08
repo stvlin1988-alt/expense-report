@@ -7,8 +7,9 @@ from app.models.fx_rate import FxRate
 from app.models.expense import Expense
 from app.models.handover import Handover
 from app.models.audit_log import AuditLog
+from app.models.ocr_log import OcrLog
 
 __all__ = [
     "Store", "User", "ROLES", "is_valid_pin", "Category", "DocType",
-    "Device", "FxRate", "Expense", "Handover", "AuditLog",
+    "Device", "FxRate", "Expense", "Handover", "AuditLog", "OcrLog",
 ]

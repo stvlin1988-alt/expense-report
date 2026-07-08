@@ -28,6 +28,9 @@ class Expense(db.Model):
     amount_parse_ok = db.Column(db.Boolean, nullable=True)
     is_modified_by_user = db.Column(db.Boolean, nullable=False, default=False)
     ocr_raw = db.Column(db.JSON, nullable=True)
+    ocr_attempts = db.Column(db.Integer, nullable=False, default=0)
+    ocr_failed = db.Column(db.Boolean, nullable=False, default=False)
+    ocr_last_error = db.Column(db.String(32), nullable=True)
 
     no_receipt_reason = db.Column(db.Text, nullable=True)
     doc_type_id = db.Column(db.Integer, db.ForeignKey("doc_types.id"), nullable=True)
