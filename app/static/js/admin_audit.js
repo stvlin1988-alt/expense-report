@@ -1,7 +1,7 @@
 import { api } from './admin_api.js';
 import { escapeHtml } from './admin_util.js';
 import { categoryOptionsHtml, lightLabel, parseAmountInput } from './expenses_util.js';
-import { formatMoney } from './audit_util.js';
+import { formatMoney, formatDateTimeTW } from './audit_util.js';
 
 // storeId：super_admin 選定的店；manager 傳 null（後端用本店）
 export async function renderAudit(container, identity, storeId) {
@@ -57,7 +57,7 @@ async function renderPending(body, sid) {
       <div class="au-group">
         <div class="au-group-head">${g.business_date}　日小計 ${formatMoney(g.subtotal)}</div>
         <table class="pd-table"><thead><tr>
-          <th>圖</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th></th>
+          <th>圖</th><th>建立</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th></th>
         </tr></thead><tbody>
         ${g.items.map((e) => rowHtml(e, tree)).join('')}
         </tbody></table>
@@ -110,9 +110,12 @@ function actionBar(sid, body) {
 }
 
 function rowHtml(e, tree) {
-  const thumb = e.thumb_url ? `<img src="${e.thumb_url}" loading="lazy" width="48">` : '—';
+  const thumb = e.thumb_url
+    ? `<img src="${e.thumb_url}" loading="lazy" width="48" class="au-thumb" data-zoom="${e.image_url || ''}">`
+    : '—';
   return `<tr data-id="${e.id}">
     <td>${thumb}</td>
+    <td class="au-time">${formatDateTimeTW(e.created_at)}</td>
     <td>${escapeHtml(e.summary || '')}</td>
     <td><select data-f="category">${categoryOptionsHtml(tree, e.category_id)}</select></td>
     <td><input value="${e.amount ?? ''}" inputmode="decimal" data-f="amount" style="width:80px"></td>
@@ -126,6 +129,8 @@ function wireRows(body, sid) {
     const id = Number(tr.dataset.id);
     const err = tr.querySelector('[data-f="err"]');
     const cat = tr.querySelector('[data-f="category"]');
+    const thumbEl = tr.querySelector('.au-thumb');
+    if (thumbEl) thumbEl.addEventListener('click', () => openImageLightbox(thumbEl.dataset.zoom));
     cat.addEventListener('change', async () => {
       err.textContent = '';
       const categoryId = cat.value === '' ? null : Number(cat.value);
@@ -147,4 +152,18 @@ function wireRows(body, sid) {
       } catch { err.textContent = '打勾失敗'; }
     });
   });
+}
+
+export function openImageLightbox(url) {
+  if (!url) return;
+  const ov = document.createElement('div');
+  ov.className = 'au-lightbox';
+  const img = document.createElement('img');
+  img.src = url; img.alt = '原單';
+  ov.appendChild(img);
+  const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
+  const onKey = (ev) => { if (ev.key === 'Escape') close(); };
+  ov.addEventListener('click', close);
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(ov);
 }

@@ -160,3 +160,8 @@ body {
 .au-subtotal { font-size: 16px; font-weight: 600; color: #007aff; }
 .au-open { background: #eef6ff; }
 .au-open td { font-weight: 600; }
+.au-thumb { cursor: zoom-in; }
+.au-time { white-space: nowrap; color: #666; font-size: .85rem; }
+.au-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.8); display: flex;
+  align-items: center; justify-content: center; z-index: 1000; cursor: zoom-out; }
+.au-lightbox img { max-width: 92vw; max-height: 92vh; box-shadow: 0 4px 24px rgba(0,0,0,.5); }

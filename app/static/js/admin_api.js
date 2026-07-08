@@ -41,4 +41,7 @@ export const api = {
   },
   auditHandover: (type, storeId) => req('POST', '/audit/handover', { type, store_id: storeId }),
   auditUndo: (storeId) => req('POST', '/audit/handover/undo', { store_id: storeId }),
+  auditHandoverItems: (hid, storeId) => req('GET', withStore(`/audit/handover/${hid}/items`, storeId)),
+  auditOpenItems: (storeId) => req('GET', withStore('/audit/open-items', storeId)),
+  auditDays: (storeId) => req('GET', withStore('/audit/days', storeId)),
 };
