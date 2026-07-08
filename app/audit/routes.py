@@ -215,3 +215,16 @@ def open_items():
     names, cats = _audit_maps(rows)
     return jsonify(status="ok",
                    items=[serialize_audit_item(e, storage, names, cats) for e in rows])
+
+
+@audit_bp.get("/days")
+@role_required("manager", "super_admin")
+def days():
+    store_id, err = _scope_store_id()
+    if err:
+        return err
+    rows = (Handover.query
+            .filter_by(store_id=store_id, type="day")
+            .order_by(Handover.closed_at.desc(), Handover.id.desc()).all())
+    return jsonify(status="ok",
+                   days=[{"handover_id": h.id, "closed_at": h.closed_at.isoformat()} for h in rows])
