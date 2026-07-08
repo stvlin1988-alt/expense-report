@@ -120,6 +120,22 @@ def test_summary_before_cross_store_forbidden(app):
     assert resp.status_code == 403
 
 
+def test_summary_open_excludes_non_audited(app):
+    mgr_id, sid = _seed(app)
+    with app.app_context():
+        db.session.add(_audited(sid, mgr_id, 30, None))
+        # 未稽核的 submitted，handover_id 為 None，不應計入 open
+        pending = Expense(store_id=sid, created_by=mgr_id, status="submitted",
+                          created_at=datetime.now(timezone.utc), amount=Decimal("999"))
+        db.session.add(pending)
+        db.session.commit()
+    c = _client(app, mgr_id)
+    body = c.get("/audit/summary").get_json()
+    assert body["open"]["subtotal"] == 30.0
+    assert body["open"]["count"] == 1
+    assert body["day_total"] == 30.0
+
+
 def test_summary_before_shift_type_bad_request(app):
     mgr_id, sid = _seed(app)
     with app.app_context():

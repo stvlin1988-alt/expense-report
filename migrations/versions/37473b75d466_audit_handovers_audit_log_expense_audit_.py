@@ -49,7 +49,7 @@ def upgrade():
     with op.batch_alter_table('expenses', schema=None) as batch_op:
         batch_op.add_column(sa.Column('audited_by', sa.Integer(), nullable=True))
         batch_op.add_column(sa.Column('audited_at', sa.DateTime(timezone=True), nullable=True))
-        batch_op.add_column(sa.Column('is_modified_by_manager', sa.Boolean(), nullable=False, server_default=sa.text('0')))
+        batch_op.add_column(sa.Column('is_modified_by_manager', sa.Boolean(), nullable=False, server_default=sa.false()))
         batch_op.add_column(sa.Column('handover_id', sa.Integer(), nullable=True))
         batch_op.create_index(batch_op.f('ix_expenses_handover_id'), ['handover_id'], unique=False)
         batch_op.create_foreign_key('fk_expenses_audited_by_users', 'users', ['audited_by'], ['id'])

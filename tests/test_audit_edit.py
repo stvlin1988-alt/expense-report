@@ -44,3 +44,23 @@ def test_manager_edit_audited_locked_409(app):
     mgr_id, _, aud_id = _seed(app)
     c = _client(app, mgr_id)
     assert c.patch(f"/audit/{aud_id}", json={"amount": "1"}).status_code == 409
+
+
+def test_manager_edit_cross_store_forbidden(app):
+    mgr_id, sub_id, _ = _seed(app)
+    with app.app_context():
+        other = Store(name="B", code="B"); db.session.add(other); db.session.commit()
+        other_emp = User(name="emp2", role="employee", store_id=other.id)
+        other_emp.set_password("1234")
+        db.session.add(other_emp); db.session.commit()
+        other_sub = Expense(store_id=other.id, created_by=other_emp.id, status="submitted",
+                            created_at=datetime.now(timezone.utc),
+                            business_date=date(2026, 7, 7), amount=Decimal("50"))
+        db.session.add(other_sub); db.session.commit()
+        other_sub_id = other_sub.id
+    c = _client(app, mgr_id)
+    r = c.patch(f"/audit/{other_sub_id}", json={"amount": "1"})
+    assert r.status_code == 403
+    with app.app_context():
+        e = db.session.get(Expense, other_sub_id)
+        assert float(e.amount) == 50.0 and e.is_modified_by_manager is False

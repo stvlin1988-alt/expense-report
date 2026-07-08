@@ -46,3 +46,24 @@ def test_check_non_submitted_409(app):
     mgr_id, _, aud_id = _seed(app)
     c = _client(app, mgr_id)
     assert c.post(f"/audit/{aud_id}/check").status_code == 409
+
+
+def test_check_cross_store_forbidden(app):
+    mgr_id, _, _ = _seed(app)
+    with app.app_context():
+        other = Store(name="B", code="B"); db.session.add(other); db.session.commit()
+        other_emp = User(name="emp2", role="employee", store_id=other.id)
+        other_emp.set_password("1234")
+        db.session.add(other_emp); db.session.commit()
+        other_sub = Expense(store_id=other.id, created_by=other_emp.id, status="submitted",
+                            created_at=datetime.now(timezone.utc),
+                            business_date=date(2026, 7, 7), amount=Decimal("50"))
+        db.session.add(other_sub); db.session.commit()
+        other_sub_id = other_sub.id
+    c = _client(app, mgr_id)
+    r = c.post(f"/audit/{other_sub_id}/check")
+    assert r.status_code == 403
+    with app.app_context():
+        e = db.session.get(Expense, other_sub_id)
+        assert e.status == "submitted" and e.audited_by is None
+        assert AuditLog.query.filter_by(expense_id=other_sub_id, action="check").count() == 0

@@ -58,3 +58,42 @@ def test_undo_reopens_last(app):
     with app.app_context():
         assert Handover.query.count() == 0
         assert db.session.get(Expense, a1).handover_id is None
+
+
+def _seed_super_admin(app):
+    with app.app_context():
+        sa = User(name="業主", role="super_admin"); sa.set_password("1234")
+        db.session.add(sa); db.session.commit()
+        return sa.id
+
+
+def test_super_admin_handover_with_body_store_id(app):
+    mgr_id, sid, a1, a2, sub = _seed(app)
+    sa_id = _seed_super_admin(app)
+    c = _client(app, sa_id)
+    r = c.post("/audit/handover", json={"type": "shift", "store_id": sid})
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["status"] == "ok" and body["count"] == 2
+    with app.app_context():
+        h = Handover.query.one()
+        assert h.store_id == sid
+        assert db.session.get(Expense, a1).handover_id == h.id
+        assert db.session.get(Expense, a2).handover_id == h.id
+        assert db.session.get(Expense, sub).handover_id is None
+
+
+def test_super_admin_handover_missing_store_id_400(app):
+    mgr_id, sid, a1, a2, sub = _seed(app)
+    sa_id = _seed_super_admin(app)
+    c = _client(app, sa_id)
+    r = c.post("/audit/handover", json={"type": "shift"})
+    assert r.status_code == 400
+
+
+def test_super_admin_handover_invalid_store_id_400(app):
+    mgr_id, sid, a1, a2, sub = _seed(app)
+    sa_id = _seed_super_admin(app)
+    c = _client(app, sa_id)
+    r = c.post("/audit/handover", json={"type": "shift", "store_id": "not-a-number"})
+    assert r.status_code == 400

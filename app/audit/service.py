@@ -3,7 +3,8 @@ from app.models import Expense, Handover
 
 
 def _sum(store_id, handover_id):
-    rows = Expense.query.filter_by(store_id=store_id, handover_id=handover_id).all()
+    rows = Expense.query.filter_by(store_id=store_id, handover_id=handover_id,
+                                   status="audited").all()
     subtotal = sum(float(x.amount) for x in rows if x.amount is not None)
     return subtotal, len(rows)
 
