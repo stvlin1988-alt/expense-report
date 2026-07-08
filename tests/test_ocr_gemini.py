@@ -87,3 +87,30 @@ def test_gemini_http_429_raises_retryable(app, monkeypatch):
         monkeypatch.setattr(p, "_call_api", boom)
         with pytest.raises(OcrRetryableError):
             p.recognize(b"img", "image/jpeg")
+
+
+def test_gemini_connection_reset_raises_retryable(app, monkeypatch):
+    _seed_categories(app)
+    with app.app_context():
+        p = GeminiProvider(app.config)
+
+        def boom(payload):
+            raise ConnectionResetError()
+
+        monkeypatch.setattr(p, "_call_api", boom)
+        with pytest.raises(OcrRetryableError):
+            p.recognize(b"img", "image/jpeg")
+
+
+def test_gemini_non_json_envelope_raises_fatal(app, monkeypatch):
+    # 模擬 200 回應但 body 不是合法 JSON（_call_api 內 json.loads 直接爆炸）
+    _seed_categories(app)
+    with app.app_context():
+        p = GeminiProvider(app.config)
+
+        def boom(payload):
+            raise json.JSONDecodeError("x", "y", 0)
+
+        monkeypatch.setattr(p, "_call_api", boom)
+        with pytest.raises(OcrFatalError):
+            p.recognize(b"img", "image/jpeg")

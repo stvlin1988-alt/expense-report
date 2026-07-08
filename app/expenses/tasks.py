@@ -39,29 +39,39 @@ def _run_ocr(app, expense_id, image_bytes, content_type):
         if e is None or e.status != "pending_ocr":
             return
         e.ocr_attempts += 1
-        result = recognize_with_retry(get_provider(), image_bytes, content_type, current_app.config)
-        _write_ocr_logs(e, result["attempts"])
-        outcome = result["final_outcome"]
-        if outcome == "success":
-            f = result["fields"]
-            amount, ok = coerce_amount(f.get("amount"))
-            e.summary = f.get("summary")
-            e.category_id = _valid_category_id(f.get("category_id"))
-            e.amount = amount
-            e.amount_parse_ok = ok
-            e.ocr_confidence = f.get("confidence")
-            e.ocr_is_handwritten = f.get("is_handwritten")
-            e.ocr_raw = f.get("raw")
-            e.status = "draft"
-            e.ocr_failed = False
-        elif outcome == "fatal":
-            e.status = "draft"; e.ocr_failed = True; e.amount_parse_ok = False
-            e.ocr_last_error = _last_error(result["attempts"])
-        else:  # exhausted
-            e.ocr_last_error = _last_error(result["attempts"])
-            if e.ocr_attempts >= current_app.config.get("OCR_MAX_ROUNDS", 3):
+        try:
+            result = recognize_with_retry(get_provider(), image_bytes, content_type, current_app.config)
+            _write_ocr_logs(e, result["attempts"])
+            outcome = result["final_outcome"]
+            if outcome == "success":
+                f = result["fields"]
+                amount, ok = coerce_amount(f.get("amount"))
+                e.summary = f.get("summary")
+                e.category_id = _valid_category_id(f.get("category_id"))
+                e.amount = amount
+                e.amount_parse_ok = ok
+                e.ocr_confidence = f.get("confidence")
+                e.ocr_is_handwritten = f.get("is_handwritten")
+                e.ocr_raw = f.get("raw")
+                e.status = "draft"
+                e.ocr_failed = False
+            elif outcome == "fatal":
                 e.status = "draft"; e.ocr_failed = True; e.amount_parse_ok = False
-            # 未達上限 → 維持 pending_ocr，待 reconcile_stale 重排
+                e.ocr_last_error = _last_error(result["attempts"])
+            else:  # exhausted
+                e.ocr_last_error = _last_error(result["attempts"])
+                if e.ocr_attempts >= current_app.config.get("OCR_MAX_ROUNDS", 3):
+                    e.status = "draft"; e.ocr_failed = True; e.amount_parse_ok = False
+                # 未達上限 → 維持 pending_ocr，待 reconcile_stale 重排
+        except Exception:   # 任何未預期例外都不能讓這筆卡在 pending_ocr
+            db.session.rollback()
+            e2 = db.session.get(Expense, expense_id)
+            if e2 is not None and e2.status == "pending_ocr":
+                e2.ocr_attempts += 1
+                e2.status = "draft"; e2.ocr_failed = True; e2.amount_parse_ok = False
+                e2.ocr_last_error = "unexpected"
+                db.session.commit()
+            return
         db.session.commit()
 
 

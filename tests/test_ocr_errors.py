@@ -1,3 +1,4 @@
+import http.client
 import json
 import socket
 import urllib.error
@@ -45,3 +46,13 @@ def test_jsondecode_fatal_parse():
 def test_valueerror_fatal_schema():
     e = classify_exception(ValueError("non-dict"))
     assert isinstance(e, OcrFatalError) and e.error_type == "schema"
+
+
+def test_connection_reset_retryable():
+    e = classify_exception(ConnectionResetError())
+    assert isinstance(e, OcrRetryableError) and e.error_type == "connection"
+
+
+def test_incomplete_read_retryable():
+    e = classify_exception(http.client.IncompleteRead(b""))
+    assert isinstance(e, OcrRetryableError) and e.error_type == "connection"

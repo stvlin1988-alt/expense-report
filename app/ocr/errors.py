@@ -1,3 +1,4 @@
+import http.client
 import json
 import socket
 import urllib.error
@@ -42,4 +43,6 @@ def classify_exception(exc):
         return OcrFatalError("parse", None)
     if isinstance(exc, ValueError):
         return OcrFatalError("schema", None)
+    if isinstance(exc, (http.client.IncompleteRead, ConnectionError, OSError)):
+        return OcrRetryableError("connection", None)
     return OcrFatalError("other", None)

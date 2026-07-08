@@ -39,6 +39,9 @@ class Config:
     GEMINI_TIMEOUT = int(os.environ.get("GEMINI_TIMEOUT", "30"))
     # lite 底模預設不思考；-1=動態思考(手寫/難單金額才讀得穩)，0=關閉
     GEMINI_THINKING_BUDGET = int(os.environ.get("GEMINI_THINKING_BUDGET", "-1"))
+    GEMINI_MAX_RETRIES = int(os.environ.get("GEMINI_MAX_RETRIES", "3"))
+    GEMINI_RETRY_BASE = float(os.environ.get("GEMINI_RETRY_BASE", "0.5"))
+    OCR_MAX_ROUNDS = int(os.environ.get("OCR_MAX_ROUNDS", "3"))
     # 暫存區/燈號
     OCR_STALE_SECONDS = int(os.environ.get("OCR_STALE_SECONDS", "120"))
     GREEN_THRESHOLD = float(os.environ.get("GREEN_THRESHOLD", "0.85"))

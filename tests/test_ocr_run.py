@@ -70,3 +70,19 @@ def test_exhausted_at_limit_marks_failed(app, monkeypatch):
     with app.app_context():
         e = db.session.get(Expense, eid)
         assert e.status == "draft" and e.ocr_failed is True
+
+
+def test_unexpected_exception_does_not_strand_row_in_pending(app, monkeypatch):
+    # 回歸守門：recognize_with_retry 拋出未分類例外時，這筆單不能永遠卡在 pending_ocr
+    eid = _mk(app)
+
+    def boom(*a, **k):
+        raise Exception("boom")
+
+    monkeypatch.setattr(tasks, "recognize_with_retry", boom)
+    tasks._run_ocr(app, eid, b"img", "image/jpeg")
+    with app.app_context():
+        e = db.session.get(Expense, eid)
+        assert e.status == "draft"
+        assert e.ocr_failed is True
+        assert e.status != "pending_ocr"

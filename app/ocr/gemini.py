@@ -1,4 +1,5 @@
 import base64
+import http.client
 import json
 import socket
 import urllib.error
@@ -58,7 +59,8 @@ class GeminiProvider(OCRProvider):
         }
         try:
             resp = self._call_api(payload)
-        except (urllib.error.URLError, socket.timeout, TimeoutError) as e:
+        except (urllib.error.URLError, socket.timeout, TimeoutError,
+                OSError, http.client.IncompleteRead, json.JSONDecodeError) as e:
             raise classify_exception(e) from e
         try:
             text = resp["candidates"][0]["content"]["parts"][0]["text"]
