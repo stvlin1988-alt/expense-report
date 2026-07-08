@@ -7,6 +7,7 @@ from app.extensions import db
 from app.models import Expense, OcrLog
 from app.ocr.provider import get_provider, coerce_amount
 from app.ocr.retry import recognize_with_retry
+from app.storage.r2 import get_storage
 
 logger = logging.getLogger(__name__)
 _executor = ThreadPoolExecutor(max_workers=4)
@@ -73,14 +74,29 @@ def schedule_ocr(expense_id, image_bytes, content_type):
 
 
 def reconcile_stale(user_id):
-    """暫存區列表拉取時就地收斂：逾時仍 pending_ocr → draft 空欄紅燈。"""
+    """暫存區列表拉取時就地收斂：逾時仍 pending_ocr 的單，
+    未達重排上限且原圖還在 → 從 R2 重抓再跑一輪 OCR；否則收斂成 draft+ocr_failed。"""
     cutoff = datetime.now(timezone.utc) - timedelta(
         seconds=current_app.config.get("OCR_STALE_SECONDS", 120))
+    max_rounds = current_app.config.get("OCR_MAX_ROUNDS", 3)
     stale = (Expense.query
              .filter(Expense.created_by == user_id,
                      Expense.status == "pending_ocr",
                      Expense.created_at < cutoff).all())
+    storage = get_storage()
+    changed = False
     for e in stale:
-        e.status = "draft"; e.amount_parse_ok = False
-    if stale:
+        image_bytes = None
+        if e.ocr_attempts < max_rounds and e.image_key:
+            try:
+                image_bytes = storage.get(e.image_key)
+            except Exception:
+                image_bytes = None
+        if image_bytes:
+            schedule_ocr(e.id, image_bytes, "image/jpeg")   # 跑新一輪（含重試）
+        else:
+            e.status = "draft"; e.ocr_failed = True; e.amount_parse_ok = False
+            e.ocr_last_error = e.ocr_last_error or "gave_up"
+            changed = True
+    if changed:
         db.session.commit()
