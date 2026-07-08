@@ -64,13 +64,18 @@ def _run_ocr(app, expense_id, image_bytes, content_type):
                     e.status = "draft"; e.ocr_failed = True; e.amount_parse_ok = False
                 # 未達上限 → 維持 pending_ocr，待 reconcile_stale 重排
         except Exception:   # 任何未預期例外都不能讓這筆卡在 pending_ocr
-            db.session.rollback()
-            e2 = db.session.get(Expense, expense_id)
-            if e2 is not None and e2.status == "pending_ocr":
-                e2.ocr_attempts += 1
-                e2.status = "draft"; e2.ocr_failed = True; e2.amount_parse_ok = False
-                e2.ocr_last_error = "unexpected"
-                db.session.commit()
+            logger.exception("unexpected OCR failure, converging expense_id=%s to draft/ocr_failed", expense_id)
+            try:
+                db.session.rollback()
+                e2 = db.session.get(Expense, expense_id)
+                if e2 is not None and e2.status == "pending_ocr":
+                    e2.ocr_attempts += 1
+                    e2.status = "draft"; e2.ocr_failed = True; e2.amount_parse_ok = False
+                    e2.ocr_last_error = "unexpected"
+                    db.session.commit()
+            except Exception:   # 收斂路徑本身要 best-effort，不能再讓 worker 掛掉
+                logger.exception("failed to converge stranded OCR row expense_id=%s", expense_id)
+                db.session.rollback()
             return
         db.session.commit()
 

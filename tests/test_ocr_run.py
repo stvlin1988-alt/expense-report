@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 from app.extensions import db
 from app.models import Store, User, Expense, OcrLog
@@ -86,3 +87,19 @@ def test_unexpected_exception_does_not_strand_row_in_pending(app, monkeypatch):
         assert e.status == "draft"
         assert e.ocr_failed is True
         assert e.status != "pending_ocr"
+
+
+def test_unexpected_exception_logs_error(app, monkeypatch, caplog):
+    # 防呆路徑觸發時要留下 log 訊號（原本靜默吞掉，正式環境完全看不到）
+    eid = _mk(app)
+
+    def boom(*a, **k):
+        raise Exception("boom")
+
+    monkeypatch.setattr(tasks, "recognize_with_retry", boom)
+    with caplog.at_level(logging.ERROR, logger="app.expenses.tasks"):
+        tasks._run_ocr(app, eid, b"img", "image/jpeg")
+    assert any(
+        r.levelno >= logging.ERROR and str(eid) in r.getMessage()
+        for r in caplog.records
+    )
