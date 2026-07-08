@@ -21,13 +21,26 @@ export async function renderAudit(container, identity, storeId) {
   const showPending = () => renderPending(body, sid);
   container.querySelector('#au-tab-pending').addEventListener('click', showPending);
   container.querySelector('#au-tab-summary').addEventListener('click',
-    () => renderSummary(body, sid));   // renderSummary 於 Task 10 實作
+    () => renderSummary(body, sid));
   showPending();
 }
 
-// Task 10 佔位：避免此檔獨立可運作時觸發 ReferenceError。Task 10 會取代此函式內容。
 async function renderSummary(body, sid) {
-  body.innerHTML = '<div class="ap-empty">當日總表（Task 10）</div>';
+  body.innerHTML = '載入中…';
+  const { data } = await api.auditSummary(sid);
+  const rows = (data.intervals || []).map((it) =>
+    `<tr><td>第 ${it.seq} 班${it.type === 'day' ? '（結班）' : ''}</td>
+         <td>${new Date(it.closed_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}</td>
+         <td>${it.count} 筆</td><td>${formatMoney(it.subtotal)}</td></tr>`).join('');
+  const open = data.open || { subtotal: 0, count: 0 };
+  body.innerHTML = `
+    <table class="pd-table"><thead><tr><th>區間</th><th>交班時間</th><th>筆數</th><th>小計</th></tr></thead>
+    <tbody>
+      ${rows}
+      <tr class="au-open"><td>當前未歸班</td><td>—</td><td>${open.count} 筆</td><td>${formatMoney(open.subtotal)}</td></tr>
+    </tbody>
+    <tfoot><tr><td colspan="3"><b>當日總額</b></td><td><b>${formatMoney(data.day_total)}</b></td></tr></tfoot>
+    </table>`;
 }
 
 async function renderPending(body, sid) {
@@ -48,7 +61,28 @@ async function renderPending(body, sid) {
       </tbody></table>
     </div>`).join('');
   wireRows(body, sid);
-  // 交班/結班列（Task 10 補上按鈕邏輯）
+  const bar = document.createElement('div');
+  bar.className = 'au-actionbar';
+  bar.innerHTML = `
+    <button class="modal-btn" id="au-shift" type="button">交班</button>
+    <button class="modal-btn" id="au-day" type="button">結班</button>
+    <button class="modal-btn secondary" id="au-undo" type="button">取消上一次</button>
+    <span class="pd-row-err" id="au-bar-err"></span>`;
+  body.appendChild(bar);
+  const barErr = bar.querySelector('#au-bar-err');
+  const doClose = async (type) => {
+    barErr.textContent = '';
+    const { status, data } = await api.auditHandover(type, sid);
+    barErr.textContent = status === 200
+      ? `已${type === 'day' ? '結班' : '交班'}（${data.count} 筆）` : '沒有可歸班的單據';
+  };
+  bar.querySelector('#au-shift').addEventListener('click', () => doClose('shift'));
+  bar.querySelector('#au-day').addEventListener('click', () => doClose('day'));
+  bar.querySelector('#au-undo').addEventListener('click', async () => {
+    barErr.textContent = '';
+    const { status, data } = await api.auditUndo(sid);
+    barErr.textContent = status === 200 ? `已取消，退回 ${data.reopened} 筆` : '沒有可取消的交班';
+  });
 }
 
 function rowHtml(e, tree) {
