@@ -62,6 +62,7 @@ body {
 #pd-table { width: 100%; border-collapse: collapse; min-width: 460px; }
 #pd-table th, #pd-table td { padding: 8px 8px; text-align: left; border-bottom: 1px solid #3a3a3c; white-space: nowrap; }
 .pd-row-err { color: #ff6b6b; font-size: .8rem; margin-top: 4px; white-space: normal; }
+.pd-ocr-failed { color: #ff6b6b; font-size: .8rem; margin-top: 4px; white-space: normal; }
 
 /* ---- 管理後台（手機優先；與 covert 計算機樣式區隔）---- */
 .admin-panel {

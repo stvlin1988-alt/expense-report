@@ -13,6 +13,7 @@ export const patchExpense = (id, patch) => jsonFetch(`/expenses/${id}`, {
   body: JSON.stringify(patch),
 });
 export const submitExpense = (id) => jsonFetch(`/expenses/${id}/submit`, { method: 'POST' });
+export const reocrExpense = (id) => jsonFetch(`/expenses/${id}/reocr`, { method: 'POST' });
 export const discardExpense = (id) => jsonFetch(`/expenses/${id}`, { method: 'DELETE' });
 export const noReceipt = (payload) => jsonFetch('/expenses/no-receipt', {
   method: 'POST', headers: { 'Content-Type': 'application/json' },

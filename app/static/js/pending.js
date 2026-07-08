@@ -1,7 +1,7 @@
 import { escapeHtml } from './admin_util.js';
 import { lightLabel, parseAmountInput, categoryOptionsHtml } from './expenses_util.js';
 import {
-  listPending, patchExpense, submitExpense, discardExpense, listCategories, noReceipt,
+  listPending, patchExpense, submitExpense, discardExpense, listCategories, noReceipt, reocrExpense,
 } from './expenses_api.js';
 
 const root = () => document.getElementById('modal-root');
@@ -43,7 +43,9 @@ export async function showPendingView(onBack) {
       <td>${lightLabel(e.light)}</td>
       <td>
         <button data-act="submit">送出</button><button data-act="del">丟棄</button>
+        ${e.ocr_failed ? '<button data-act="reocr">重新辨識</button>' : ''}
         <div class="pd-row-err" data-f="err"></div>
+        ${e.ocr_failed ? '<div class="pd-ocr-failed">⚠ OCR 失敗，請手動確認金額/分類</div>' : ''}
       </td>`;
     const rowErr = tr.querySelector('[data-f="err"]');
     const setErr = (t) => { rowErr.textContent = t || ''; };
@@ -77,6 +79,19 @@ export async function showPendingView(onBack) {
       if (status === 200) tr.remove();
       else setErr('丟棄失敗，請稍後再試');
     });
+    const reBtn = tr.querySelector('[data-act="reocr"]');
+    if (reBtn) {
+      reBtn.addEventListener('click', async () => {
+        setErr('');
+        const { status } = await reocrExpense(e.id);
+        if (status === 202 || status === 200) {
+          setErr('已送出重新辨識，稍後重整暫存區查看');
+          reBtn.disabled = true;
+        } else {
+          setErr('重新辨識失敗，請稍後再試');
+        }
+      });
+    }
     tbody.appendChild(tr);
   });
   if (!(data.expenses || []).length) {
