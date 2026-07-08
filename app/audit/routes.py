@@ -90,3 +90,22 @@ def edit(eid):
         e.is_modified_by_manager = True
     db.session.commit()
     return jsonify(status="ok")
+
+
+@audit_bp.post("/<int:eid>/check")
+@role_required("manager", "super_admin")
+def check(eid):
+    store_id, err = _scope_store_id()
+    if err:
+        return err
+    e, err = _load_in_scope(eid, store_id)
+    if err:
+        return err
+    if e.status != "submitted":
+        return jsonify(status="error", message="not checkable"), 409
+    e.status = "audited"
+    e.audited_by = current_user().id
+    e.audited_at = datetime.now(timezone.utc)
+    record_check(e, current_user().id)
+    db.session.commit()
+    return jsonify(status="ok")
