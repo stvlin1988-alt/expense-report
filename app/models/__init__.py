@@ -5,8 +5,10 @@ from app.models.doc_type import DocType
 from app.models.device import Device
 from app.models.fx_rate import FxRate
 from app.models.expense import Expense
+from app.models.handover import Handover
+from app.models.audit_log import AuditLog
 
 __all__ = [
     "Store", "User", "ROLES", "is_valid_pin", "Category", "DocType",
-    "Device", "FxRate", "Expense",
+    "Device", "FxRate", "Expense", "Handover", "AuditLog",
 ]

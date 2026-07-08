@@ -4,7 +4,7 @@ from app.extensions import db
 class Expense(db.Model):
     __tablename__ = "expenses"
 
-    STATUSES = ("pending_ocr", "draft", "submitted")
+    STATUSES = ("pending_ocr", "draft", "submitted", "audited")
 
     id = db.Column(db.Integer, primary_key=True)
     store_id = db.Column(db.Integer, db.ForeignKey("stores.id"), nullable=False, index=True)
@@ -31,6 +31,11 @@ class Expense(db.Model):
 
     no_receipt_reason = db.Column(db.Text, nullable=True)
     doc_type_id = db.Column(db.Integer, db.ForeignKey("doc_types.id"), nullable=True)
+
+    audited_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    audited_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    is_modified_by_manager = db.Column(db.Boolean, nullable=False, default=False)
+    handover_id = db.Column(db.Integer, db.ForeignKey("handovers.id"), nullable=True, index=True)
 
     __table_args__ = (
         db.Index("ix_expenses_store_status", "store_id", "status"),
