@@ -29,4 +29,16 @@ export const api = {
   revokeDevice: (id) => req('POST', `/admin/devices/${id}/revoke`),
   changeMyPassword: (oldp, newp) =>
     req('POST', '/admin/me/password', { old_password: oldp, new_password: newp }),
+  auditPending: (storeId) => req('GET', withStore('/audit/pending', storeId)),
+  auditEdit: (id, patch, storeId) => req('PATCH', withStore(`/audit/${id}`, storeId), patch),
+  auditCheck: (id, storeId) => req('POST', withStore(`/audit/${id}/check`, storeId)),
+  auditSummary: (storeId, before) => {
+    const p = new URLSearchParams();
+    if (storeId != null) p.set('store_id', storeId);
+    if (before) p.set('before', before);
+    const qs = p.toString();
+    return req('GET', `/audit/summary${qs ? `?${qs}` : ''}`);
+  },
+  auditHandover: (type, storeId) => req('POST', '/audit/handover', { type, store_id: storeId }),
+  auditUndo: (storeId) => req('POST', '/audit/handover/undo', { store_id: storeId }),
 };

@@ -50,6 +50,23 @@ def login_test():
     return redirect("/")
 
 
+@dev_bp.get("/login-manager")
+def login_manager():
+    if _blocked():
+        return jsonify(status="not_found"), 404
+    store = Store.query.filter_by(code="E2E").first()
+    if store is None:
+        store = Store(name="測試門市", code="E2E"); db.session.add(store); db.session.commit()
+    mgr = User.query.filter_by(name="測試主管").first()
+    if mgr is None:
+        mgr = User(name="測試主管", role="manager", store_id=store.id)
+        mgr.set_password("1234"); db.session.add(mgr); db.session.commit()
+    session["user_id"] = mgr.id
+    session.permanent = True
+    session["_last_request_at"] = int(time.time())
+    return redirect("/")
+
+
 @dev_bp.get("/sample-receipt")
 def sample_receipt():
     """回一張樣本收據(base64 data URL)，讓拍單在無相機下也能測 UI 流程。"""
