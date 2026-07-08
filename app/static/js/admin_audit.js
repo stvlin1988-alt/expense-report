@@ -50,17 +50,25 @@ async function renderPending(body, sid) {
   const catResp = await fetch('/expenses/categories').then((r) => r.json()).catch(() => ({}));
   const tree = (catResp && catResp.categories) || [];
   const groups = (data && data.groups) || [];
-  if (!groups.length) { body.innerHTML = '<div class="ap-empty">沒有待稽核單據</div>'; return; }
-  body.innerHTML = groups.map((g) => `
-    <div class="au-group">
-      <div class="au-group-head">${g.business_date}　日小計 ${formatMoney(g.subtotal)}</div>
-      <table class="pd-table"><thead><tr>
-        <th>圖</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th></th>
-      </tr></thead><tbody>
-      ${g.items.map((e) => rowHtml(e, tree)).join('')}
-      </tbody></table>
-    </div>`).join('');
-  wireRows(body, sid);
+  if (!groups.length) {
+    body.innerHTML = '<div class="ap-empty">沒有待稽核單據</div>';
+  } else {
+    body.innerHTML = groups.map((g) => `
+      <div class="au-group">
+        <div class="au-group-head">${g.business_date}　日小計 ${formatMoney(g.subtotal)}</div>
+        <table class="pd-table"><thead><tr>
+          <th>圖</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th></th>
+        </tr></thead><tbody>
+        ${g.items.map((e) => rowHtml(e, tree)).join('')}
+        </tbody></table>
+      </div>`).join('');
+    wireRows(body, sid);
+  }
+  // 交班/結班/取消：交班狀態與待稽核佇列無關，即使清空也需常駐可操作
+  body.appendChild(actionBar(sid));
+}
+
+function actionBar(sid) {
   const bar = document.createElement('div');
   bar.className = 'au-actionbar';
   bar.innerHTML = `
@@ -68,7 +76,6 @@ async function renderPending(body, sid) {
     <button class="modal-btn" id="au-day" type="button">結班</button>
     <button class="modal-btn secondary" id="au-undo" type="button">取消上一次</button>
     <span class="pd-row-err" id="au-bar-err"></span>`;
-  body.appendChild(bar);
   const barErr = bar.querySelector('#au-bar-err');
   const doClose = async (type) => {
     barErr.textContent = '';
@@ -83,6 +90,7 @@ async function renderPending(body, sid) {
     const { status, data } = await api.auditUndo(sid);
     barErr.textContent = status === 200 ? `已取消，退回 ${data.reopened} 筆` : '沒有可取消的交班';
   });
+  return bar;
 }
 
 function rowHtml(e, tree) {
