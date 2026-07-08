@@ -2,7 +2,7 @@ from decimal import Decimal, InvalidOperation
 from datetime import datetime, timezone
 from flask import request, jsonify
 from app.extensions import db
-from app.models import Expense, Store
+from app.models import Expense, Store, Handover
 from app.auth.decorators import current_user, role_required
 from app.expenses.serialize import serialize_expense
 from app.expenses.tasks import _valid_category_id
@@ -109,3 +109,44 @@ def check(eid):
     record_check(e, current_user().id)
     db.session.commit()
     return jsonify(status="ok")
+
+
+@audit_bp.post("/handover")
+@role_required("manager", "super_admin")
+def handover():
+    data = request.get_json(silent=True) or {}
+    htype = data.get("type")
+    if htype not in ("shift", "day"):
+        return jsonify(status="error", message="bad type"), 400
+    store_id, err = _scope_store_id(from_body=True)
+    if err:
+        return err
+    h = Handover(store_id=store_id, closed_at=datetime.now(timezone.utc),
+                 closed_by=current_user().id, type=htype)
+    db.session.add(h); db.session.flush()
+    count = (Expense.query
+             .filter(Expense.store_id == store_id, Expense.status == "audited",
+                     Expense.handover_id.is_(None))
+             .update({Expense.handover_id: h.id}, synchronize_session=False))
+    if count == 0:
+        db.session.rollback()
+        return jsonify(status="error", message="no audited entries to close"), 400
+    db.session.commit()
+    return jsonify(status="ok", handover_id=h.id, type=htype, count=count)
+
+
+@audit_bp.post("/handover/undo")
+@role_required("manager", "super_admin")
+def handover_undo():
+    store_id, err = _scope_store_id(from_body=True)
+    if err:
+        return err
+    last = (Handover.query.filter_by(store_id=store_id)
+            .order_by(Handover.closed_at.desc(), Handover.id.desc()).first())
+    if last is None:
+        return jsonify(status="error", message="no handover"), 400
+    reopened = (Expense.query.filter_by(handover_id=last.id)
+                .update({Expense.handover_id: None}, synchronize_session=False))
+    db.session.delete(last)
+    db.session.commit()
+    return jsonify(status="ok", reopened=reopened)
