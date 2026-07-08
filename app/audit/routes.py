@@ -2,14 +2,14 @@ from decimal import Decimal, InvalidOperation
 from datetime import datetime, timezone
 from flask import request, jsonify
 from app.extensions import db
-from app.models import Expense, Store, Handover
+from app.models import Expense, Store, Handover, User, Category
 from app.auth.decorators import current_user, role_required
-from app.expenses.serialize import serialize_expense
 from app.expenses.tasks import _valid_category_id
 from app.storage.r2 import get_storage
 from app.audit import audit_bp
 from app.audit.log import snapshot, log_edit_if_changed, record_check
 from app.audit.service import compute_summary
+from app.audit.serialize import serialize_audit_item
 
 
 def _scope_store_id(from_body=False):
@@ -50,11 +50,20 @@ def pending():
     for bd in sorted(groups):
         items = groups[bd]
         subtotal = sum(float(x.amount) for x in items if x.amount is not None)
+        names, cats = _audit_maps(items)
         out.append({
             "business_date": bd, "subtotal": subtotal,
-            "items": [serialize_expense(x, storage) for x in items],
+            "items": [serialize_audit_item(x, storage, names, cats) for x in items],
         })
     return jsonify(status="ok", groups=out)
+
+
+def _audit_maps(expenses):
+    uids = {e.audited_by for e in expenses if e.audited_by}
+    cids = {e.category_id for e in expenses if e.category_id}
+    names = {u.id: u.name for u in User.query.filter(User.id.in_(uids)).all()} if uids else {}
+    cats = {c.id: c.name for c in Category.query.filter(Category.id.in_(cids)).all()} if cids else {}
+    return names, cats
 
 
 def _load_in_scope(eid, store_id):
@@ -170,3 +179,39 @@ def summary():
             return jsonify(status="error", message="before must be a day-close"), 400
     data = compute_summary(store_id, before_id)
     return jsonify(status="ok", **data)
+
+
+@audit_bp.get("/handover/<int:hid>/items")
+@role_required("manager", "super_admin")
+def handover_items(hid):
+    store_id, err = _scope_store_id()
+    if err:
+        return err
+    h = db.session.get(Handover, hid)
+    if h is None:
+        return jsonify(status="error", message="not found"), 404
+    if h.store_id != store_id:
+        return jsonify(status="error", message="forbidden"), 403
+    rows = (Expense.query
+            .filter_by(store_id=store_id, handover_id=hid)
+            .order_by(Expense.submitted_at.asc(), Expense.created_at.asc()).all())
+    storage = get_storage()
+    names, cats = _audit_maps(rows)
+    return jsonify(status="ok",
+                   items=[serialize_audit_item(e, storage, names, cats) for e in rows])
+
+
+@audit_bp.get("/open-items")
+@role_required("manager", "super_admin")
+def open_items():
+    store_id, err = _scope_store_id()
+    if err:
+        return err
+    rows = (Expense.query
+            .filter(Expense.store_id == store_id, Expense.status == "audited",
+                    Expense.handover_id.is_(None))
+            .order_by(Expense.audited_at.asc()).all())
+    storage = get_storage()
+    names, cats = _audit_maps(rows)
+    return jsonify(status="ok",
+                   items=[serialize_audit_item(e, storage, names, cats) for e in rows])
