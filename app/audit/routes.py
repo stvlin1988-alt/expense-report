@@ -160,5 +160,13 @@ def summary():
     if err:
         return err
     before_id = request.args.get("before", type=int)
+    if before_id is not None:
+        end = db.session.get(Handover, before_id)
+        if end is None:
+            return jsonify(status="error", message="not found"), 404
+        if end.store_id != store_id:
+            return jsonify(status="error", message="forbidden"), 403
+        if end.type != "day":
+            return jsonify(status="error", message="before must be a day-close"), 400
     data = compute_summary(store_id, before_id)
     return jsonify(status="ok", **data)
