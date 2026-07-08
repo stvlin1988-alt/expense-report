@@ -4,8 +4,9 @@ from datetime import datetime, timezone, timedelta
 
 from flask import current_app
 from app.extensions import db
-from app.models import Expense
+from app.models import Expense, OcrLog
 from app.ocr.provider import get_provider, coerce_amount
+from app.ocr.retry import recognize_with_retry
 
 logger = logging.getLogger(__name__)
 _executor = ThreadPoolExecutor(max_workers=4)
@@ -18,27 +19,48 @@ def _valid_category_id(cid):
     return cid if db.session.get(Category, cid) is not None else None
 
 
+def _last_error(attempts):
+    return attempts[-1]["error_type"] if attempts else None
+
+
+def _write_ocr_logs(expense, attempts):
+    now = datetime.now(timezone.utc)
+    for a in attempts:
+        db.session.add(OcrLog(
+            expense_id=expense.id, store_id=expense.store_id,
+            attempt=a["attempt"], outcome=a["outcome"], error_type=a["error_type"],
+            http_status=a["http_status"], duration_ms=a["duration_ms"], ts=now))
+
+
 def _run_ocr(app, expense_id, image_bytes, content_type):
     with app.app_context():
-        try:
-            result = get_provider().recognize(image_bytes, content_type)
-        except Exception as e:
-            logger.warning("OCR run failed: %s", e); result = None
         e = db.session.get(Expense, expense_id)
         if e is None or e.status != "pending_ocr":
             return
-        if not result:
-            e.status = "draft"; e.amount_parse_ok = False
-        else:
-            amount, ok = coerce_amount(result.get("amount"))
-            e.summary = result.get("summary")
-            e.category_id = _valid_category_id(result.get("category_id"))
+        e.ocr_attempts += 1
+        result = recognize_with_retry(get_provider(), image_bytes, content_type, current_app.config)
+        _write_ocr_logs(e, result["attempts"])
+        outcome = result["final_outcome"]
+        if outcome == "success":
+            f = result["fields"]
+            amount, ok = coerce_amount(f.get("amount"))
+            e.summary = f.get("summary")
+            e.category_id = _valid_category_id(f.get("category_id"))
             e.amount = amount
             e.amount_parse_ok = ok
-            e.ocr_confidence = result.get("confidence")
-            e.ocr_is_handwritten = result.get("is_handwritten")
-            e.ocr_raw = result.get("raw")
+            e.ocr_confidence = f.get("confidence")
+            e.ocr_is_handwritten = f.get("is_handwritten")
+            e.ocr_raw = f.get("raw")
             e.status = "draft"
+            e.ocr_failed = False
+        elif outcome == "fatal":
+            e.status = "draft"; e.ocr_failed = True; e.amount_parse_ok = False
+            e.ocr_last_error = _last_error(result["attempts"])
+        else:  # exhausted
+            e.ocr_last_error = _last_error(result["attempts"])
+            if e.ocr_attempts >= current_app.config.get("OCR_MAX_ROUNDS", 3):
+                e.status = "draft"; e.ocr_failed = True; e.amount_parse_ok = False
+            # 未達上限 → 維持 pending_ocr，待 reconcile_stale 重排
         db.session.commit()
 
 
