@@ -7,6 +7,7 @@ from flask import request, jsonify, current_app
 from app.extensions import db
 from app.models import Expense, Category
 from app.auth.decorators import current_user
+from app.audit.log import snapshot, log_edit_if_changed
 from app.images.image_utils import process_upload_image_async
 from app.storage.r2 import get_storage
 from app.expenses import expense_bp
@@ -99,6 +100,7 @@ def edit(eid):
     if e.status != "draft":
         return jsonify(status="error", message="not editable"), 409
     data = request.get_json(silent=True) or {}
+    before = snapshot(e)
     if "summary" in data:
         e.summary = data["summary"]
     if "category_id" in data:
@@ -111,6 +113,7 @@ def edit(eid):
         except (InvalidOperation, ValueError):
             e.amount = None; e.amount_parse_ok = False
         e.is_modified_by_user = True
+    log_edit_if_changed(e, user.id, before)
     db.session.commit()
     return jsonify(status="ok", expense=serialize_expense(e, get_storage()))
 
