@@ -16,6 +16,8 @@ def serialize_expense(e, storage, with_main=False):
         "is_modified_by_user": e.is_modified_by_user,
         "created_at": e.created_at.isoformat() if e.created_at else None,
         "thumb_url": storage.presigned_url(e.thumb_key) if e.thumb_key else None,
+        "ocr_failed": e.ocr_failed,
+        "ocr_last_error": e.ocr_last_error,
     }
     if with_main:
         d["image_url"] = storage.presigned_url(e.image_key) if e.image_key else None

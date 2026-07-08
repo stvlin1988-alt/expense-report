@@ -158,6 +158,33 @@ def discard(eid):
     return jsonify(status="ok")
 
 
+@expense_bp.post("/<int:eid>/reocr")
+def reocr(eid):
+    user = current_user()
+    if user is None:
+        return jsonify(status="error", message="unauthenticated"), 401
+    e, err = _load_owned(eid, user)
+    if err:
+        return err
+    if e.status != "draft" or not e.ocr_failed:
+        return jsonify(status="error", message="not re-ocr-able"), 409
+    if not e.image_key:
+        return jsonify(status="error", message="no image"), 400
+    try:
+        image_bytes = get_storage().get(e.image_key)
+    except Exception:
+        image_bytes = None
+    if not image_bytes:
+        return jsonify(status="error", message="image unavailable"), 400
+    e.status = "pending_ocr"
+    e.ocr_failed = False
+    e.ocr_attempts = 0
+    e.ocr_last_error = None
+    db.session.commit()
+    schedule_ocr(e.id, image_bytes, "image/jpeg")
+    return jsonify(status="ok"), 202
+
+
 @expense_bp.post("/no-receipt")
 def no_receipt():
     user = current_user()
