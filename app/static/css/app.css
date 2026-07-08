@@ -128,3 +128,34 @@ body {
 .ap-rowbtns .ap-btn { padding: 8px 12px; font-size: 14px; min-height: 38px; }
 .ap-face-status { font-size: 14px; }
 .ap-video { width: 100%; max-width: 320px; border-radius: 8px; margin-top: 8px; }
+
+/* ---- 稽核（待稽核 / 當日總表；沿用 .ap-* 淺色管理後台主題）---- */
+.audit-sub { display: flex; gap: 8px; margin-bottom: 12px; }
+.audit-sub .ap-tab { background: #fff; border: 1px solid #e0e0e0; }
+.audit-sub .ap-tab.active { background: #007aff; border-color: #007aff; }
+/* class 選擇器（.pd-table）：暫存區 modal 用 #pd-table（深色 ID），稽核用 class（淺色），互不影響 */
+.pd-table {
+  width: 100%; border-collapse: collapse; min-width: 460px;
+  background: #fff; border-radius: 10px; overflow: hidden;
+}
+.pd-table th, .pd-table td {
+  padding: 12px 12px; text-align: left; border-bottom: 1px solid #eee;
+  font-size: 15px; white-space: nowrap;
+}
+.pd-table th { background: #fafafa; color: #666; font-weight: 500; }
+.au-group { margin-bottom: 16px; }
+.au-group-head {
+  padding: 8px 4px; margin-bottom: 6px; font-weight: 600; color: #444;
+  border-bottom: 2px solid #e0e0e0;
+}
+.au-actionbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  margin-top: 16px; padding-top: 16px; border-top: 1px solid #e0e0e0;
+}
+.au-actionbar .modal-btn {
+  width: auto; display: inline-block; min-height: 44px; padding: 10px 18px;
+  margin-bottom: 0;
+}
+.au-subtotal { font-size: 16px; font-weight: 600; color: #007aff; }
+.au-open { background: #eef6ff; }
+.au-open td { font-weight: 600; }

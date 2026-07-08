@@ -65,16 +65,27 @@ async function renderPending(body, sid) {
     wireRows(body, sid);
   }
   // 交班/結班/取消：交班狀態與待稽核佇列無關，即使清空也需常駐可操作
-  body.appendChild(actionBar(sid));
+  body.appendChild(actionBar(sid, body));
 }
 
-function actionBar(sid) {
+// 讀 auditSummary 的 open bucket（已打勾、尚未歸班）寫入 action bar 的即時小計，
+// 不重繪整個待稽核列表 → 不會蓋掉其他列正在編輯中的金額/分類。
+async function refreshSubtotal(body, sid) {
+  const el = body.querySelector('#au-subtotal');
+  if (!el) return;
+  const { data } = await api.auditSummary(sid);
+  const open = (data && data.open) || { subtotal: 0, count: 0 };
+  el.textContent = `當前班即時小計 ${formatMoney(open.subtotal)}（${open.count} 筆）`;
+}
+
+function actionBar(sid, body) {
   const bar = document.createElement('div');
   bar.className = 'au-actionbar';
   bar.innerHTML = `
     <button class="modal-btn" id="au-shift" type="button">交班</button>
     <button class="modal-btn" id="au-day" type="button">結班</button>
     <button class="modal-btn secondary" id="au-undo" type="button">取消上一次</button>
+    <span class="au-subtotal" id="au-subtotal"></span>
     <span class="pd-row-err" id="au-bar-err"></span>`;
   const barErr = bar.querySelector('#au-bar-err');
   const doClose = async (type) => {
@@ -82,6 +93,7 @@ function actionBar(sid) {
     const { status, data } = await api.auditHandover(type, sid);
     barErr.textContent = status === 200
       ? `已${type === 'day' ? '結班' : '交班'}（${data.count} 筆）` : '沒有可歸班的單據';
+    if (status === 200) refreshSubtotal(body, sid);
   };
   bar.querySelector('#au-shift').addEventListener('click', () => doClose('shift'));
   bar.querySelector('#au-day').addEventListener('click', () => doClose('day'));
@@ -89,7 +101,11 @@ function actionBar(sid) {
     barErr.textContent = '';
     const { status, data } = await api.auditUndo(sid);
     barErr.textContent = status === 200 ? `已取消，退回 ${data.reopened} 筆` : '沒有可取消的交班';
+    if (status === 200) refreshSubtotal(body, sid);
   });
+  // action bar 一建立就顯示目前的即時小計（body 稍後由呼叫端 append，
+  // fetch 屬非同步、resolve 時 bar 已在 DOM 內）
+  refreshSubtotal(body, sid);
   return bar;
 }
 
@@ -127,7 +143,7 @@ function wireRows(body, sid) {
         const editRes = await api.auditEdit(id, { amount: parsed.value, category_id: categoryId }, sid);
         if (editRes.status !== 200) { err.textContent = '金額/分類儲存失敗'; return; }
         const { status } = await api.auditCheck(id, sid);
-        if (status === 200) tr.remove(); else err.textContent = '打勾失敗';
+        if (status === 200) { tr.remove(); refreshSubtotal(body, sid); } else err.textContent = '打勾失敗';
       } catch { err.textContent = '打勾失敗'; }
     });
   });
