@@ -46,7 +46,7 @@ export async function showPendingView(onBack) {
       <td><input value="${e.amount ?? ''}" inputmode="decimal" data-f="amount" style="width:80px"></td>
       <td>${lightLabel(e.light)}</td>
       <td>
-        <button data-act="submit">送出</button><button data-act="del">丟棄</button>
+        ${e.status === 'pending_ocr' ? '' : '<button data-act="submit">送出</button>'}<button data-act="del">丟棄</button>
         ${e.ocr_failed ? '<button data-act="reocr">重新辨識</button>' : ''}
         <div class="pd-row-err" data-f="err"></div>
         ${e.ocr_failed ? '<div class="pd-ocr-failed">⚠ OCR 失敗，請手動確認金額/分類</div>' : ''}
@@ -66,17 +66,20 @@ export async function showPendingView(onBack) {
         setErr('分類儲存失敗，送出前會再試一次');
       }
     });
-    tr.querySelector('[data-act="submit"]').addEventListener('click', async () => {
-      setErr('');
-      const summary = tr.querySelector('[data-f="summary"]').value;
-      const parsed = parseAmountInput(tr.querySelector('[data-f="amount"]').value);
-      if (!parsed.valid) { setErr('金額格式不正確，請重新輸入'); return; }
-      const categoryId = catSelect.value === '' ? null : Number(catSelect.value);
-      await patchExpense(e.id, { summary, amount: parsed.value, category_id: categoryId });
-      const { status } = await submitExpense(e.id);
-      if (status === 200) tr.remove();
-      else setErr('送出失敗，請稍後再試');
-    });
+    const submitBtn = tr.querySelector('[data-act="submit"]');
+    if (submitBtn) {
+      submitBtn.addEventListener('click', async () => {
+        setErr('');
+        const summary = tr.querySelector('[data-f="summary"]').value;
+        const parsed = parseAmountInput(tr.querySelector('[data-f="amount"]').value);
+        if (!parsed.valid) { setErr('金額格式不正確，請重新輸入'); return; }
+        const categoryId = catSelect.value === '' ? null : Number(catSelect.value);
+        await patchExpense(e.id, { summary, amount: parsed.value, category_id: categoryId });
+        const { status } = await submitExpense(e.id);
+        if (status === 200) tr.remove();
+        else setErr('送出失敗，請稍後再試');
+      });
+    }
     tr.querySelector('[data-act="del"]').addEventListener('click', async () => {
       setErr('');
       const { status } = await discardExpense(e.id);
