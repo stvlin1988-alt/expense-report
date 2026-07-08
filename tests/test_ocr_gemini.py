@@ -1,6 +1,11 @@
 import json
+import urllib.error
+
+import pytest
+
 from app.extensions import db
 from app.models import Category
+from app.ocr.errors import OcrFatalError, OcrRetryableError
 from app.ocr.gemini import GeminiProvider
 
 
@@ -51,21 +56,34 @@ def test_gemini_payload_enables_thinking(app, monkeypatch):
         assert tc["thinkingBudget"] == -1
 
 
-def test_gemini_bad_json_returns_empty_result(app, monkeypatch):
+def test_gemini_bad_json_raises_fatal(app, monkeypatch):
     _seed_categories(app)
     with app.app_context():
         p = GeminiProvider(app.config)
         monkeypatch.setattr(p, "_call_api", lambda payload: {"candidates": [{"content": {"parts": [{"text": "非JSON"}]}}]})
-        r = p.recognize(b"img", "image/jpeg")
-        assert r["summary"] is None and r["amount"] is None
-        assert r["confidence"] is None
+        with pytest.raises(OcrFatalError) as exc_info:
+            p.recognize(b"img", "image/jpeg")
+        assert exc_info.value.error_type == "parse"
 
 
-def test_gemini_non_dict_json_returns_empty_result(app, monkeypatch):
+def test_gemini_non_dict_raises_fatal(app, monkeypatch):
     _seed_categories(app)
     with app.app_context():
         p = GeminiProvider(app.config)
         monkeypatch.setattr(p, "_call_api", lambda payload: {"candidates": [{"content": {"parts": [{"text": "null"}]}}]})
-        r = p.recognize(b"img", "image/jpeg")  # valid JSON but not a dict → must not raise
-        assert r["summary"] is None and r["amount"] is None
-        assert r["confidence"] is None
+        with pytest.raises(OcrFatalError) as exc_info:
+            p.recognize(b"img", "image/jpeg")  # valid JSON but not a dict → must raise
+        assert exc_info.value.error_type == "schema"
+
+
+def test_gemini_http_429_raises_retryable(app, monkeypatch):
+    _seed_categories(app)
+    with app.app_context():
+        p = GeminiProvider(app.config)
+
+        def boom(payload):
+            raise urllib.error.HTTPError("u", 429, "rate", {}, None)
+
+        monkeypatch.setattr(p, "_call_api", boom)
+        with pytest.raises(OcrRetryableError):
+            p.recognize(b"img", "image/jpeg")

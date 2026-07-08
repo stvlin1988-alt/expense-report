@@ -1,13 +1,14 @@
 import base64
 import json
-import logging
+import socket
+import urllib.error
 import urllib.request
 
 from app.models import Category
 from app.ocr.provider import OCRProvider
 from app.ocr.prompt import build_prompt, build_response_schema
+from app.ocr.errors import classify_exception
 
-logger = logging.getLogger(__name__)
 _ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
 
 
@@ -55,17 +56,17 @@ class GeminiProvider(OCRProvider):
                 "thinkingConfig": {"thinkingBudget": self.thinking_budget},
             },
         }
-        empty = {"summary": None, "category_id": None, "amount": None,
-                 "confidence": None, "is_handwritten": None, "raw": None}
         try:
             resp = self._call_api(payload)
+        except (urllib.error.URLError, socket.timeout, TimeoutError) as e:
+            raise classify_exception(e) from e
+        try:
             text = resp["candidates"][0]["content"]["parts"][0]["text"]
             obj = json.loads(text)
             if not isinstance(obj, dict):
                 raise ValueError("non-dict response")
-        except Exception as e:
-            logger.warning("Gemini recognize failed: %s", e)
-            return empty
+        except (KeyError, IndexError, TypeError, json.JSONDecodeError, ValueError) as e:
+            raise classify_exception(e) from e
         return {
             "summary": obj.get("summary"),
             "category_id": obj.get("category_id"),
