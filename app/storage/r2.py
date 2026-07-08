@@ -18,6 +18,10 @@ class MockStorage:
     def delete(self, key):
         self.objects.pop(key, None)
 
+    def get(self, key):
+        obj = self.objects.get(key)
+        return obj["data"] if obj else None
+
 
 class R2Storage:
     def __init__(self, cfg):
@@ -47,6 +51,10 @@ class R2Storage:
 
     def delete(self, key):
         self._client.delete_object(Bucket=self.bucket, Key=key)
+
+    def get(self, key):
+        resp = self._client.get_object(Bucket=self.bucket, Key=key)
+        return resp["Body"].read()
 
 
 _mock_singleton = None
