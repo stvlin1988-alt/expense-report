@@ -114,15 +114,16 @@ def reconcile_stale(user_id):
     changed = False
     for e in stale:
         scheduled_at = _aware_utc(e.ocr_scheduled_at)
-        eligible = (e.ocr_attempts < max_rounds and e.image_key
-                    and (scheduled_at is None or scheduled_at < throttle_cutoff))
-        if not eligible:
-            if scheduled_at is not None and scheduled_at >= throttle_cutoff:
-                continue   # 節流：近期已排過一輪，交給該輪自然收斂，不重排
+        # 1) 收斂條件優先於節流：達上限或無圖，即使剛排程也要收斂
+        if e.ocr_attempts >= max_rounds or not e.image_key:
             e.status = "draft"; e.ocr_failed = True; e.amount_parse_ok = False
             e.ocr_last_error = e.ocr_last_error or "gave_up"
             changed = True
             continue
+        # 2) 節流：近期已排過一輪，交給該輪自然收斂，不重排
+        if scheduled_at is not None and scheduled_at >= throttle_cutoff:
+            continue
+        # 3) 其餘情況：未達上限、有圖、節流窗外 → 重抓再排一輪
         image_bytes = None
         try:
             image_bytes = storage.get(e.image_key)

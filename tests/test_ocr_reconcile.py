@@ -90,6 +90,32 @@ def test_old_scheduled_is_resched(app, monkeypatch):
     assert len(called) == 1
 
 
+def test_at_limit_converges_even_if_recently_scheduled(app, monkeypatch):
+    app.config["OCR_MAX_ROUNDS"] = 3
+    app.config["OCR_RESCHEDULE_THROTTLE_SECONDS"] = 120
+    just_now = datetime.now(timezone.utc)
+    uid, eid = _stale_expense(app, attempts=3, ocr_scheduled_at=just_now)
+    with app.app_context():
+        get_storage().put("k1", b"img", "image/jpeg")
+    monkeypatch.setattr(tasks, "schedule_ocr", lambda *a, **k: (_ for _ in ()).throw(AssertionError("不該重排")))
+    with app.app_context():
+        tasks.reconcile_stale(uid)
+        e = db.session.get(Expense, eid)
+        assert e.status == "draft" and e.ocr_failed is True   # 達上限 → 即使剛排程也收斂
+
+
+def test_no_image_converges_even_if_recently_scheduled(app, monkeypatch):
+    app.config["OCR_MAX_ROUNDS"] = 3
+    app.config["OCR_RESCHEDULE_THROTTLE_SECONDS"] = 120
+    just_now = datetime.now(timezone.utc)
+    uid, eid = _stale_expense(app, attempts=0, image_key=None, ocr_scheduled_at=just_now)
+    monkeypatch.setattr(tasks, "schedule_ocr", lambda *a, **k: (_ for _ in ()).throw(AssertionError("不該重排")))
+    with app.app_context():
+        tasks.reconcile_stale(uid)
+        e = db.session.get(Expense, eid)
+        assert e.status == "draft" and e.ocr_failed is True   # 無圖 → 即使剛排程也收斂
+
+
 def test_null_scheduled_is_resched(app, monkeypatch):
     app.config["OCR_MAX_ROUNDS"] = 3
     app.config["OCR_RESCHEDULE_THROTTLE_SECONDS"] = 120
