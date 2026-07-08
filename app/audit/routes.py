@@ -9,6 +9,7 @@ from app.expenses.tasks import _valid_category_id
 from app.storage.r2 import get_storage
 from app.audit import audit_bp
 from app.audit.log import snapshot, log_edit_if_changed, record_check
+from app.audit.service import compute_summary
 
 
 def _scope_store_id(from_body=False):
@@ -150,3 +151,14 @@ def handover_undo():
     db.session.delete(last)
     db.session.commit()
     return jsonify(status="ok", reopened=reopened)
+
+
+@audit_bp.get("/summary")
+@role_required("manager", "super_admin")
+def summary():
+    store_id, err = _scope_store_id()
+    if err:
+        return err
+    before_id = request.args.get("before", type=int)
+    data = compute_summary(store_id, before_id)
+    return jsonify(status="ok", **data)
