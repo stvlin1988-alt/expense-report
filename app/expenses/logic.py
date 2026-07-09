@@ -25,6 +25,13 @@ def compute_business_date(created_at_utc: datetime) -> date:
     return local.date()
 
 
+def format_doc_no(business_date, day_seq):
+    """單號＝營業日+當日店內序號，MMDD-NN（供對帳對應）。未歸營業日或未編號→None。"""
+    if business_date is None or day_seq is None:
+        return None
+    return f"{business_date:%m%d}-{day_seq:02d}"
+
+
 def traffic_light(is_handwritten, confidence, amount_parse_ok,
                   is_modified, green_threshold: float = 0.85) -> str:
     """燈號＝金額可信度 / 要不要人工把關。

@@ -17,6 +17,13 @@ export async function showAdminPanel(identity) {
     if (status === 200 && data.status === 'ok') state.stores = data.stores;
   } catch (e) { /* 靜默：分頁自行處理空清單 */ }
 
+  // super_admin 稽核/查詢一律看單一店（不做跨店彙整）：預設上次選的店，否則第一家。
+  if (isSuper) {
+    const saved = parseInt(localStorage.getItem('admin_store_id'), 10);
+    const validSaved = state.stores.find((s) => s.id === saved);
+    state.storeId = validSaved ? saved : (state.stores[0] ? state.stores[0].id : null);
+  }
+
   const tabs = [
     { key: 'audit', label: '稽核' },
     { key: 'logs', label: '操作記錄' },
@@ -29,8 +36,8 @@ export async function showAdminPanel(identity) {
   function shellHtml() {
     const storeOpts = isSuper
       ? `<select id="ap-store" class="ap-select">
-           <option value="">全部店</option>
-           ${state.stores.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('')}
+           <option value=""${state.storeId == null ? ' selected' : ''}>全部店</option>
+           ${state.stores.map((s) => `<option value="${s.id}"${s.id === state.storeId ? ' selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
          </select>`
       : '';
     const tabBtns = tabs.map((t) =>
@@ -185,6 +192,8 @@ export async function showAdminPanel(identity) {
     const sel = document.getElementById('ap-store');
     if (sel) sel.addEventListener('change', () => {
       state.storeId = sel.value ? parseInt(sel.value, 10) : null;
+      if (state.storeId != null) localStorage.setItem('admin_store_id', String(state.storeId));
+      else localStorage.removeItem('admin_store_id');
       renderActiveTab();
     });
     root().querySelectorAll('.ap-tab').forEach((btn) => {

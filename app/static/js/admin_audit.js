@@ -39,6 +39,7 @@ function shiftLabel(sh) {
 function summaryRowHtml(e) {
   return `
     <tr data-eid="${e.id}">
+      <td class="au-docno">${escapeHtml(e.doc_no || `#${e.id}`)}</td>
       <td class="au-time">${formatDateTimeTW(e.created_at)}</td>
       <td>${escapeHtml(e.created_by_name || '')}</td>
       <td>${e.thumb_url ? `<img src="${e.thumb_url}" width="40" class="au-thumb" data-zoom="${e.image_url || ''}">` : '—'}</td>
@@ -89,7 +90,7 @@ async function renderSummary(body, sid, dateStr) {
       <div class="au-group-head">${shiftLabel(sh)}　小計 ${formatMoney(sh.subtotal)}（${sh.count} 筆）</div>
       <div class="pd-table-wrap">
       <table class="pd-table"><thead><tr>
-        <th>建立</th><th>建立者</th><th>圖</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th>狀態</th><th>稽核者</th><th>軌跡</th>
+        <th>單號</th><th>建立</th><th>建立者</th><th>圖</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th>狀態</th><th>稽核者</th><th>軌跡</th>
       </tr></thead><tbody>${sh.items.map(summaryRowHtml).join('')}</tbody></table>
       </div>
     </div>`).join('');
@@ -103,7 +104,7 @@ async function renderSummary(body, sid, dateStr) {
   });
   body.querySelectorAll('.au-thumb').forEach((img) =>
     img.addEventListener('click', () => openImageLightbox(img.dataset.zoom)));
-  wireTrails(body, 10);
+  wireTrails(body, 11);
 }
 
 async function renderPending(body, sid) {
@@ -120,13 +121,13 @@ async function renderPending(body, sid) {
       <div class="au-group">
         <div class="au-group-head">${g.business_date}　日小計 ${formatMoney(g.subtotal)}</div>
         <table class="pd-table"><thead><tr>
-          <th>圖</th><th>建立</th><th>建立者</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th></th>
+          <th>單號</th><th>圖</th><th>建立</th><th>建立者</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th></th>
         </tr></thead><tbody>
         ${g.items.map((e) => rowHtml(e, tree)).join('')}
         </tbody></table>
       </div>`).join('');
     wireRows(body, sid);
-    wireTrails(body, 8);
+    wireTrails(body, 9);
   }
   // 交班/結班/取消：交班狀態與待稽核佇列無關，即使清空也需常駐可操作
   body.appendChild(actionBar(sid, body));
@@ -178,6 +179,7 @@ function rowHtml(e, tree) {
     ? `<img src="${e.thumb_url}" loading="lazy" width="48" class="au-thumb" data-zoom="${e.image_url || ''}">`
     : '—';
   return `<tr data-id="${e.id}">
+    <td class="au-docno">${escapeHtml(e.doc_no || `#${e.id}`)}</td>
     <td>${thumb}</td>
     <td class="au-time">${formatDateTimeTW(e.created_at)}</td>
     <td>${escapeHtml(e.created_by_name || '')}</td>

@@ -5,7 +5,7 @@ from app.extensions import db
 from app.models import Expense, Store, Handover, User, Category, AuditLog
 from app.auth.decorators import current_user, role_required
 from app.expenses.tasks import _valid_category_id
-from app.expenses.logic import iso_utc
+from app.expenses.logic import iso_utc, format_doc_no
 from app.storage.r2 import get_storage
 from app.audit import audit_bp
 from app.audit.log import snapshot, log_edit_if_changed, record_check
@@ -331,6 +331,7 @@ def audit_logs():
     uids = {lg.actor_user_id for lg, _ in rows}
     names = {u.id: u.name for u in User.query.filter(User.id.in_(uids)).all()} if uids else {}
     items = [{"expense_id": lg.expense_id, "summary": exp.summary,
+              "doc_no": format_doc_no(exp.business_date, exp.day_seq),
               "actor_name": names.get(lg.actor_user_id),
               "ts": iso_utc(lg.ts), "action": lg.action}
              for lg, exp in rows]

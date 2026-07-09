@@ -1,5 +1,5 @@
 from flask import current_app
-from app.expenses.logic import traffic_light, iso_utc
+from app.expenses.logic import traffic_light, iso_utc, format_doc_no
 
 
 def serialize_expense(e, storage, with_main=False, name_by_id=None):
@@ -15,6 +15,7 @@ def serialize_expense(e, storage, with_main=False, name_by_id=None):
         "light": light,
         "is_modified_by_user": e.is_modified_by_user,
         "created_at": iso_utc(e.created_at),
+        "doc_no": format_doc_no(e.business_date, e.day_seq),
         "created_by_name": name_by_id.get(e.created_by) if name_by_id else None,
         "last_modified_by_name": name_by_id.get(e.last_modified_by) if name_by_id else None,
         "last_modified_at": iso_utc(e.last_modified_at),

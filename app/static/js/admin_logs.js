@@ -46,7 +46,7 @@ export async function renderLogs(container, identity, storeId) {
       ? items.map((i) => `<tr>
           <td class="au-time">${formatDateTimeTW(i.ts)}</td>
           <td>${escapeHtml(i.actor_name || '')}</td>
-          <td>#${i.expense_id}</td>
+          <td>${escapeHtml(i.doc_no || `#${i.expense_id}`)}</td>
           <td>${escapeHtml(i.summary || '')}</td>
           <td>${action_label(i.action)}</td>
         </tr>`).join('')

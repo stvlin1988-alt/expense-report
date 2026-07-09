@@ -12,6 +12,7 @@ class Expense(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), nullable=False)
     submitted_at = db.Column(db.DateTime(timezone=True), nullable=True)
     business_date = db.Column(db.Date, nullable=True)
+    day_seq = db.Column(db.Integer, nullable=True)  # 當日店內序號，送出時指派；單號=MMDD-NN
 
     summary = db.Column(db.Text, nullable=True)
     category_id = db.Column(db.Integer, db.ForeignKey("categories.id"), nullable=True)
