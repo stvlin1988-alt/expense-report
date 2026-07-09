@@ -19,3 +19,4 @@ export const noReceipt = (payload) => jsonFetch('/expenses/no-receipt', {
   method: 'POST', headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify(payload),
 });
+export const getExpenseLogs = (id) => jsonFetch(`/expenses/${id}/logs`);

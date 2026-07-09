@@ -1,10 +1,10 @@
 import { escapeHtml } from './admin_util.js';
 import { lightLabel, parseAmountInput, categoryOptionsHtml } from './expenses_util.js';
-import { formatDateTimeTW } from './audit_util.js';
+import { formatDateTimeTW, renderTrailRows } from './audit_util.js';
 import { Camera } from './camera.js';
 import { openImageLightbox } from './lightbox.js';
 import {
-  listPending, patchExpense, submitExpense, discardExpense, listCategories, noReceipt, reocrExpense,
+  listPending, patchExpense, submitExpense, discardExpense, listCategories, noReceipt, reocrExpense, getExpenseLogs,
 } from './expenses_api.js';
 
 const root = () => document.getElementById('modal-root');
@@ -19,7 +19,7 @@ export async function showPendingView(onBack) {
       <div id="pd-msg" class="modal-msg"></div>
       <div class="pd-table-wrap">
         <table id="pd-table"><thead><tr>
-          <th>圖</th><th>建立</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th></th>
+          <th>圖</th><th>建立</th><th>建立者</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th></th>
         </tr></thead><tbody></tbody></table>
       </div>
       <button class="modal-btn secondary" id="pd-back" type="button">返回</button>
@@ -43,6 +43,7 @@ export async function showPendingView(onBack) {
     tr.innerHTML = `
       <td>${thumb}</td>
       <td class="au-time">${formatDateTimeTW(e.created_at)}</td>
+      <td>${escapeHtml(e.created_by_name || '')}</td>
       <td>${e.status === 'pending_ocr'
         ? '<span class="pd-ocring">🕓 辨識中…（稍後按重整）</span>'
         : `<input value="${escapeHtml(e.summary || '')}" data-f="summary">`}</td>
@@ -52,6 +53,11 @@ export async function showPendingView(onBack) {
       <td>
         ${e.status === 'pending_ocr' ? '' : '<button data-act="submit">送出</button>'}<button data-act="del">丟棄</button>
         ${e.ocr_failed ? '<button data-act="reocr">重新辨識</button>' : ''}
+        <button data-act="trail" type="button">軌跡</button>
+        ${e.last_modified_at
+          ? `<div class="pd-lastmod">最後修改：${escapeHtml(e.last_modified_by_name || '')}（${formatDateTimeTW(e.last_modified_at)}）</div>`
+          : ''}
+        <div class="pd-trail" data-f="trail" hidden></div>
         <div class="pd-row-err" data-f="err"></div>
         ${e.ocr_failed ? '<div class="pd-ocr-failed">⚠ OCR 失敗，請手動確認金額/分類</div>' : ''}
       </td>`;
@@ -107,6 +113,18 @@ export async function showPendingView(onBack) {
         }
       });
     }
+    const trailBox = tr.querySelector('[data-f="trail"]');
+    tr.querySelector('[data-act="trail"]').addEventListener('click', async () => {
+      if (!trailBox.hidden) { trailBox.hidden = true; return; }
+      trailBox.hidden = false;
+      trailBox.innerHTML = '載入中…';
+      try {
+        const { data } = await getExpenseLogs(e.id);
+        trailBox.innerHTML = renderTrailRows(data.logs);
+      } catch {
+        trailBox.innerHTML = '<div class="au-trail-empty">軌跡載入失敗</div>';
+      }
+    });
     tbody.appendChild(tr);
   });
   if (!(data.expenses || []).length) {
