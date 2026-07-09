@@ -45,6 +45,7 @@ export const api = {
   auditOpenItems: (storeId) => req('GET', withStore('/audit/open-items', storeId)),
   auditDays: (storeId) => req('GET', withStore('/audit/days', storeId)),
   auditSummaryDates: (storeId) => req('GET', withStore('/audit/summary-dates', storeId)),
+  expenseLogs: (id) => req('GET', `/expenses/${id}/logs`),
   auditByDate: (storeId, d) => {
     const p = new URLSearchParams();
     if (storeId != null) p.set('store_id', storeId);

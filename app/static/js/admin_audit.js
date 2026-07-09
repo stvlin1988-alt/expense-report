@@ -1,7 +1,7 @@
 import { api } from './admin_api.js';
 import { escapeHtml } from './admin_util.js';
 import { categoryOptionsHtml, lightLabel, parseAmountInput } from './expenses_util.js';
-import { formatMoney, formatDateTimeTW } from './audit_util.js';
+import { formatMoney, formatDateTimeTW, renderTrailRows } from './audit_util.js';
 import { openImageLightbox } from './lightbox.js';
 
 // storeId：super_admin 選定的店；manager 傳 null（後端用本店）
@@ -38,16 +38,41 @@ function shiftLabel(sh) {
 
 function summaryRowHtml(e) {
   return `
-    <tr>
+    <tr data-eid="${e.id}">
       <td class="au-time">${formatDateTimeTW(e.created_at)}</td>
+      <td>${escapeHtml(e.created_by_name || '')}</td>
       <td>${e.thumb_url ? `<img src="${e.thumb_url}" width="40" class="au-thumb" data-zoom="${e.image_url || ''}">` : '—'}</td>
       <td>${escapeHtml(e.summary || '')}${e.is_no_receipt ? ' <span class="au-mod">無單據</span>' : ''}</td>
       <td>${escapeHtml(e.category_name || '')}</td>
-      <td>${e.amount ?? ''}${e.is_modified_by_manager ? ' <span class="au-mod">主管改</span>' : ''}</td>
+      <td>${e.amount ?? ''}${e.is_modified_by_manager ? ' <span class="au-mod">主管改</span>' : ''}
+        ${e.last_modified_at ? `<div class="au-lastmod">改：${escapeHtml(e.last_modified_by_name || '')}（${formatDateTimeTW(e.last_modified_at)}）</div>` : ''}</td>
       <td>${lightLabel(e.light)}</td>
       <td>${e.status === 'audited' ? '已稽核' : '待稽核'}</td>
       <td>${escapeHtml(e.audited_by_name || '')}</td>
+      <td><button class="ap-btn" data-trail="${e.id}" type="button">軌跡</button></td>
     </tr>`;
+}
+
+// 軌跡展開：委派綁定 scope 內的 [data-trail] 按鈕，點擊在該列下方插入一列
+// 顯示 誰・時間・動作（含員工確認區改的那筆 + 主管簽核那筆）。總表/待稽核共用。
+function wireTrails(scope) {
+  scope.querySelectorAll('[data-trail]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const tr = btn.closest('tr');
+      let box = tr.nextElementSibling;
+      if (box && box.classList.contains('au-trail-tr')) { box.remove(); return; }
+      box = document.createElement('tr');
+      box.className = 'au-trail-tr';
+      box.innerHTML = `<td colspan="10">載入中…</td>`;
+      tr.after(box);
+      try {
+        const { data } = await api.expenseLogs(btn.dataset.trail);
+        box.innerHTML = `<td colspan="10">${renderTrailRows(data.logs)}</td>`;
+      } catch {
+        box.innerHTML = `<td colspan="10">軌跡載入失敗</td>`;
+      }
+    });
+  });
 }
 
 async function renderSummary(body, sid, dateStr) {
@@ -64,7 +89,7 @@ async function renderSummary(body, sid, dateStr) {
       <div class="au-group-head">${shiftLabel(sh)}　小計 ${formatMoney(sh.subtotal)}（${sh.count} 筆）</div>
       <div class="pd-table-wrap">
       <table class="pd-table"><thead><tr>
-        <th>建立</th><th>圖</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th>狀態</th><th>稽核者</th>
+        <th>建立</th><th>建立者</th><th>圖</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th>狀態</th><th>稽核者</th><th>軌跡</th>
       </tr></thead><tbody>${sh.items.map(summaryRowHtml).join('')}</tbody></table>
       </div>
     </div>`).join('');
@@ -78,6 +103,7 @@ async function renderSummary(body, sid, dateStr) {
   });
   body.querySelectorAll('.au-thumb').forEach((img) =>
     img.addEventListener('click', () => openImageLightbox(img.dataset.zoom)));
+  wireTrails(body);
 }
 
 async function renderPending(body, sid) {
@@ -94,12 +120,13 @@ async function renderPending(body, sid) {
       <div class="au-group">
         <div class="au-group-head">${g.business_date}　日小計 ${formatMoney(g.subtotal)}</div>
         <table class="pd-table"><thead><tr>
-          <th>圖</th><th>建立</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th></th>
+          <th>圖</th><th>建立</th><th>建立者</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th></th>
         </tr></thead><tbody>
         ${g.items.map((e) => rowHtml(e, tree)).join('')}
         </tbody></table>
       </div>`).join('');
     wireRows(body, sid);
+    wireTrails(body);
   }
   // 交班/結班/取消：交班狀態與待稽核佇列無關，即使清空也需常駐可操作
   body.appendChild(actionBar(sid, body));
@@ -153,11 +180,13 @@ function rowHtml(e, tree) {
   return `<tr data-id="${e.id}">
     <td>${thumb}</td>
     <td class="au-time">${formatDateTimeTW(e.created_at)}</td>
+    <td>${escapeHtml(e.created_by_name || '')}</td>
     <td>${escapeHtml(e.summary || '')}</td>
     <td><select data-f="category">${categoryOptionsHtml(tree, e.category_id)}</select></td>
-    <td><input value="${e.amount ?? ''}" inputmode="decimal" data-f="amount" style="width:80px"></td>
+    <td><input value="${e.amount ?? ''}" inputmode="decimal" data-f="amount" style="width:80px">
+      ${e.last_modified_at ? `<div class="au-lastmod">改：${escapeHtml(e.last_modified_by_name || '')}（${formatDateTimeTW(e.last_modified_at)}）</div>` : ''}</td>
     <td>${lightLabel(e.light)}</td>
-    <td><button data-act="check">打勾</button><div class="pd-row-err" data-f="err"></div></td>
+    <td><button data-act="check">打勾</button><button class="ap-btn" data-trail="${e.id}" type="button">軌跡</button><div class="pd-row-err" data-f="err"></div></td>
   </tr>`;
 }
 
@@ -185,7 +214,12 @@ function wireRows(body, sid) {
         const editRes = await api.auditEdit(id, { amount: parsed.value, category_id: categoryId }, sid);
         if (editRes.status !== 200) { err.textContent = '金額/分類儲存失敗'; return; }
         const { status } = await api.auditCheck(id, sid);
-        if (status === 200) { tr.remove(); refreshSubtotal(body, sid); } else err.textContent = '打勾失敗';
+        if (status === 200) {
+          const trail = tr.nextElementSibling;
+          if (trail && trail.classList.contains('au-trail-tr')) trail.remove();
+          tr.remove();
+          refreshSubtotal(body, sid);
+        } else err.textContent = '打勾失敗';
       } catch { err.textContent = '打勾失敗'; }
     });
   });
