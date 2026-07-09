@@ -25,8 +25,14 @@ def log_edit_if_changed(expense, actor_user_id, before):
         expense_id=expense.id, actor_user_id=actor_user_id, action="edit",
         before_json=before, after_json=after, ts=ts,
     ))
+    changed = []
+    if after["amount"] != before["amount"]:
+        changed.append("amount")
+    if after["category_id"] != before["category_id"]:
+        changed.append("category")
     expense.last_modified_by = actor_user_id
     expense.last_modified_at = ts
+    expense.last_modified_fields = ",".join(changed) if changed else None
     return True
 
 

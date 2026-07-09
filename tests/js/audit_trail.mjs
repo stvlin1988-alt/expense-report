@@ -23,3 +23,20 @@ test('renderTrailRows 多筆保留順序 + 含動作中文', () => {
   assert.match(html, /修改/);
   assert.match(html, /簽核/);
 });
+
+test('renderTrailRows 顯示改動內容 A→B', () => {
+  const html = renderTrailRows([
+    { actor_name: '小明', ts: '2026-07-09T02:00:00+00:00', action: 'edit',
+      changes: [{ field: '金額', from: 100, to: 250 }, { field: '分類', from: '餐飲', to: '交通' }] },
+  ]);
+  assert.match(html, /金額 100→250/);
+  assert.match(html, /分類 餐飲→交通/);
+});
+
+test('renderTrailRows 空值顯示（空）', () => {
+  const html = renderTrailRows([
+    { actor_name: '小明', ts: '2026-07-09T02:00:00+00:00', action: 'edit',
+      changes: [{ field: '分類', from: null, to: '交通' }] },
+  ]);
+  assert.match(html, /分類 （空）→交通/);
+});

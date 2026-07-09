@@ -23,9 +23,17 @@ export function action_label(action) {
   return action || '';
 }
 
+function fmtVal(v) {
+  return (v === null || v === undefined || v === '') ? '（空）' : String(v);
+}
+
 export function renderTrailRows(logs) {
   if (!logs || !logs.length) return '<div class="au-trail-empty">無修改記錄</div>';
-  return logs.map((l) =>
-    `<div class="au-trail-row">${escapeHtml(l.actor_name || '—')}・${formatDateTimeTW(l.ts)}・${action_label(l.action)}</div>`
-  ).join('');
+  return logs.map((l) => {
+    const detail = (l.changes || [])
+      .map((c) => `${escapeHtml(c.field)} ${escapeHtml(fmtVal(c.from))}→${escapeHtml(fmtVal(c.to))}`)
+      .join('；');
+    const suffix = detail ? `：${detail}` : '';
+    return `<div class="au-trail-row">${escapeHtml(l.actor_name || '—')}・${formatDateTimeTW(l.ts)}・${action_label(l.action)}${suffix}</div>`;
+  }).join('');
 }

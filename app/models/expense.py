@@ -44,6 +44,7 @@ class Expense(db.Model):
     handover_id = db.Column(db.Integer, db.ForeignKey("handovers.id"), nullable=True, index=True)
     last_modified_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     last_modified_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    last_modified_fields = db.Column(db.String(32), nullable=True)  # 最後一次改了哪些欄位: "amount"/"category"/"amount,category"
 
     __table_args__ = (
         db.Index("ix_expenses_store_status", "store_id", "status"),

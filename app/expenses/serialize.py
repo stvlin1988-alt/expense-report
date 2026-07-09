@@ -19,6 +19,7 @@ def serialize_expense(e, storage, with_main=False, name_by_id=None):
         "created_by_name": name_by_id.get(e.created_by) if name_by_id else None,
         "last_modified_by_name": name_by_id.get(e.last_modified_by) if name_by_id else None,
         "last_modified_at": iso_utc(e.last_modified_at),
+        "last_modified_fields": e.last_modified_fields,
         "thumb_url": storage.presigned_url(e.thumb_key) if e.thumb_key else None,
         "ocr_failed": e.ocr_failed,
         "ocr_last_error": e.ocr_last_error,

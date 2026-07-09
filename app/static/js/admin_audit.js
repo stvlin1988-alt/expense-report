@@ -36,6 +36,16 @@ function shiftLabel(sh) {
   return `第 ${sh.seq} 班（${kind} ${formatDateTimeTW(sh.closed_at)}）`;
 }
 
+// 「改：誰（時間）」小標，只掛在實際被改的欄位（金額/分類）下方。
+// 舊資料無 last_modified_fields → 退回掛在金額欄（沿用舊行為）。
+function lastModTag(e, field) {
+  if (!e.last_modified_at) return '';
+  const fields = e.last_modified_fields ? e.last_modified_fields.split(',') : null;
+  const show = fields ? fields.includes(field) : (field === 'amount');
+  if (!show) return '';
+  return `<div class="au-lastmod">改：${escapeHtml(e.last_modified_by_name || '')}（${formatDateTimeTW(e.last_modified_at)}）</div>`;
+}
+
 function summaryRowHtml(e) {
   return `
     <tr data-eid="${e.id}">
@@ -44,9 +54,8 @@ function summaryRowHtml(e) {
       <td>${escapeHtml(e.created_by_name || '')}</td>
       <td>${e.thumb_url ? `<img src="${e.thumb_url}" width="40" class="au-thumb" data-zoom="${e.image_url || ''}">` : '—'}</td>
       <td>${escapeHtml(e.summary || '')}${e.is_no_receipt ? ' <span class="au-mod">無單據</span>' : ''}</td>
-      <td>${escapeHtml(e.category_name || '')}</td>
-      <td>${e.amount ?? ''}${e.is_modified_by_manager ? ' <span class="au-mod">主管改</span>' : ''}
-        ${e.last_modified_at ? `<div class="au-lastmod">改：${escapeHtml(e.last_modified_by_name || '')}（${formatDateTimeTW(e.last_modified_at)}）</div>` : ''}</td>
+      <td>${escapeHtml(e.category_name || '')}${lastModTag(e, 'category')}</td>
+      <td>${e.amount ?? ''}${e.is_modified_by_manager ? ' <span class="au-mod">主管改</span>' : ''}${lastModTag(e, 'amount')}</td>
       <td>${lightLabel(e.light)}</td>
       <td>${e.status === 'audited' ? '已稽核' : '待稽核'}</td>
       <td>${escapeHtml(e.audited_by_name || '')}</td>
@@ -184,9 +193,8 @@ function rowHtml(e, tree) {
     <td class="au-time">${formatDateTimeTW(e.created_at)}</td>
     <td>${escapeHtml(e.created_by_name || '')}</td>
     <td>${escapeHtml(e.summary || '')}</td>
-    <td><select data-f="category">${categoryOptionsHtml(tree, e.category_id)}</select></td>
-    <td><input value="${e.amount ?? ''}" inputmode="decimal" data-f="amount" style="width:80px">
-      ${e.last_modified_at ? `<div class="au-lastmod">改：${escapeHtml(e.last_modified_by_name || '')}（${formatDateTimeTW(e.last_modified_at)}）</div>` : ''}</td>
+    <td><select data-f="category">${categoryOptionsHtml(tree, e.category_id)}</select>${lastModTag(e, 'category')}</td>
+    <td><input value="${e.amount ?? ''}" inputmode="decimal" data-f="amount" style="width:80px">${lastModTag(e, 'amount')}</td>
     <td>${lightLabel(e.light)}</td>
     <td><button data-act="check">打勾</button>${e.last_modified_at ? `<button class="au-trail-btn" data-trail="${e.id}" type="button">軌跡</button>` : ''}<div class="pd-row-err" data-f="err"></div></td>
   </tr>`;

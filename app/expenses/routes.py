@@ -94,6 +94,21 @@ def detail(eid):
     return jsonify(status="ok", expense=serialize_expense(e, get_storage(), with_main=True, name_by_id=names))
 
 
+def _log_changes(before, after, cat_names):
+    """比對一筆 edit 的 before/after，回改動內容 [{field, from, to}]（供軌跡顯示 A→B）。
+    分類轉名稱；check 動作 before=None → 回空。"""
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        return []
+    out = []
+    if before.get("amount") != after.get("amount"):
+        out.append({"field": "金額", "from": before.get("amount"), "to": after.get("amount")})
+    if before.get("category_id") != after.get("category_id"):
+        out.append({"field": "分類",
+                    "from": cat_names.get(before.get("category_id")),
+                    "to": cat_names.get(after.get("category_id"))})
+    return out
+
+
 @expense_bp.get("/<int:eid>/logs")
 def logs(eid):
     user = current_user()
@@ -111,8 +126,17 @@ def logs(eid):
             .order_by(AuditLog.ts.asc(), AuditLog.id.asc()).all())
     uids = {r.actor_user_id for r in rows}
     names = {u.id: u.name for u in User.query.filter(User.id.in_(uids)).all()} if uids else {}
+    # 解析軌跡涉及的分類 id→名稱（before/after 存的是 category_id）
+    cids = set()
+    for r in rows:
+        for j in (r.before_json, r.after_json):
+            if isinstance(j, dict) and j.get("category_id") is not None:
+                cids.add(j["category_id"])
+    cat_names = ({c.id: c.name for c in Category.query.filter(Category.id.in_(cids)).all()}
+                 if cids else {})
     return jsonify(status="ok", logs=[
-        {"actor_name": names.get(r.actor_user_id), "ts": iso_utc(r.ts), "action": r.action}
+        {"actor_name": names.get(r.actor_user_id), "ts": iso_utc(r.ts), "action": r.action,
+         "changes": _log_changes(r.before_json, r.after_json, cat_names)}
         for r in rows
     ])
 
