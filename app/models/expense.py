@@ -41,6 +41,8 @@ class Expense(db.Model):
     audited_at = db.Column(db.DateTime(timezone=True), nullable=True)
     is_modified_by_manager = db.Column(db.Boolean, nullable=False, default=False)
     handover_id = db.Column(db.Integer, db.ForeignKey("handovers.id"), nullable=True, index=True)
+    last_modified_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    last_modified_at = db.Column(db.DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         db.Index("ix_expenses_store_status", "store_id", "status"),

@@ -20,10 +20,13 @@ def log_edit_if_changed(expense, actor_user_id, before):
     after = _amt_cat(expense)
     if after == before:
         return False
+    ts = datetime.now(timezone.utc)
     db.session.add(AuditLog(
         expense_id=expense.id, actor_user_id=actor_user_id, action="edit",
-        before_json=before, after_json=after, ts=datetime.now(timezone.utc),
+        before_json=before, after_json=after, ts=ts,
     ))
+    expense.last_modified_by = actor_user_id
+    expense.last_modified_at = ts
     return True
 
 
