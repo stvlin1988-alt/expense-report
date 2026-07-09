@@ -55,6 +55,25 @@ def test_last_modified_fields_both(app):
         assert db.session.get(Expense, eid).last_modified_fields == "amount,category"
 
 
+def test_last_modified_fields_accumulates_across_edits(app):
+    # 分類、金額分兩次 PATCH（實務上 UI 就是分開送）→ 聯集標到兩欄
+    _, uid, eid, _, c2 = _mk(app)
+    with app.app_context():
+        e = db.session.get(Expense, eid)
+        b1 = snapshot(e)
+        e.category_id = c2
+        assert log_edit_if_changed(e, uid, b1) is True
+        db.session.commit()
+        e = db.session.get(Expense, eid)
+        assert e.last_modified_fields == "category"
+        b2 = snapshot(e)
+        e.amount = Decimal("999")
+        assert log_edit_if_changed(e, uid, b2) is True
+        db.session.commit()
+        # 第二次只改金額，但仍保留先前的分類 → 兩欄都標
+        assert db.session.get(Expense, eid).last_modified_fields == "amount,category"
+
+
 def _client(app, uid):
     c = app.test_client(); c.set_cookie("device_uid", "dev1")
     with c.session_transaction() as sess:

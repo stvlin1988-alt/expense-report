@@ -30,9 +30,13 @@ def log_edit_if_changed(expense, actor_user_id, before):
         changed.append("amount")
     if after["category_id"] != before["category_id"]:
         changed.append("category")
+    # 累積「曾被改過的欄位」聯集：分類/金額常分兩次 PATCH 送出，
+    # 只記最後一次會漏標先改的欄位。順序保留 amount 在前。
+    existing = expense.last_modified_fields.split(",") if expense.last_modified_fields else []
+    merged = [f for f in ("amount", "category") if f in existing or f in changed]
     expense.last_modified_by = actor_user_id
     expense.last_modified_at = ts
-    expense.last_modified_fields = ",".join(changed) if changed else None
+    expense.last_modified_fields = ",".join(merged) if merged else None
     return True
 
 
