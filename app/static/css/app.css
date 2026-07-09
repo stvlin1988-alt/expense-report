@@ -63,6 +63,14 @@ body {
 #pd-table th, #pd-table td { padding: 8px 8px; text-align: left; border-bottom: 1px solid #3a3a3c; white-space: nowrap; }
 .pd-row-err { color: #ff6b6b; font-size: .8rem; margin-top: 4px; white-space: normal; }
 .pd-ocr-failed { color: #ff6b6b; font-size: .8rem; margin-top: 4px; white-space: normal; }
+/* 無單據建帳表單（在按鈕下方展開）*/
+.pd-noreceipt-box { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 4px;
+  padding: 12px; background: #2c2c2e; border-radius: 10px; }
+.pd-noreceipt-box input, .pd-noreceipt-box select { font-size: 16px; padding: 8px;
+  border-radius: 8px; border: 1px solid #48484a; background: #1c1c1e; color: #fff; }
+.nr-photo { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.nr-cam video { width: 100%; max-width: 320px; border-radius: 8px; background: #000; }
+.nr-preview img { border-radius: 8px; vertical-align: middle; margin-right: 8px; }
 
 /* ---- 管理後台（手機優先；與 covert 計算機樣式區隔）---- */
 .admin-panel {
@@ -163,10 +171,20 @@ body {
 .au-thumb { cursor: zoom-in; }
 .au-time { white-space: nowrap; color: #666; font-size: .85rem; }
 .au-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.8); display: flex;
-  align-items: center; justify-content: center; z-index: 1000; cursor: zoom-out; }
-.au-lightbox img { max-width: 92vw; max-height: 92vh; box-shadow: 0 4px 24px rgba(0,0,0,.5); }
+  align-items: center; justify-content: center; z-index: 1000; }
+.au-lightbox-stage { max-width: 92vw; max-height: 92vh; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  touch-action: none; cursor: grab; }
+.au-lightbox-stage img { max-width: 92vw; max-height: 92vh; will-change: transform;
+  user-select: none; -webkit-user-select: none; box-shadow: 0 4px 24px rgba(0,0,0,.5); }
+.au-lightbox-close { position: fixed; top: 12px; right: 16px; z-index: 1001;
+  width: 44px; height: 44px; border: none; border-radius: 50%;
+  background: rgba(0,0,0,.55); color: #fff; font-size: 28px; line-height: 1;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .au-day-nav { margin: 8px 0; font-size: .9rem; }
-.au-day-nav select { font-size: 16px; padding: 4px; }
+.au-day-nav select, .au-day-nav input[type="date"] { font-size: 16px; padding: 4px; }
+.au-daytotal { margin: 12px 0; font-size: 1rem; text-align: right; }
+.au-daytotal b { color: #007aff; font-size: 1.15rem; }
 tr.au-int { cursor: pointer; }
 tr.au-int:hover { background: #f5faff; }
 tr.au-open-row { background: #eef6ff; }

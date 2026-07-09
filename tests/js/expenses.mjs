@@ -43,3 +43,22 @@ test('categoryOptionsHtml empty tree still has 未分類', () => {
   assert.ok(html.includes('<option value="">未分類</option>'));
   assert.ok(!html.includes('<optgroup'));
 });
+
+test('categoryOptionsHtml 無子類的大類→可直接選的 option（如 特支）', () => {
+  const tree = [
+    { id: 9, name: '特支', items: [] },
+    { id: 1, name: '廚房支出', items: [{ id: 3, name: '食材' }] },
+  ];
+  const html = categoryOptionsHtml(tree, null);
+  // 特支 直接是可選 option（粗體對齊 optgroup），不是不可選的 optgroup 標題
+  assert.ok(html.includes('<option value="9" style="font-weight:bold">特支</option>'));
+  assert.ok(!html.includes('<optgroup label="特支">'));
+  // 有子類的照舊是 optgroup
+  assert.ok(html.includes('<optgroup label="廚房支出">'));
+});
+
+test('categoryOptionsHtml 無子類大類可被 selected', () => {
+  const tree = [{ id: 9, name: '特支', items: [] }];
+  const html = categoryOptionsHtml(tree, 9);
+  assert.ok(html.includes('<option value="9" style="font-weight:bold" selected>特支</option>'));
+});

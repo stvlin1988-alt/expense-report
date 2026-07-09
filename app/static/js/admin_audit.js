@@ -2,6 +2,7 @@ import { api } from './admin_api.js';
 import { escapeHtml } from './admin_util.js';
 import { categoryOptionsHtml, lightLabel, parseAmountInput } from './expenses_util.js';
 import { formatMoney, formatDateTimeTW } from './audit_util.js';
+import { openImageLightbox } from './lightbox.js';
 
 // storeId：super_admin 選定的店；manager 傳 null（後端用本店）
 export async function renderAudit(container, identity, storeId) {
@@ -14,83 +15,69 @@ export async function renderAudit(container, identity, storeId) {
   container.innerHTML = `
     <div class="audit-sub">
       <button class="ap-tab active" id="au-tab-pending" type="button">待稽核</button>
-      <button class="ap-tab" id="au-tab-summary" type="button">當日總表</button>
+      <button class="ap-tab" id="au-tab-summary" type="button">總表查詢</button>
     </div>
     <div id="au-body"></div>`;
   const body = container.querySelector('#au-body');
-  const showPending = () => renderPending(body, sid);
-  container.querySelector('#au-tab-pending').addEventListener('click', showPending);
-  container.querySelector('#au-tab-summary').addEventListener('click',
-    () => renderSummary(body, sid));
-  showPending();
+  const tabP = container.querySelector('#au-tab-pending');
+  const tabS = container.querySelector('#au-tab-summary');
+  const setActive = (el) => {
+    [tabP, tabS].forEach((b) => b.classList.remove('active')); el.classList.add('active');
+  };
+  tabP.addEventListener('click', () => { setActive(tabP); renderPending(body, sid); });
+  tabS.addEventListener('click', () => { setActive(tabS); renderSummary(body, sid); });
+  setActive(tabP);
+  renderPending(body, sid);
 }
 
-async function renderSummary(body, sid, beforeId) {
-  body.innerHTML = '載入中…';
-  const [{ data: daysData }, { data }] = await Promise.all([
-    api.auditDays(sid), api.auditSummary(sid, beforeId || undefined),
-  ]);
-  const days = (daysData && daysData.days) || [];
-  const cur = String(beforeId || '');
-  const dayOpts = ['<option value="">今日（當前）</option>'].concat(
-    days.map((d) => `<option value="${d.handover_id}"${String(d.handover_id) === cur ? ' selected' : ''}>${formatDateTimeTW(d.closed_at)}</option>`)
-  ).join('');
-  const intervals = data.intervals || [];
-  const open = data.open || { subtotal: 0, count: 0 };
-  const intervalRows = intervals.map((it) => `
-    <tr class="au-int" data-hid="${it.handover_id}">
-      <td>第 ${it.seq} 班${it.type === 'day' ? '（結班）' : ''} ▸</td>
-      <td>${formatDateTimeTW(it.closed_at)}</td>
-      <td>${it.count} 筆</td><td>${formatMoney(it.subtotal)}</td>
-    </tr>`).join('');
-  const openRow = beforeId ? '' : `
-    <tr class="au-int au-open-row" data-open="1">
-      <td>當前未歸班 ▸</td><td>—</td><td>${open.count} 筆</td><td>${formatMoney(open.subtotal)}</td>
+function shiftLabel(sh) {
+  if (sh.handover_id === null) return '當前未歸班';
+  const kind = sh.type === 'day' ? '結班' : '交班';
+  return `第 ${sh.seq} 班（${kind} ${formatDateTimeTW(sh.closed_at)}）`;
+}
+
+function summaryRowHtml(e) {
+  return `
+    <tr>
+      <td class="au-time">${formatDateTimeTW(e.created_at)}</td>
+      <td>${e.thumb_url ? `<img src="${e.thumb_url}" width="40" class="au-thumb" data-zoom="${e.image_url || ''}">` : '—'}</td>
+      <td>${escapeHtml(e.summary || '')}${e.is_no_receipt ? ' <span class="au-mod">無單據</span>' : ''}</td>
+      <td>${escapeHtml(e.category_name || '')}</td>
+      <td>${e.amount ?? ''}${e.is_modified_by_manager ? ' <span class="au-mod">主管改</span>' : ''}</td>
+      <td>${lightLabel(e.light)}</td>
+      <td>${e.status === 'audited' ? '已稽核' : '待稽核'}</td>
+      <td>${escapeHtml(e.audited_by_name || '')}</td>
     </tr>`;
-  body.innerHTML = `
-    <div class="au-day-nav">稽核日：<select id="au-day-select">${dayOpts}</select></div>
-    <table class="pd-table"><thead><tr><th>區間</th><th>交班時間</th><th>筆數</th><th>小計</th></tr></thead>
-    <tbody>${intervalRows}${openRow}</tbody>
-    <tfoot><tr><td colspan="3"><b>當日總額</b></td><td><b>${formatMoney(data.day_total)}</b></td></tr></tfoot>
-    </table>`;
-  body.querySelector('#au-day-select').addEventListener('change',
-    (ev) => renderSummary(body, sid, ev.target.value));
-  body.querySelectorAll('tr.au-int').forEach((tr) =>
-    tr.addEventListener('click', () => toggleDetail(tr, sid)));
 }
 
-async function toggleDetail(tr, sid) {
-  const next = tr.nextElementSibling;
-  if (next && next.classList.contains('au-detail')) { next.remove(); return; }
-  // 收合其他已展開的明細（一次只開一個）
-  tr.parentElement.querySelectorAll('tr.au-detail').forEach((r) => r.remove());
-  const detailTr = document.createElement('tr');
-  detailTr.className = 'au-detail';
-  detailTr.innerHTML = '<td colspan="4">載入中…</td>';
-  tr.after(detailTr);
-  const hid = tr.dataset.hid;
-  const { data } = hid ? await api.auditHandoverItems(hid, sid) : await api.auditOpenItems(sid);
-  const items = (data && data.items) || [];
-  const cell = detailTr.querySelector('td');
-  if (!items.length) { cell.textContent = '（無明細）'; return; }
-  cell.innerHTML = `
-    <table class="au-detail-table"><thead><tr>
-      <th>建立</th><th>圖</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th>稽核者</th><th>稽核時間</th>
-    </tr></thead><tbody>
-    ${items.map((e) => `
-      <tr>
-        <td class="au-time">${formatDateTimeTW(e.created_at)}</td>
-        <td>${e.thumb_url ? `<img src="${e.thumb_url}" width="40" class="au-thumb" data-zoom="${e.image_url || ''}">` : '—'}</td>
-        <td>${escapeHtml(e.summary || '')}</td>
-        <td>${escapeHtml(e.category_name || '')}</td>
-        <td>${e.amount ?? ''}${e.is_modified_by_manager ? ' <span class="au-mod">主管改</span>' : ''}</td>
-        <td>${lightLabel(e.light)}</td>
-        <td>${escapeHtml(e.audited_by_name || '')}</td>
-        <td class="au-time">${formatDateTimeTW(e.audited_at)}</td>
-      </tr>`).join('')}
-    </tbody></table>`;
-  cell.querySelectorAll('.au-thumb').forEach((img) =>
-    img.addEventListener('click', (ev) => { ev.stopPropagation(); openImageLightbox(img.dataset.zoom); }));
+async function renderSummary(body, sid, dateStr) {
+  body.innerHTML = '載入中…';
+  // 預設今日（沿用後端算好的當前營業日；summary-dates[0]=今日）
+  const { data: dd } = await api.auditSummaryDates(sid);
+  const dates = (dd && dd.dates) || [];
+  const today = dates[0] || '';
+  const sel = dateStr || today;
+  const { data } = sel ? await api.auditByDate(sid, sel) : { data: { shifts: [], total: 0, count: 0 } };
+  const shifts = data.shifts || [];
+  const shiftBlocks = shifts.map((sh) => `
+    <div class="au-group">
+      <div class="au-group-head">${shiftLabel(sh)}　小計 ${formatMoney(sh.subtotal)}（${sh.count} 筆）</div>
+      <div class="pd-table-wrap">
+      <table class="pd-table"><thead><tr>
+        <th>建立</th><th>圖</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th>狀態</th><th>稽核者</th>
+      </tr></thead><tbody>${sh.items.map(summaryRowHtml).join('')}</tbody></table>
+      </div>
+    </div>`).join('');
+  body.innerHTML = `
+    <div class="au-day-nav">日期：<input type="date" id="au-day-date" value="${sel}"${today ? ` max="${today}"` : ''}></div>
+    ${shiftBlocks || '<div class="ap-empty">當天沒有單據</div>'}
+    <div class="au-daytotal">當日總額 <b>${formatMoney(data.total)}</b>（${data.count} 筆）</div>`;
+  const dinp = body.querySelector('#au-day-date');
+  if (dinp) dinp.addEventListener('change', (ev) => {
+    if (ev.target.value) renderSummary(body, sid, ev.target.value);
+  });
+  body.querySelectorAll('.au-thumb').forEach((img) =>
+    img.addEventListener('click', () => openImageLightbox(img.dataset.zoom)));
 }
 
 async function renderPending(body, sid) {
@@ -202,18 +189,4 @@ function wireRows(body, sid) {
       } catch { err.textContent = '打勾失敗'; }
     });
   });
-}
-
-export function openImageLightbox(url) {
-  if (!url) return;
-  const ov = document.createElement('div');
-  ov.className = 'au-lightbox';
-  const img = document.createElement('img');
-  img.src = url; img.alt = '原單';
-  ov.appendChild(img);
-  const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
-  const onKey = (ev) => { if (ev.key === 'Escape') close(); };
-  ov.addEventListener('click', close);
-  document.addEventListener('keydown', onKey);
-  document.body.appendChild(ov);
 }

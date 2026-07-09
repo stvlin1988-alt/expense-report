@@ -1,5 +1,6 @@
 from app.extensions import db
 from app.models import Expense, Handover
+from app.expenses.logic import iso_utc
 
 
 def _sum(store_id, handover_id):
@@ -39,7 +40,7 @@ def compute_summary(store_id, before_id=None):
     for i, h in enumerate(handovers, start=1):
         subtotal, count = _sum(store_id, h.id)
         intervals.append({"handover_id": h.id, "type": h.type, "seq": i,
-                          "closed_at": h.closed_at.isoformat(), "subtotal": subtotal,
+                          "closed_at": iso_utc(h.closed_at), "subtotal": subtotal,
                           "count": count})
         day_total += subtotal
 

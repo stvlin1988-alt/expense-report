@@ -31,8 +31,15 @@ function esc(s) {
 export function categoryOptionsHtml(tree, selectedId) {
   let html = '<option value="">未分類</option>';
   (tree || []).forEach((grp) => {
+    const items = grp.items || [];
+    if (items.length === 0) {
+      // 無子類的大類（如「特支」）→ 直接當可選 option（大類 id）；粗體對齊 optgroup 標題
+      const sel = String(grp.id) === String(selectedId) ? ' selected' : '';
+      html += `<option value="${grp.id}" style="font-weight:bold"${sel}>${esc(grp.name)}</option>`;
+      return;
+    }
     html += `<optgroup label="${esc(grp.name)}">`;
-    (grp.items || []).forEach((it) => {
+    items.forEach((it) => {
       const sel = String(it.id) === String(selectedId) ? ' selected' : '';
       html += `<option value="${it.id}"${sel}>${esc(it.name)}</option>`;
     });

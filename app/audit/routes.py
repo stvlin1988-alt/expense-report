@@ -5,6 +5,7 @@ from app.extensions import db
 from app.models import Expense, Store, Handover, User, Category
 from app.auth.decorators import current_user, role_required
 from app.expenses.tasks import _valid_category_id
+from app.expenses.logic import iso_utc
 from app.storage.r2 import get_storage
 from app.audit import audit_bp
 from app.audit.log import snapshot, log_edit_if_changed, record_check
@@ -217,6 +218,78 @@ def open_items():
                    items=[serialize_audit_item(e, storage, names, cats) for e in rows])
 
 
+@audit_bp.get("/summary-dates")
+@role_required("manager", "super_admin")
+def summary_dates():
+    """總表查詢用：有單據的營業日清單（by business_date，由新到舊，含今日）。"""
+    from app.expenses.logic import compute_business_date
+    store_id, err = _scope_store_id()
+    if err:
+        return err
+    rows = (db.session.query(Expense.business_date)
+            .filter(Expense.store_id == store_id,
+                    Expense.status.in_(["submitted", "audited"]),
+                    Expense.business_date.isnot(None))
+            .distinct().all())
+    dates = sorted({r[0] for r in rows}, reverse=True)
+    out = [d.isoformat() for d in dates]
+    today = compute_business_date(datetime.now(timezone.utc)).isoformat()
+    if today not in out:
+        out.insert(0, today)
+    return jsonify(status="ok", dates=out)
+
+
+@audit_bp.get("/by-date")
+@role_required("manager", "super_admin")
+def by_date():
+    """總表查詢：某營業日的單據，依班別（handover）分組 + 各班小計 + 當日總額。
+    未歸班（handover_id=None）另成一組「當前未歸班」。"""
+    from datetime import date as _date
+    store_id, err = _scope_store_id()
+    if err:
+        return err
+    try:
+        d = _date.fromisoformat(request.args.get("date", ""))
+    except (TypeError, ValueError):
+        return jsonify(status="error", message="bad date"), 400
+    rows = (Expense.query
+            .filter(Expense.store_id == store_id,
+                    Expense.status.in_(["submitted", "audited"]),
+                    Expense.business_date == d)
+            .order_by(Expense.submitted_at.asc(), Expense.created_at.asc()).all())
+    storage = get_storage()
+    names, cats = _audit_maps(rows)
+
+    groups = {}
+    for e in rows:
+        groups.setdefault(e.handover_id, []).append(e)
+    hids = [hid for hid in groups if hid is not None]
+    handovers = ({h.id: h for h in Handover.query.filter(Handover.id.in_(hids)).all()}
+                 if hids else {})
+    ordered = sorted(hids, key=lambda x: (handovers[x].closed_at, x))
+
+    def _grp(hid, seq):
+        items = groups[hid]
+        h = handovers.get(hid)
+        return {
+            "handover_id": hid,
+            "type": h.type if h else "open",
+            "seq": seq,
+            "closed_at": iso_utc(h.closed_at) if h else None,
+            "subtotal": sum(float(x.amount) for x in items if x.amount is not None),
+            "count": len(items),
+            "items": [serialize_audit_item(e, storage, names, cats) for e in items],
+        }
+
+    shifts = [_grp(hid, i) for i, hid in enumerate(ordered, start=1)]
+    if None in groups:
+        shifts.append(_grp(None, None))   # 當前未歸班
+
+    total = sum(float(x.amount) for x in rows if x.amount is not None)
+    return jsonify(status="ok", date=d.isoformat(), total=total, count=len(rows),
+                   shifts=shifts)
+
+
 @audit_bp.get("/days")
 @role_required("manager", "super_admin")
 def days():
@@ -227,4 +300,4 @@ def days():
             .filter_by(store_id=store_id, type="day")
             .order_by(Handover.closed_at.desc(), Handover.id.desc()).all())
     return jsonify(status="ok",
-                   days=[{"handover_id": h.id, "closed_at": h.closed_at.isoformat()} for h in rows])
+                   days=[{"handover_id": h.id, "closed_at": iso_utc(h.closed_at)} for h in rows])

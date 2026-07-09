@@ -34,6 +34,7 @@ class Expense(db.Model):
     ocr_scheduled_at = db.Column(db.DateTime(timezone=True), nullable=True)
 
     no_receipt_reason = db.Column(db.Text, nullable=True)
+    is_no_receipt = db.Column(db.Boolean, nullable=False, default=False)
     doc_type_id = db.Column(db.Integer, db.ForeignKey("doc_types.id"), nullable=True)
 
     audited_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)

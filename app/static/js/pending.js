@@ -1,5 +1,8 @@
 import { escapeHtml } from './admin_util.js';
 import { lightLabel, parseAmountInput, categoryOptionsHtml } from './expenses_util.js';
+import { formatDateTimeTW } from './audit_util.js';
+import { Camera } from './camera.js';
+import { openImageLightbox } from './lightbox.js';
 import {
   listPending, patchExpense, submitExpense, discardExpense, listCategories, noReceipt, reocrExpense,
 } from './expenses_api.js';
@@ -9,16 +12,16 @@ const root = () => document.getElementById('modal-root');
 export async function showPendingView(onBack) {
   root().innerHTML = `
     <div class="modal-backdrop"><div class="modal-box wide">
-      <h2>暫存區</h2>
+      <h2>確認區</h2>
       <button class="modal-btn" id="pd-refresh" type="button">↻ 重整</button>
       <button class="modal-btn" id="pd-noreceipt" type="button">＋無單據建帳</button>
+      <div id="pd-noreceipt-form"></div>
       <div id="pd-msg" class="modal-msg"></div>
       <div class="pd-table-wrap">
         <table id="pd-table"><thead><tr>
-          <th>圖</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th></th>
+          <th>圖</th><th>建立</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th></th>
         </tr></thead><tbody></tbody></table>
       </div>
-      <div id="pd-noreceipt-form"></div>
       <button class="modal-btn secondary" id="pd-back" type="button">返回</button>
     </div></div>`;
   document.getElementById('pd-back').addEventListener('click', onBack);
@@ -35,10 +38,11 @@ export async function showPendingView(onBack) {
   (data.expenses || []).forEach((e) => {
     const tr = document.createElement('tr');
     const thumb = e.thumb_url
-      ? `<img src="${e.thumb_url}" loading="lazy" width="48">`
+      ? `<img src="${e.thumb_url}" loading="lazy" width="48" class="au-thumb" data-zoom="${e.image_url || ''}">`
       : (e.status === 'pending_ocr' ? '🕓' : '—');
     tr.innerHTML = `
       <td>${thumb}</td>
+      <td class="au-time">${formatDateTimeTW(e.created_at)}</td>
       <td>${e.status === 'pending_ocr'
         ? '<span class="pd-ocring">🕓 辨識中…（稍後按重整）</span>'
         : `<input value="${escapeHtml(e.summary || '')}" data-f="summary">`}</td>
@@ -53,6 +57,10 @@ export async function showPendingView(onBack) {
       </td>`;
     const rowErr = tr.querySelector('[data-f="err"]');
     const setErr = (t) => { rowErr.textContent = t || ''; };
+    const thumbEl = tr.querySelector('.au-thumb');
+    if (thumbEl && thumbEl.dataset.zoom) {
+      thumbEl.addEventListener('click', () => openImageLightbox(thumbEl.dataset.zoom));
+    }
     const catSelect = tr.querySelector('[data-f="category"]');
     catSelect.innerHTML = categoryOptionsHtml(tree, e.category_id);
     catSelect.addEventListener('change', async () => {
@@ -92,7 +100,7 @@ export async function showPendingView(onBack) {
         setErr('');
         const { status } = await reocrExpense(e.id);
         if (status === 202 || status === 200) {
-          setErr('已送出重新辨識，稍後重整暫存區查看');
+          setErr('已送出重新辨識，稍後重整確認區查看');
           reBtn.disabled = true;
         } else {
           setErr('重新辨識失敗，請稍後再試');
@@ -102,7 +110,7 @@ export async function showPendingView(onBack) {
     tbody.appendChild(tr);
   });
   if (!(data.expenses || []).length) {
-    document.getElementById('pd-msg').textContent = '暫存區沒有待確認單據';
+    document.getElementById('pd-msg').textContent = '確認區沒有待確認單據';
   }
 }
 
@@ -113,27 +121,60 @@ function showNoReceiptForm(tree, onBack) {
       <input placeholder="摘要" id="nr-summary">
       <input placeholder="金額" inputmode="decimal" id="nr-amount">
       <select id="nr-category"></select>
-      <input placeholder="原因（必填）" id="nr-reason">
+      <input placeholder="原因（選填）" id="nr-reason">
+      <div class="nr-photo">
+        <button class="modal-btn secondary" id="nr-photo-btn" type="button">📷 拍照（選填）</button>
+        <div id="nr-cam" class="nr-cam" hidden>
+          <video id="nr-video" playsinline></video>
+          <canvas id="nr-canvas" hidden></canvas>
+          <button class="modal-btn" id="nr-shoot" type="button">拍下</button>
+        </div>
+        <div id="nr-preview" class="nr-preview"></div>
+      </div>
       <button class="modal-btn" id="nr-submit" type="button">送出</button>
       <button class="modal-btn secondary" id="nr-cancel" type="button">取消</button>
       <div class="pd-row-err" id="nr-err"></div>
     </div>`;
   document.getElementById('nr-category').innerHTML = categoryOptionsHtml(tree, null);
   const err = document.getElementById('nr-err');
-  document.getElementById('nr-cancel').addEventListener('click', () => { container.innerHTML = ''; });
+
+  // 可選附一張佐證照（沿用 Camera，記憶體不落地）
+  let photo = null;
+  const cam = new Camera(document.getElementById('nr-video'), document.getElementById('nr-canvas'));
+  const camBox = document.getElementById('nr-cam');
+  const preview = document.getElementById('nr-preview');
+  const stopCam = () => { try { cam.stop(); } catch { /* noop */ } camBox.hidden = true; };
+  document.getElementById('nr-photo-btn').addEventListener('click', async () => {
+    err.textContent = '';
+    camBox.hidden = false;
+    try { await cam.start(); } catch { err.textContent = '無法開啟相機'; camBox.hidden = true; }
+  });
+  document.getElementById('nr-shoot').addEventListener('click', () => {
+    photo = cam.capture();
+    stopCam();
+    preview.innerHTML = `<img src="${photo}" width="80" alt="佐證照">
+      <button class="modal-btn secondary" id="nr-photo-clear" type="button">移除</button>`;
+    document.getElementById('nr-photo-clear').addEventListener('click', () => {
+      photo = null; preview.innerHTML = '';
+    });
+  });
+
+  document.getElementById('nr-cancel').addEventListener('click', () => {
+    stopCam(); container.innerHTML = '';
+  });
   document.getElementById('nr-submit').addEventListener('click', async () => {
     err.textContent = '';
     const summary = document.getElementById('nr-summary').value;
     const parsed = parseAmountInput(document.getElementById('nr-amount').value);
     if (!parsed.valid) { err.textContent = '金額格式不正確，請重新輸入'; return; }
     const reason = document.getElementById('nr-reason').value.trim();
-    if (!reason) { err.textContent = '請填寫原因'; return; }
     const catSelect = document.getElementById('nr-category');
     const categoryId = catSelect.value === '' ? null : Number(catSelect.value);
-    const { status } = await noReceipt({
-      summary, amount: parsed.value, category_id: categoryId, reason,
-    });
+    const payload = { summary, amount: parsed.value, category_id: categoryId, reason };
+    if (photo) payload.image = photo;
+    const { status } = await noReceipt(payload);
     if (status === 200) {
+      stopCam();
       showPendingView(onBack);
     } else {
       err.textContent = '建立失敗，請稍後再試';

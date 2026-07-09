@@ -44,4 +44,11 @@ export const api = {
   auditHandoverItems: (hid, storeId) => req('GET', withStore(`/audit/handover/${hid}/items`, storeId)),
   auditOpenItems: (storeId) => req('GET', withStore('/audit/open-items', storeId)),
   auditDays: (storeId) => req('GET', withStore('/audit/days', storeId)),
+  auditSummaryDates: (storeId) => req('GET', withStore('/audit/summary-dates', storeId)),
+  auditByDate: (storeId, d) => {
+    const p = new URLSearchParams();
+    if (storeId != null) p.set('store_id', storeId);
+    p.set('date', d);
+    return req('GET', `/audit/by-date?${p.toString()}`);
+  },
 };

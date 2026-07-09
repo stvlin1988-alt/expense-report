@@ -30,7 +30,7 @@ def _draft(app, sid, uid, **kw):
         db.session.add(e); db.session.commit(); return e.id
 
 
-def test_patch_amount_sets_modified_and_red(app):
+def test_patch_amount_sets_modified_and_green(app):
     r2mod._mock_singleton = None
     sid, uid, cid = _seed(app)
     eid = _draft(app, sid, uid, amount=100, amount_parse_ok=True,
@@ -40,7 +40,31 @@ def test_patch_amount_sets_modified_and_red(app):
     assert body["status"] == "ok"
     assert body["expense"]["amount"] == 250.0
     assert body["expense"]["is_modified_by_user"] is True
-    assert body["expense"]["light"] == "red"
+    # 人改過金額且金額 OK → 已確認 → 綠（不再是紅）
+    assert body["expense"]["light"] == "green"
+
+
+def test_patch_same_amount_not_modified(app):
+    # 送出前前端會無條件帶 amount/category_id；值沒變就不該標記 modified（否則主管端全紅）
+    r2mod._mock_singleton = None
+    sid, uid, cid = _seed(app)
+    eid = _draft(app, sid, uid, amount=100, amount_parse_ok=True, category_id=cid,
+                 ocr_is_handwritten=False, ocr_confidence=0.9)
+    c = _client(app, uid)
+    body = c.patch(f"/expenses/{eid}", json={"amount": 100, "category_id": cid}).get_json()
+    assert body["expense"]["is_modified_by_user"] is False
+    assert body["expense"]["light"] == "green"
+
+
+def test_patch_same_amount_decimal_equiv_not_modified(app):
+    # 1290 vs Decimal('1290.00') 視為相同、不標記 modified
+    r2mod._mock_singleton = None
+    sid, uid, cid = _seed(app)
+    eid = _draft(app, sid, uid, amount=1290, amount_parse_ok=True,
+                 ocr_is_handwritten=False, ocr_confidence=0.9)
+    c = _client(app, uid)
+    body = c.patch(f"/expenses/{eid}", json={"amount": 1290}).get_json()
+    assert body["expense"]["is_modified_by_user"] is False
 
 
 def test_patch_only_summary_not_modified(app):
@@ -67,7 +91,8 @@ def test_patch_rejects_non_draft(app):
 def test_patch_rejects_invalid_category_id(app):
     r2mod._mock_singleton = None
     sid, uid, cid = _seed(app)
-    eid = _draft(app, sid, uid, amount=100, amount_parse_ok=True)
+    # 原本有分類，patch 成無效 id → 收斂為 None（這是真的變動）→ 標記 modified
+    eid = _draft(app, sid, uid, amount=100, amount_parse_ok=True, category_id=cid)
     c = _client(app, uid)
     resp = c.patch(f"/expenses/{eid}", json={"category_id": 99999})
     assert resp.status_code == 200

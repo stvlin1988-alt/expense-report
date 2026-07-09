@@ -8,7 +8,7 @@ const root = () => document.getElementById('modal-root');
 
 export async function showAdminPanel(identity) {
   const isSuper = identity.role === 'super_admin';
-  const state = { tab: 'accounts', storeId: null, stores: [] };
+  const state = { tab: 'audit', storeId: null, stores: [] };
 
   // 先抓店清單（供調店切換 + 分頁下拉）
   try {

@@ -76,7 +76,7 @@ def pending():
             .order_by(Expense.created_at.desc()).all())
     storage = get_storage()
     return jsonify(status="ok",
-                    expenses=[serialize_expense(e, storage) for e in rows])
+                    expenses=[serialize_expense(e, storage, with_main=True) for e in rows])
 
 
 @expense_bp.get("/<int:eid>")
@@ -104,16 +104,22 @@ def edit(eid):
     before = snapshot(e)
     if "summary" in data:
         e.summary = data["summary"]
+    # 送出前前端會無條件帶 amount/category_id；只有「值真的變了」才算員工改過（Decimal 比較忽略 1290 vs 1290.00）
     if "category_id" in data:
-        e.category_id = _valid_category_id(data["category_id"])
-        e.is_modified_by_user = True
+        new_cat = _valid_category_id(data["category_id"])
+        if new_cat != e.category_id:
+            e.category_id = new_cat
+            e.is_modified_by_user = True
     if "amount" in data:
         try:
-            e.amount = None if data["amount"] is None else Decimal(str(data["amount"]))
-            e.amount_parse_ok = e.amount is not None
+            new_amount = None if data["amount"] is None else Decimal(str(data["amount"]))
+            new_parse_ok = new_amount is not None
         except (InvalidOperation, ValueError):
-            e.amount = None; e.amount_parse_ok = False
-        e.is_modified_by_user = True
+            new_amount, new_parse_ok = None, False
+        if new_amount != e.amount or new_parse_ok != e.amount_parse_ok:
+            e.amount = new_amount
+            e.amount_parse_ok = new_parse_ok
+            e.is_modified_by_user = True
     log_edit_if_changed(e, user.id, before)
     db.session.commit()
     return jsonify(status="ok", expense=serialize_expense(e, get_storage()))
@@ -195,9 +201,7 @@ def no_receipt():
     if user.store_id is None:
         return jsonify(status="error", message="no store"), 400
     data = request.get_json(silent=True) or {}
-    reason = (data.get("reason") or "").strip()
-    if not reason:
-        return jsonify(status="error", message="reason required"), 400
+    reason = (data.get("reason") or "").strip()  # 原因（備註）非必填
     amount, ok = None, False
     if data.get("amount") is not None:
         try:
@@ -206,13 +210,33 @@ def no_receipt():
             ok = False
     if not ok:
         return jsonify(status="error", message="amount required"), 400
+
+    # 可選附一張佐證照：壓縮存 R2，但不跑 OCR（純佐證，非收據）
+    image_key = thumb_key = None
+    image = data.get("image")
+    if image:
+        try:
+            raw = base64.b64decode(str(image).split(",")[-1])
+        except Exception:
+            return jsonify(status="error", message="bad image"), 400
+        main_bytes, thumb_bytes = process_upload_image_async(
+            raw, data.get("content_type", "image/jpeg"))
+        storage = get_storage()
+        image_key = _make_key(user.store_id)
+        storage.put(image_key, main_bytes, "image/jpeg")
+        if thumb_bytes:
+            thumb_key = image_key[:-4] + "_thumb.jpg"
+            storage.put(thumb_key, thumb_bytes, "image/jpeg")
+
     now = datetime.now(timezone.utc)
+    # 進暫存區 draft，讓員工確認正確再送出；business_date/submitted_at 由 submit 時設
     e = Expense(
-        store_id=user.store_id, created_by=user.id, status="submitted",
-        created_at=now, submitted_at=now, business_date=compute_business_date(now),
+        store_id=user.store_id, created_by=user.id, status="draft",
+        created_at=now, is_no_receipt=True,
+        image_key=image_key, thumb_key=thumb_key,
         summary=data.get("summary"), category_id=_valid_category_id(data.get("category_id")),
         amount=amount, amount_parse_ok=True, is_modified_by_user=True,
-        no_receipt_reason=reason,
+        no_receipt_reason=(reason or None),
     )
     db.session.add(e); db.session.commit()
     return jsonify(status="ok", id=e.id)

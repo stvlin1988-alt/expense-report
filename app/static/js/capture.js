@@ -54,7 +54,7 @@ export function showCaptureView(onDone) {
       try { const { status } = await captureUpload(shots[i]); if (status === 202) ok += 1; }
       catch (e) { /* 單張失敗略過，續傳其餘 */ }
     }
-    msg.textContent = `已送出 ${ok}/${shots.length} 張，背景辨識中，稍後到暫存區確認`;
+    msg.textContent = `已送出 ${ok}/${shots.length} 張，背景辨識中，稍後到確認區確認`;
     setTimeout(onDone, 1200);
   });
 }

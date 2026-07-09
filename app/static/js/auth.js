@@ -33,7 +33,7 @@ export function showAppView(identity) {
         <video id="av-video" autoplay playsinline muted style="display:none;"></video>
         <canvas id="av-canvas" style="display:none;"></canvas>
         ${isEmployee ? '<button class="modal-btn" id="av-capture" type="button">拍單</button>' : ''}
-        ${isEmployee ? '<button class="modal-btn" id="av-pending" type="button">暫存區</button>' : ''}
+        ${isEmployee ? '<button class="modal-btn" id="av-pending" type="button">確認區</button>' : ''}
         <button class="modal-btn secondary" id="av-reface" type="button">更新人臉</button>
         <div class="modal-msg" id="av-msg" style="color:#4cd964;"></div>
         <button class="modal-btn" id="av-logout" type="button" style="margin-top:10px;">登出</button>

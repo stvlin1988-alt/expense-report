@@ -10,11 +10,22 @@ def test_seed_creates_two_levels(app):
         seed_categories()
 
         top = Category.query.filter_by(level=1).all()
-        assert len(top) == len(CATEGORY_DATA) == 11
+        assert len(top) == len(CATEGORY_DATA) == 12
 
         water = Category.query.filter_by(name="水電瓦斯", level=1).one()
         items = Category.query.filter_by(parent_id=water.id, level=2).all()
         assert {i.name for i in items} == {"水費", "電費", "瓦斯費"}
+
+
+def test_seed_special_category_is_childless_and_first(app):
+    # 特支＝無子類的大類，排在最前（sort 最小），下拉可直接選
+    with app.app_context():
+        db.create_all()
+        seed_categories()
+        ts = Category.query.filter_by(name="特支", level=1).one()
+        assert Category.query.filter_by(parent_id=ts.id).count() == 0
+        first = Category.query.filter_by(level=1).order_by(Category.sort).first()
+        assert first.name == "特支"
 
 
 def test_seed_is_idempotent(app):
@@ -22,6 +33,6 @@ def test_seed_is_idempotent(app):
         db.create_all()
         seed_categories()
         seed_categories()
-        assert Category.query.filter_by(level=1).count() == 11
+        assert Category.query.filter_by(level=1).count() == 12
         expected_total = len(CATEGORY_DATA) + sum(len(v) for v in CATEGORY_DATA.values())
         assert Category.query.count() == expected_total
