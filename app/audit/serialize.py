@@ -4,7 +4,7 @@ from app.expenses.logic import audit_light, iso_utc
 
 
 def serialize_audit_item(e, storage, actor_name_by_id, cat_name_by_id):
-    d = serialize_expense(e, storage, with_main=True)
+    d = serialize_expense(e, storage, with_main=True, name_by_id=actor_name_by_id)
     # 主管稽核端燈號語意與員工端不同（員工改過→紅、無單據→黃）
     d["light"] = audit_light(
         e.amount_parse_ok, e.is_modified_by_user, e.is_no_receipt,

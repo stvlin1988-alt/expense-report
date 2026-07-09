@@ -5,7 +5,7 @@ from decimal import Decimal, InvalidOperation
 
 from flask import request, jsonify, current_app
 from app.extensions import db
-from app.models import Expense, Category
+from app.models import Expense, Category, User
 from app.auth.decorators import current_user
 from app.audit.log import snapshot, log_edit_if_changed
 from app.images.image_utils import process_upload_image_async
@@ -75,8 +75,10 @@ def pending():
                     Expense.status.in_(["pending_ocr", "draft"]))
             .order_by(Expense.created_at.desc()).all())
     storage = get_storage()
+    uids = {e.created_by for e in rows} | {e.last_modified_by for e in rows if e.last_modified_by}
+    names = {u.id: u.name for u in User.query.filter(User.id.in_(uids)).all()} if uids else {}
     return jsonify(status="ok",
-                    expenses=[serialize_expense(e, storage, with_main=True) for e in rows])
+                    expenses=[serialize_expense(e, storage, with_main=True, name_by_id=names) for e in rows])
 
 
 @expense_bp.get("/<int:eid>")
@@ -87,7 +89,9 @@ def detail(eid):
     e, err = _load_owned(eid, user)
     if err:
         return err
-    return jsonify(status="ok", expense=serialize_expense(e, get_storage(), with_main=True))
+    uids = {e.created_by} | ({e.last_modified_by} if e.last_modified_by else set())
+    names = {u.id: u.name for u in User.query.filter(User.id.in_(uids)).all()} if uids else {}
+    return jsonify(status="ok", expense=serialize_expense(e, get_storage(), with_main=True, name_by_id=names))
 
 
 @expense_bp.patch("/<int:eid>")

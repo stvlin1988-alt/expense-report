@@ -61,6 +61,8 @@ def pending():
 
 def _audit_maps(expenses):
     uids = {e.audited_by for e in expenses if e.audited_by}
+    uids |= {e.created_by for e in expenses}
+    uids |= {e.last_modified_by for e in expenses if e.last_modified_by}
     cids = {e.category_id for e in expenses if e.category_id}
     names = {u.id: u.name for u in User.query.filter(User.id.in_(uids)).all()} if uids else {}
     cats = {c.id: c.name for c in Category.query.filter(Category.id.in_(cids)).all()} if cids else {}
