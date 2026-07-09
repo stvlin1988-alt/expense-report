@@ -67,6 +67,26 @@ def login_manager():
     return redirect("/")
 
 
+@dev_bp.get("/login-super")
+def login_super():
+    """一鍵登入測試經理(super_admin，全域、無綁定店)。確保 ≥2 間店，調店切換才有得選。"""
+    if _blocked():
+        return jsonify(status="not_found"), 404
+    if Store.query.filter_by(code="E2E").first() is None:
+        db.session.add(Store(name="測試門市", code="E2E"))
+    if Store.query.filter_by(code="E2E2").first() is None:
+        db.session.add(Store(name="測試門市B", code="E2E2"))
+    db.session.commit()
+    sup = User.query.filter_by(name="測試經理").first()
+    if sup is None:
+        sup = User(name="測試經理", role="super_admin", store_id=None)
+        sup.set_password("1234"); db.session.add(sup); db.session.commit()
+    session["user_id"] = sup.id
+    session.permanent = True
+    session["_last_request_at"] = int(time.time())
+    return redirect("/")
+
+
 @dev_bp.get("/sample-receipt")
 def sample_receipt():
     """回一張樣本收據(base64 data URL)，讓拍單在無相機下也能測 UI 流程。"""

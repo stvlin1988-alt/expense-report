@@ -194,3 +194,8 @@ tr.au-open-row td { font-weight: 600; }
 .au-detail-table th, .au-detail-table td { border-bottom: 1px solid #eee; padding: 4px 6px; text-align: left; }
 .au-mod { color: #d17b00; font-size: .75rem; border: 1px solid #d17b00; border-radius: 3px; padding: 0 3px; }
 .pd-ocring { color: #888; font-size: .85rem; }
+.au-trail-btn { background: none; border: none; color: #007aff; font-size: .78rem; padding: 0 2px; cursor: pointer; text-decoration: underline; }
+.au-lastmod { color: #888; font-size: .72rem; }
+.au-trail-tr td { background: #f6f6f8; color: #444; font-size: .8rem; padding: 4px 10px; }
+.au-trail-row { padding: 1px 0; }
+.au-trail-empty { color: #999; }

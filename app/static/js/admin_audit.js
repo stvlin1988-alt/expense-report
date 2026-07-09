@@ -49,13 +49,13 @@ function summaryRowHtml(e) {
       <td>${lightLabel(e.light)}</td>
       <td>${e.status === 'audited' ? '已稽核' : '待稽核'}</td>
       <td>${escapeHtml(e.audited_by_name || '')}</td>
-      <td><button class="ap-btn" data-trail="${e.id}" type="button">軌跡</button></td>
+      <td>${e.last_modified_at ? `<button class="au-trail-btn" data-trail="${e.id}" type="button">軌跡</button>` : ''}</td>
     </tr>`;
 }
 
 // 軌跡展開：委派綁定 scope 內的 [data-trail] 按鈕，點擊在該列下方插入一列
 // 顯示 誰・時間・動作（含員工確認區改的那筆 + 主管簽核那筆）。總表/待稽核共用。
-function wireTrails(scope) {
+function wireTrails(scope, colspan) {
   scope.querySelectorAll('[data-trail]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const tr = btn.closest('tr');
@@ -63,13 +63,13 @@ function wireTrails(scope) {
       if (box && box.classList.contains('au-trail-tr')) { box.remove(); return; }
       box = document.createElement('tr');
       box.className = 'au-trail-tr';
-      box.innerHTML = `<td colspan="10">載入中…</td>`;
+      box.innerHTML = `<td colspan="${colspan}">載入中…</td>`;
       tr.after(box);
       try {
         const { data } = await api.expenseLogs(btn.dataset.trail);
-        box.innerHTML = `<td colspan="10">${renderTrailRows(data.logs)}</td>`;
+        box.innerHTML = `<td colspan="${colspan}">${renderTrailRows(data.logs)}</td>`;
       } catch {
-        box.innerHTML = `<td colspan="10">軌跡載入失敗</td>`;
+        box.innerHTML = `<td colspan="${colspan}">軌跡載入失敗</td>`;
       }
     });
   });
@@ -103,7 +103,7 @@ async function renderSummary(body, sid, dateStr) {
   });
   body.querySelectorAll('.au-thumb').forEach((img) =>
     img.addEventListener('click', () => openImageLightbox(img.dataset.zoom)));
-  wireTrails(body);
+  wireTrails(body, 10);
 }
 
 async function renderPending(body, sid) {
@@ -126,7 +126,7 @@ async function renderPending(body, sid) {
         </tbody></table>
       </div>`).join('');
     wireRows(body, sid);
-    wireTrails(body);
+    wireTrails(body, 8);
   }
   // 交班/結班/取消：交班狀態與待稽核佇列無關，即使清空也需常駐可操作
   body.appendChild(actionBar(sid, body));
@@ -186,7 +186,7 @@ function rowHtml(e, tree) {
     <td><input value="${e.amount ?? ''}" inputmode="decimal" data-f="amount" style="width:80px">
       ${e.last_modified_at ? `<div class="au-lastmod">改：${escapeHtml(e.last_modified_by_name || '')}（${formatDateTimeTW(e.last_modified_at)}）</div>` : ''}</td>
     <td>${lightLabel(e.light)}</td>
-    <td><button data-act="check">打勾</button><button class="ap-btn" data-trail="${e.id}" type="button">軌跡</button><div class="pd-row-err" data-f="err"></div></td>
+    <td><button data-act="check">打勾</button>${e.last_modified_at ? `<button class="au-trail-btn" data-trail="${e.id}" type="button">軌跡</button>` : ''}<div class="pd-row-err" data-f="err"></div></td>
   </tr>`;
 }
 
