@@ -3,6 +3,7 @@ import { isValidPin, escapeHtml } from './admin_util.js';
 import { renderAccounts } from './admin_accounts.js';
 import { renderDevices } from './admin_devices.js';
 import { renderAudit } from './admin_audit.js';
+import { renderLogs } from './admin_logs.js';
 
 const root = () => document.getElementById('modal-root');
 
@@ -18,6 +19,7 @@ export async function showAdminPanel(identity) {
 
   const tabs = [
     { key: 'audit', label: '稽核' },
+    { key: 'logs', label: '操作記錄' },
     { key: 'accounts', label: '帳號' },
     { key: 'devices', label: '裝置' },
     ...(isSuper ? [{ key: 'stores', label: '店別' }] : []),
@@ -169,6 +171,7 @@ export async function showAdminPanel(identity) {
     if (state.tab === 'accounts') renderAccounts(body, ctx());
     else if (state.tab === 'devices') renderDevices(body, ctx());
     else if (state.tab === 'audit') renderAudit(body, identity, state.storeId);
+    else if (state.tab === 'logs') renderLogs(body, identity, state.storeId);
     else if (state.tab === 'stores') renderStores(body);
     else if (state.tab === 'mypw') renderMyPassword(body);
   }

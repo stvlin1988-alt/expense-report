@@ -52,4 +52,11 @@ export const api = {
     p.set('date', d);
     return req('GET', `/audit/by-date?${p.toString()}`);
   },
+  auditLogs: (storeId, date, actorId) => {
+    const p = new URLSearchParams();
+    if (storeId != null) p.set('store_id', storeId);
+    p.set('date', date);
+    if (actorId != null) p.set('actor_id', actorId);
+    return req('GET', `/audit/logs?${p.toString()}`);
+  },
 };
