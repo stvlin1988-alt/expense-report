@@ -1,8 +1,8 @@
 from decimal import Decimal, InvalidOperation
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from flask import request, jsonify
 from app.extensions import db
-from app.models import Expense, Store, Handover, User, Category
+from app.models import Expense, Store, Handover, User, Category, AuditLog
 from app.auth.decorators import current_user, role_required
 from app.expenses.tasks import _valid_category_id
 from app.expenses.logic import iso_utc
@@ -11,6 +11,8 @@ from app.audit import audit_bp
 from app.audit.log import snapshot, log_edit_if_changed, record_check
 from app.audit.service import compute_summary
 from app.audit.serialize import serialize_audit_item
+
+_TW = timezone(timedelta(hours=8))
 
 
 def _scope_store_id(from_body=False):
@@ -303,3 +305,36 @@ def days():
             .order_by(Handover.closed_at.desc(), Handover.id.desc()).all())
     return jsonify(status="ok",
                    days=[{"handover_id": h.id, "closed_at": iso_utc(h.closed_at)} for h in rows])
+
+
+@audit_bp.get("/logs")
+@role_required("manager", "super_admin")
+def audit_logs():
+    from datetime import date as _date
+    store_id, err = _scope_store_id()
+    if err:
+        return err
+    try:
+        d = _date.fromisoformat(request.args.get("date", ""))
+    except (TypeError, ValueError):
+        return jsonify(status="error", message="bad date"), 400
+    start = datetime(d.year, d.month, d.day, tzinfo=_TW).astimezone(timezone.utc)
+    end = start + timedelta(days=1)
+    q = (db.session.query(AuditLog, Expense)
+         .join(Expense, AuditLog.expense_id == Expense.id)
+         .filter(Expense.store_id == store_id,
+                 AuditLog.ts >= start, AuditLog.ts < end))
+    actor_id = request.args.get("actor_id", type=int)
+    if actor_id is not None:
+        q = q.filter(AuditLog.actor_user_id == actor_id)
+    rows = q.order_by(AuditLog.ts.desc(), AuditLog.id.desc()).all()
+    uids = {lg.actor_user_id for lg, _ in rows}
+    names = {u.id: u.name for u in User.query.filter(User.id.in_(uids)).all()} if uids else {}
+    items = [{"expense_id": lg.expense_id, "summary": exp.summary,
+              "actor_name": names.get(lg.actor_user_id),
+              "ts": iso_utc(lg.ts), "action": lg.action}
+             for lg, exp in rows]
+    actors = [{"id": u.id, "name": u.name}
+              for u in User.query.filter_by(store_id=store_id, active=True)
+              .order_by(User.name).all()]
+    return jsonify(status="ok", items=items, actors=actors)
