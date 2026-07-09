@@ -5,7 +5,7 @@ from decimal import Decimal, InvalidOperation
 
 from flask import request, jsonify, current_app
 from app.extensions import db
-from app.models import Expense, Category, User
+from app.models import Expense, Category, User, AuditLog
 from app.auth.decorators import current_user
 from app.audit.log import snapshot, log_edit_if_changed
 from app.images.image_utils import process_upload_image_async
@@ -13,7 +13,7 @@ from app.storage.r2 import get_storage
 from app.expenses import expense_bp
 from app.expenses.tasks import schedule_ocr, reconcile_stale, _valid_category_id
 from app.expenses.serialize import serialize_expense
-from app.expenses.logic import compute_business_date
+from app.expenses.logic import compute_business_date, iso_utc
 
 
 def _make_key(store_id):
@@ -92,6 +92,29 @@ def detail(eid):
     uids = {e.created_by} | ({e.last_modified_by} if e.last_modified_by else set())
     names = {u.id: u.name for u in User.query.filter(User.id.in_(uids)).all()} if uids else {}
     return jsonify(status="ok", expense=serialize_expense(e, get_storage(), with_main=True, name_by_id=names))
+
+
+@expense_bp.get("/<int:eid>/logs")
+def logs(eid):
+    user = current_user()
+    if user is None:
+        return jsonify(status="error", message="unauthenticated"), 401
+    e = db.session.get(Expense, eid)
+    if e is None:
+        return jsonify(status="error", message="not found"), 404
+    allowed = (e.created_by == user.id
+               or user.role == "super_admin"
+               or (user.role == "manager" and e.store_id == user.store_id))
+    if not allowed:
+        return jsonify(status="error", message="forbidden"), 403
+    rows = (AuditLog.query.filter_by(expense_id=eid)
+            .order_by(AuditLog.ts.asc(), AuditLog.id.asc()).all())
+    uids = {r.actor_user_id for r in rows}
+    names = {u.id: u.name for u in User.query.filter(User.id.in_(uids)).all()} if uids else {}
+    return jsonify(status="ok", logs=[
+        {"actor_name": names.get(r.actor_user_id), "ts": iso_utc(r.ts), "action": r.action}
+        for r in rows
+    ])
 
 
 @expense_bp.patch("/<int:eid>")
