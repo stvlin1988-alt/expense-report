@@ -3,6 +3,7 @@ import { showAdminPanel } from './admin.js';
 import { escapeHtml } from './admin_util.js';
 import { showCaptureView } from './capture.js';
 import { showPendingView } from './pending.js';
+import { showReviewView } from './review.js';
 
 const NEUTRAL_MSG = '無法計算，請重試';
 const root = () => document.getElementById('modal-root');
@@ -34,6 +35,7 @@ export function showAppView(identity) {
         <canvas id="av-canvas" style="display:none;"></canvas>
         ${isEmployee ? '<button class="modal-btn" id="av-capture" type="button">拍單</button>' : ''}
         ${isEmployee ? '<button class="modal-btn" id="av-pending" type="button">確認區</button>' : ''}
+        ${isEmployee ? '<button class="modal-btn" id="av-review" type="button">複查</button>' : ''}
         <button class="modal-btn secondary" id="av-reface" type="button">更新人臉</button>
         <div class="modal-msg" id="av-msg" style="color:#4cd964;"></div>
         <button class="modal-btn" id="av-logout" type="button" style="margin-top:10px;">登出</button>
@@ -84,6 +86,10 @@ export function showAppView(identity) {
     document.getElementById('av-pending').addEventListener('click', () => {
       cam.stop();
       showPendingView(() => showAppView(identity));
+    });
+    document.getElementById('av-review').addEventListener('click', () => {
+      cam.stop();
+      showReviewView(() => showAppView(identity));
     });
   }
 }

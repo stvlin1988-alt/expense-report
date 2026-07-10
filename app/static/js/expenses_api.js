@@ -20,3 +20,4 @@ export const noReceipt = (payload) => jsonFetch('/expenses/no-receipt', {
   body: JSON.stringify(payload),
 });
 export const getExpenseLogs = (id) => jsonFetch(`/expenses/${id}/logs`);
+export const listSubmitted = () => jsonFetch('/expenses/submitted');
