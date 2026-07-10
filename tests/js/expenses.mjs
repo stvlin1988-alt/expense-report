@@ -1,13 +1,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  formatAmount, lightLabel, businessDateDisplay, parseAmountInput, categoryOptionsHtml,
+  formatAmount, lightLabel, businessDateDisplay, parseAmountInput, categoryOptionsHtml, sumAmounts,
 } from '../../app/static/js/expenses_util.js';
 
 test('formatAmount thousands + null', () => {
   assert.equal(formatAmount(1290), '1,290');
   assert.equal(formatAmount(5230.5), '5,230.5');
   assert.equal(formatAmount(null), '—');
+});
+
+test('sumAmounts 分為單位加總、避免浮點誤差、忽略非數值', () => {
+  assert.equal(sumAmounts([{ amount: 1290 }, { amount: 50 }, { amount: 999.5 }]), 2339.5);
+  assert.equal(sumAmounts([{ amount: 0.1 }, { amount: 0.2 }]), 0.3);        // 非 0.30000000000000004
+  assert.equal(sumAmounts([{ amount: 100 }, { amount: null }, {}]), 100);   // null/缺欄忽略
+  assert.equal(sumAmounts([]), 0);
+  assert.equal(sumAmounts(null), 0);
 });
 
 test('lightLabel maps', () => {

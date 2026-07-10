@@ -61,6 +61,15 @@ body {
 .pd-table-wrap { overflow-x: auto; display: block; -webkit-overflow-scrolling: touch; margin-bottom: 12px; }
 #pd-table { width: 100%; border-collapse: collapse; min-width: 460px; }
 #pd-table th, #pd-table td { padding: 8px 8px; text-align: left; border-bottom: 1px solid #3a3a3c; white-space: nowrap; }
+/* 複查（唯讀）表格：唯讀好讀，行距放寬、金額欄靠右 */
+#rv-table { width: 100%; border-collapse: collapse; min-width: 460px; }
+#rv-table th, #rv-table td { padding: 12px 14px; text-align: left; border-bottom: 1px solid #3a3a3c; white-space: nowrap; }
+#rv-table th { color: #8e8e93; font-weight: 500; font-size: .85rem; }
+#rv-table .rv-amt { text-align: right; font-variant-numeric: tabular-nums; }
+.rv-total { display: flex; justify-content: space-between; align-items: baseline;
+  padding: 14px 4px 4px; margin-bottom: 16px; border-top: 2px solid #3a3a3c; font-weight: 600; }
+.rv-total .rv-total-cnt { color: #8e8e93; font-weight: 400; font-size: .9rem; }
+.rv-total .rv-total-amt { color: #4cd964; font-size: 1.35rem; margin-left: 6px; font-variant-numeric: tabular-nums; }
 .pd-row-err { color: #ff6b6b; font-size: .8rem; margin-top: 4px; white-space: normal; }
 .pd-ocr-failed { color: #ff6b6b; font-size: .8rem; margin-top: 4px; white-space: normal; }
 /* 無單據建帳表單（在按鈕下方展開）*/

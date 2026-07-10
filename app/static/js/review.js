@@ -1,5 +1,6 @@
 import { escapeHtml } from './admin_util.js';
 import { openImageLightbox } from './lightbox.js';
+import { formatAmount, sumAmounts } from './expenses_util.js';
 import { listSubmitted } from './expenses_api.js';
 
 const root = () => document.getElementById('modal-root');
@@ -13,9 +14,10 @@ export async function showReviewView(onBack) {
       <div id="rv-msg" class="modal-msg"></div>
       <div class="pd-table-wrap">
         <table id="rv-table"><thead><tr>
-          <th>單號</th><th>圖</th><th>摘要</th><th>分類</th><th>金額</th>
+          <th>單號</th><th>圖</th><th>摘要</th><th>分類</th><th class="rv-amt">金額</th>
         </tr></thead><tbody></tbody></table>
       </div>
+      <div id="rv-total" class="rv-total" hidden></div>
       <button class="modal-btn secondary" id="rv-back" type="button">返回</button>
     </div></div>`;
   document.getElementById('rv-back').addEventListener('click', onBack);
@@ -34,7 +36,7 @@ export async function showReviewView(onBack) {
       <td>${thumb}</td>
       <td>${escapeHtml(e.summary || '')}</td>
       <td>${escapeHtml(e.category_name || '')}</td>
-      <td>${e.amount ?? ''}</td>`;
+      <td class="rv-amt">${formatAmount(e.amount)}</td>`;
     const thumbEl = tr.querySelector('.au-thumb');
     if (thumbEl && thumbEl.dataset.zoom) {
       thumbEl.addEventListener('click', () => openImageLightbox(thumbEl.dataset.zoom));
@@ -43,5 +45,10 @@ export async function showReviewView(onBack) {
   });
   if (!rows.length) {
     document.getElementById('rv-msg').textContent = '本班沒有已送出的單';
+  } else {
+    const totalEl = document.getElementById('rv-total');
+    totalEl.hidden = false;
+    totalEl.innerHTML = `<span class="rv-total-cnt">共 ${rows.length} 筆</span>`
+      + `<span>總額 <span class="rv-total-amt">$${formatAmount(sumAmounts(rows))}</span></span>`;
   }
 }

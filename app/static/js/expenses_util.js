@@ -7,6 +7,15 @@ export function lightLabel(light) {
   return { green: '🟢', yellow: '🟡', red: '🔴' }[light] || '⚪';
 }
 
+// 加總金額（複查區總額）。用「分」為單位加總避免浮點誤差；忽略非有限數的 amount。
+export function sumAmounts(expenses) {
+  const cents = (expenses || []).reduce((acc, e) => {
+    const a = e && e.amount;
+    return typeof a === 'number' && Number.isFinite(a) ? acc + Math.round(a * 100) : acc;
+  }, 0);
+  return cents / 100;
+}
+
 // 解析使用者輸入的金額字串（去千分位逗號/空白/前置 NT$、$）。
 // 回傳 { value, valid }；空字串或無法解析成有限數 → { value: null, valid: false }。
 export function parseAmountInput(raw) {
