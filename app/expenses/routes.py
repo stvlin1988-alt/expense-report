@@ -5,7 +5,7 @@ from decimal import Decimal, InvalidOperation
 
 from flask import request, jsonify, current_app
 from app.extensions import db
-from app.models import Expense, Category, User, AuditLog
+from app.models import Expense, Category, User, AuditLog, Handover
 from app.auth.decorators import current_user
 from app.audit.log import snapshot, log_edit_if_changed
 from app.images.image_utils import process_upload_image_async
@@ -316,3 +316,32 @@ def categories():
         for p in rows if p.level == 1
     ]
     return jsonify(status="ok", categories=tree)
+
+
+@expense_bp.get("/submitted")
+def submitted():
+    """員工唯讀複查區：本人這一班已送出、主管尚未交/結班的單。
+    界定＝本人 + submitted/audited + handover_id 空 + submitted_at 晚於本店最近一次 handover。
+    交班與結班都建 Handover，故兩者一致地以時間界清空複查區（含主管沒核到的 submitted）。"""
+    user = current_user()
+    if user is None:
+        return jsonify(status="error", message="unauthenticated"), 401
+    last = (Handover.query.filter_by(store_id=user.store_id)
+            .order_by(Handover.closed_at.desc(), Handover.id.desc()).first())
+    q = (Expense.query
+         .filter(Expense.created_by == user.id,
+                 Expense.status.in_(["submitted", "audited"]),
+                 Expense.handover_id.is_(None)))
+    if last is not None:
+        q = q.filter(Expense.submitted_at > last.closed_at)
+    rows = q.order_by(Expense.day_seq.asc(), Expense.submitted_at.asc()).all()
+    storage = get_storage()
+    cids = {e.category_id for e in rows if e.category_id}
+    cat_names = ({c.id: c.name for c in Category.query.filter(Category.id.in_(cids)).all()}
+                 if cids else {})
+    out = []
+    for e in rows:
+        d = serialize_expense(e, storage, with_main=True)
+        d["category_name"] = cat_names.get(e.category_id)
+        out.append(d)
+    return jsonify(status="ok", expenses=out)
