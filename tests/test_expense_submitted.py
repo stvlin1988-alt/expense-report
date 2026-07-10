@@ -125,6 +125,29 @@ def test_no_status_leak(app):
         assert "status" not in row
 
 
+def test_payload_whitelist_hides_audit_metadata(app):
+    """員工複查區不揭露主管稽核/改動狀態：即使主管已改過金額/分類，回傳也不能帶
+    last_modified_at/last_modified_fields/light/ocr_failed 等 metadata，只能有唯讀白名單欄位。"""
+    r2mod._mock_singleton = None
+    sid, uid, _ = _seed(app)
+    with app.app_context():
+        cat = Category(name="餐費", level=1, sort=1, active=True)
+        db.session.add(cat); db.session.commit()
+        e = _mk(sid, uid, "audited", 150, datetime.now(timezone.utc),
+                day_seq=1, category_id=cat.id, image_key="m1.jpg")
+        e.last_modified_at = datetime.now(timezone.utc)
+        e.last_modified_fields = "amount,category"
+        db.session.add(e); db.session.commit()
+    c = _client(app, uid)
+    row = c.get("/expenses/submitted").get_json()["expenses"][0]
+    for leaked in ("last_modified_at", "last_modified_fields", "light",
+                   "ocr_failed", "ocr_last_error", "is_modified_by_user",
+                   "created_by_name", "created_at", "status", "category_id"):
+        assert leaked not in row, f"{leaked} 不應出現在員工複查回傳"
+    for wanted in ("id", "doc_no", "amount", "category_name", "image_url", "summary"):
+        assert wanted in row, f"{wanted} 應出現在員工複查回傳"
+
+
 def test_unauth_401(app):
     r2mod._mock_singleton = None
     _seed(app)

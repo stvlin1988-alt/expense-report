@@ -330,6 +330,7 @@ def submitted():
             .order_by(Handover.closed_at.desc(), Handover.id.desc()).first())
     q = (Expense.query
          .filter(Expense.created_by == user.id,
+                 Expense.store_id == user.store_id,
                  Expense.status.in_(["submitted", "audited"]),
                  Expense.handover_id.is_(None)))
     if last is not None:
@@ -340,9 +341,10 @@ def submitted():
     cat_names = ({c.id: c.name for c in Category.query.filter(Category.id.in_(cids)).all()}
                  if cids else {})
     out = []
+    keep = ("id", "doc_no", "summary", "amount", "thumb_url", "image_url")
     for e in rows:
         d = serialize_expense(e, storage, with_main=True)
-        d.pop("status", None)
-        d["category_name"] = cat_names.get(e.category_id)
-        out.append(d)
+        row = {k: d[k] for k in keep if k in d}
+        row["category_name"] = cat_names.get(e.category_id)
+        out.append(row)
     return jsonify(status="ok", expenses=out)
