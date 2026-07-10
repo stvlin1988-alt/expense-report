@@ -342,6 +342,7 @@ def submitted():
     out = []
     for e in rows:
         d = serialize_expense(e, storage, with_main=True)
+        d.pop("status", None)
         d["category_name"] = cat_names.get(e.category_id)
         out.append(d)
     return jsonify(status="ok", expenses=out)

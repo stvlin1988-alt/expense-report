@@ -108,6 +108,23 @@ def test_includes_category_name_and_image_url(app):
     assert "m1.jpg" in row["image_url"]
 
 
+def test_no_status_leak(app):
+    """員工複查區不揭露稽核狀態：回傳每筆都不能有 status 欄位。"""
+    r2mod._mock_singleton = None
+    sid, uid, _ = _seed(app)
+    with app.app_context():
+        now = datetime.now(timezone.utc)
+        db.session.add_all([
+            _mk(sid, uid, "submitted", 100, now, day_seq=1),
+            _mk(sid, uid, "audited", 200, now, day_seq=2),
+        ]); db.session.commit()
+    c = _client(app, uid)
+    body = c.get("/expenses/submitted").get_json()
+    assert len(body["expenses"]) == 2
+    for row in body["expenses"]:
+        assert "status" not in row
+
+
 def test_unauth_401(app):
     r2mod._mock_singleton = None
     _seed(app)
