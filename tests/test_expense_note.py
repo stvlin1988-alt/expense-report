@@ -48,6 +48,7 @@ def test_note_locked_after_submit(client, app, draft_expense_id):
     client.post(f"/expenses/{draft_expense_id}/submit")
     r = client.patch(f"/expenses/{draft_expense_id}", json={"note": "改口"})
     assert r.status_code == 409
+    assert r.get_json()["message"] == "not editable"
     r2 = client.get(f"/expenses/{draft_expense_id}")
     assert r2.get_json()["expense"]["note"] == "原始說法"
 
@@ -55,3 +56,46 @@ def test_note_locked_after_submit(client, app, draft_expense_id):
 def test_note_max_200(client, app, draft_expense_id):
     r = client.patch(f"/expenses/{draft_expense_id}", json={"note": "x" * 201})
     assert r.status_code == 400
+
+
+def test_note_exactly_200_chars_accepted(client, app, draft_expense_id):
+    # 邊界值：剛好 200 字要能存，只擋 201+
+    r = client.patch(f"/expenses/{draft_expense_id}", json={"note": "x" * 200})
+    assert r.status_code == 200
+    r2 = client.get(f"/expenses/{draft_expense_id}")
+    assert r2.get_json()["expense"]["note"] == "x" * 200
+
+
+def test_note_whitespace_only_stores_null(client, app, draft_expense_id):
+    r = client.patch(f"/expenses/{draft_expense_id}", json={"note": "   "})
+    assert r.status_code == 200
+    with app.app_context():
+        e = db.session.get(Expense, draft_expense_id)
+        assert e.note is None
+
+
+def test_note_empty_stores_null(client, app, draft_expense_id):
+    r = client.patch(f"/expenses/{draft_expense_id}", json={"note": ""})
+    assert r.status_code == 200
+    with app.app_context():
+        e = db.session.get(Expense, draft_expense_id)
+        assert e.note is None
+
+
+def test_no_receipt_note_too_long(client, app):
+    # no-receipt 建單同樣要擋 >200 字，不然會直接打到 String(200) 欄位在 Postgres 炸 500
+    r = client.post("/expenses/no-receipt", json={"summary": "x", "amount": 1, "note": "x" * 201})
+    assert r.status_code == 400
+    assert r.get_json()["message"] == "note_too_long"
+
+
+def test_no_receipt_note_whitespace_only_and_empty_store_null(client, app):
+    r1 = client.post("/expenses/no-receipt", json={"summary": "x", "amount": 1, "note": "   "})
+    assert r1.status_code == 200
+    r2 = client.post("/expenses/no-receipt", json={"summary": "x", "amount": 1, "note": ""})
+    assert r2.status_code == 200
+    with app.app_context():
+        e1 = db.session.get(Expense, r1.get_json()["id"])
+        e2 = db.session.get(Expense, r2.get_json()["id"])
+        assert e1.note is None
+        assert e2.note is None

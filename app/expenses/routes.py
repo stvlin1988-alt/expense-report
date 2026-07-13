@@ -172,8 +172,7 @@ def edit(eid):
             e.is_modified_by_user = True
     if "note" in data:
         # note 只在 draft 可寫；送出後鎖（不能事後改說法），主管/經理才能改（Task 4）
-        if e.status != "draft":
-            return jsonify(status="error", message="note_locked"), 409
+        # draft 鎖已由上方 handler 頂層的 status!=draft 409 guard 擋下，這裡不重複判斷
         note = (data["note"] or "").strip()
         if len(note) > 200:
             return jsonify(status="error", message="note_too_long"), 400
@@ -270,6 +269,10 @@ def no_receipt():
     amount, err = parse_amount(data.get("amount"))
     if err or amount is None:
         return jsonify(status="error", message=err or "amount required"), 400
+    note = (data.get("note") or "").strip()
+    # 跟 PATCH 一樣擋長度：不擋的話 >200 字直接打到 String(200) 欄位，在 Postgres 會炸 500
+    if len(note) > 200:
+        return jsonify(status="error", message="note_too_long"), 400
 
     # 可選附一張佐證照：壓縮存 R2，但不跑 OCR（純佐證，非收據）
     image_key = thumb_key = None
@@ -297,7 +300,7 @@ def no_receipt():
         summary=data.get("summary"), category_id=_valid_category_id(data.get("category_id")),
         amount=amount, amount_parse_ok=True, is_modified_by_user=True,
         no_receipt_reason=(reason or None),
-        note=((data.get("note") or "").strip() or None),
+        note=(note or None),
     )
     db.session.add(e); db.session.commit()
     return jsonify(status="ok", id=e.id)
