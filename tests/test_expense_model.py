@@ -27,4 +27,6 @@ def test_expense_defaults(app):
 
 
 def test_expense_status_constants():
-    assert Expense.STATUSES == ("pending_ocr", "draft", "submitted", "audited")
+    assert Expense.STATUSES == (
+        "pending_ocr", "draft", "submitted", "audited", "reconciled", "rejected",
+    )

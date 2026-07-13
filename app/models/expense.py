@@ -4,7 +4,7 @@ from app.extensions import db
 class Expense(db.Model):
     __tablename__ = "expenses"
 
-    STATUSES = ("pending_ocr", "draft", "submitted", "audited")
+    STATUSES = ("pending_ocr", "draft", "submitted", "audited", "reconciled", "rejected")
 
     id = db.Column(db.Integer, primary_key=True)
     store_id = db.Column(db.Integer, db.ForeignKey("stores.id"), nullable=False, index=True)
@@ -45,6 +45,12 @@ class Expense(db.Model):
     last_modified_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     last_modified_at = db.Column(db.DateTime(timezone=True), nullable=True)
     last_modified_fields = db.Column(db.String(32), nullable=True)  # 最後一次改了哪些欄位: "amount"/"category"/"amount,category"
+
+    # 會計核銷
+    reconciled_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    reconciled_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    reject_reason = db.Column(db.String(200), nullable=True)  # 會計退回原因
+    note = db.Column(db.String(200), nullable=True)  # 員工備註；門市內部欄位，會計看不到
 
     __table_args__ = (
         db.Index("ix_expenses_store_status", "store_id", "status"),
