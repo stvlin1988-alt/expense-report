@@ -1,0 +1,442 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>
+<title>會計討論議題單・核銷＋月結</title>
+<style>
+  :root {
+    --paper: #FBFAF7;
+    --card: #FFFFFF;
+    --ink: #20302E;
+    --ink-soft: #566360;
+    --line: #E5E0D6;
+    --line-strong: #D6CFC1;
+    --accent: #2E6E5C;
+    --accent-soft: #E7F0EC;
+    --accent-line: #BBD6CC;
+    --flag: #B26A2E;
+    --flag-soft: #F7ECDD;
+    --flag-line: #E6C79E;
+    --shadow: 0 1px 2px rgba(32,48,46,.05), 0 8px 30px rgba(32,48,46,.06);
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif CJK TC", "Songti TC", "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Noto Sans CJK TC", "Noto Sans TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #141D1B; --card: #1A2523; --ink: #E9EEEB; --ink-soft: #9CA9A5;
+      --line: #2A3936; --line-strong: #33443F; --accent: #64BBA1; --accent-soft: #1D2E29;
+      --accent-line: #2F4A43; --flag: #D79C5F; --flag-soft: #2A2419; --flag-line: #4A3C27;
+      --shadow: 0 1px 2px rgba(0,0,0,.2), 0 10px 34px rgba(0,0,0,.28);
+    }
+  }
+  :root[data-theme="light"] {
+    --paper: #FBFAF7; --card: #FFFFFF; --ink: #20302E; --ink-soft: #566360;
+    --line: #E5E0D6; --line-strong: #D6CFC1; --accent: #2E6E5C; --accent-soft: #E7F0EC;
+    --accent-line: #BBD6CC; --flag: #B26A2E; --flag-soft: #F7ECDD; --flag-line: #E6C79E;
+    --shadow: 0 1px 2px rgba(32,48,46,.05), 0 8px 30px rgba(32,48,46,.06);
+  }
+  :root[data-theme="dark"] {
+    --paper: #141D1B; --card: #1A2523; --ink: #E9EEEB; --ink-soft: #9CA9A5;
+    --line: #2A3936; --line-strong: #33443F; --accent: #64BBA1; --accent-soft: #1D2E29;
+    --accent-line: #2F4A43; --flag: #D79C5F; --flag-soft: #2A2419; --flag-line: #4A3C27;
+    --shadow: 0 1px 2px rgba(0,0,0,.2), 0 10px 34px rgba(0,0,0,.28);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--sans); line-height: 1.62;
+    font-size: 16px; letter-spacing: .1px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 830px; margin: 0 auto; padding: 40px 26px 96px; }
+
+  /* ---- masthead ---- */
+  .mast { border-bottom: 2px solid var(--ink); padding-bottom: 22px; margin-bottom: 8px; }
+  .kicker {
+    font-size: .72rem; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700; margin: 0 0 10px;
+  }
+  h1 {
+    font-family: var(--serif); font-weight: 700; font-size: 2.35rem; line-height: 1.12;
+    margin: 0 0 8px; text-wrap: balance; letter-spacing: .2px;
+  }
+  .sub { font-size: 1.02rem; color: var(--ink-soft); margin: 0; }
+  .metarow {
+    display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 18px;
+    font-size: .82rem; color: var(--ink-soft);
+  }
+  .metarow b { color: var(--ink); font-weight: 600; }
+  .flow {
+    font-family: var(--serif); font-style: italic; color: var(--accent);
+    font-size: .9rem;
+  }
+
+  /* ---- how-to (screen only) ---- */
+  .howto {
+    display: flex; gap: 14px; align-items: flex-start;
+    margin: 22px 0 4px; padding: 13px 16px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    font-size: .84rem; color: var(--ink-soft); box-shadow: var(--shadow);
+  }
+  .howto .dot { color: var(--accent); font-weight: 700; }
+
+  /* ---- sections ---- */
+  section.part { margin-top: 40px; break-inside: avoid; }
+  .part-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 6px; }
+  .marker {
+    font-family: var(--serif); font-weight: 700; font-size: 2.5rem; line-height: 1;
+    color: var(--accent); min-width: 46px; flex: none;
+  }
+  .part-head .eyebrow {
+    font-size: .7rem; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--ink-soft); font-weight: 700; display: block; margin-bottom: 3px;
+  }
+  .part-head h2 { font-size: 1.34rem; margin: 0; font-weight: 700; letter-spacing: .3px; }
+  .lede { margin: 0 0 18px 62px; color: var(--ink-soft); font-size: .92rem; }
+  .block { margin-left: 62px; }
+  @media (max-width: 560px) {
+    .lede, .block { margin-left: 0; }
+    .part-head { gap: 12px; }
+    .marker { font-size: 2rem; min-width: 34px; }
+  }
+
+  .q { margin: 20px 0 8px; }
+  .q h3 { font-size: 1rem; margin: 0 0 3px; font-weight: 700; }
+  .q .hint { font-size: .8rem; color: var(--ink-soft); margin: 0 0 10px; }
+  .tag {
+    display: inline-block; font-size: .64rem; letter-spacing: .1em; text-transform: uppercase;
+    font-weight: 700; padding: 2px 7px; border-radius: 999px; vertical-align: middle;
+    margin-left: 8px; background: var(--accent-soft); color: var(--accent);
+    border: 1px solid var(--accent-line);
+  }
+
+  /* checkbox options */
+  ul.opts { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+  ul.opts.two { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 560px) { ul.opts.two { grid-template-columns: 1fr; } }
+  .opt { display: flex; gap: 10px; align-items: flex-start; font-size: .95rem; }
+  .box {
+    flex: none; width: 15px; height: 15px; margin-top: 4px; border-radius: 3px;
+    border: 1.5px solid var(--line-strong); background: var(--card);
+  }
+  .opt.rec .box { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent-soft); }
+  .opt.rec .txt::after {
+    content: "建議"; font-size: .62rem; font-weight: 700; letter-spacing: .08em;
+    color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-line);
+    padding: 1px 6px; border-radius: 999px; margin-left: 8px; vertical-align: 2px;
+  }
+
+  /* fill-in lines */
+  .fill { margin: 9px 0; font-size: .95rem; }
+  .fill .line {
+    display: inline-block; min-width: 40%; border-bottom: 1.5px dotted var(--line-strong);
+    height: 1.1em; vertical-align: -.25em; margin-left: 6px;
+  }
+  .fill.full .line { display: block; min-width: 0; width: 100%; margin: 6px 0 0; }
+
+  /* Part 0 callout */
+  .callout {
+    border: 1px solid var(--flag-line); background: var(--flag-soft);
+    border-left: 5px solid var(--flag); border-radius: 12px;
+    padding: 20px 22px 20px 24px; margin-top: 12px;
+  }
+  .callout .marker { color: var(--flag); }
+  .callout .part-head h2 { color: var(--ink); }
+  .callout ul.brings { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 9px; }
+  .callout .box { border-color: var(--flag); }
+  .callout .why { font-size: .82rem; color: var(--ink-soft); margin: 2px 0 0; }
+
+  /* Part D defaults panel */
+  .panel {
+    border: 1px solid var(--accent-line); background: var(--accent-soft);
+    border-radius: 12px; padding: 20px 24px; margin-top: 12px;
+  }
+  .panel dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 10px 18px; }
+  .panel dt { font-weight: 700; color: var(--accent); white-space: nowrap; font-size: .92rem; }
+  .panel dd { margin: 0; font-size: .93rem; }
+  @media (max-width: 560px) {
+    .panel dl { grid-template-columns: 1fr; gap: 4px 0; }
+    .panel dd { margin-bottom: 8px; }
+  }
+
+  .flowbar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;
+    margin: 4px 0 16px; font-family: var(--serif); font-size: .95rem;
+  }
+  .flowbar .st { padding: 4px 12px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--card); }
+  .flowbar .st.new { border-color: var(--accent); color: var(--accent); font-weight: 700; background: var(--accent-soft); }
+  .flowbar .arw { color: var(--ink-soft); }
+
+  hr.rule { border: 0; border-top: 1px solid var(--line); margin: 34px 0 0; }
+  .after { margin-top: 30px; font-size: .92rem; }
+  .after h3 { font-size: .82rem; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-soft); margin: 0 0 8px; }
+  .after ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+
+  .foot { margin-top: 46px; padding-top: 16px; border-top: 1px solid var(--line);
+    font-size: .76rem; color: var(--ink-soft); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+  /* print button */
+  .printbtn {
+    position: fixed; right: 20px; bottom: 20px; z-index: 20;
+    font-family: var(--sans); font-size: .9rem; font-weight: 600;
+    color: #fff; background: var(--accent); border: none; cursor: pointer;
+    padding: 12px 18px; border-radius: 999px; box-shadow: var(--shadow);
+  }
+  .printbtn:hover { filter: brightness(1.06); }
+  .printbtn:focus-visible { outline: 3px solid var(--accent-line); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  /* ---------- PRINT ---------- */
+  @media print {
+    :root, :root[data-theme="dark"] {
+      --paper:#fff; --card:#fff; --ink:#1a1a1a; --ink-soft:#555; --line:#cfcabf;
+      --line-strong:#a9a295; --accent:#215446; --accent-soft:#eef4f1; --accent-line:#a9c8bd;
+      --flag:#95591f; --flag-soft:#f5ece0; --flag-line:#d3b284; --shadow:none;
+    }
+    @page { margin: 15mm 14mm; }
+    body { font-size: 11.4pt; line-height: 1.5; }
+    .wrap { padding: 0; max-width: none; }
+    .printbtn, .howto { display: none !important; }
+    .callout, .panel, .howto, .box, .flowbar .st { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    section.part, .q, .callout, .panel, .after { break-inside: avoid; }
+    h1 { font-size: 22pt; }
+    .part-head h2 { font-size: 14pt; }
+    .marker { font-size: 22pt; }
+    a { text-decoration: none; color: inherit; }
+  }
+</style>
+
+<button class="printbtn" type="button" onclick="window.print()">🖨 列印 / 存 PDF</button>
+
+<div class="wrap">
+
+  <header class="mast">
+    <p class="kicker">會計討論議題單 · 一次談完</p>
+    <h1>會計核銷 ＋ 月結報表</h1>
+    <p class="sub">一次會議把「核銷」與「月結」兩塊需求都定案，避免多次來回佔用會計時間。</p>
+    <div class="metarow">
+      <span><b>對象</b> 業主 ＋ 會計</span>
+      <span><b>時間</b> 2026-07 下週（預定）</span>
+      <span class="flow">流程：拍單 → OCR → 員工送出 → 主管稽核交班 → ★核銷 → ★月結</span>
+    </div>
+  </header>
+
+  <div class="howto">
+    <span class="dot">用法</span>
+    <span>決策題直接勾方框、填空題寫在虛線上；每段最後的「<b>我方建議預設</b>」先打底——會計沒意見就採用、有意見才改，會議最快。標「建議」的是我方傾向的選項。</span>
+  </div>
+
+  <!-- PART 0 -->
+  <section class="part">
+    <div class="callout">
+      <div class="part-head">
+        <span class="marker">0</span>
+        <div>
+          <span class="eyebrow">最重要 · 請會計事先帶來</span>
+          <h2>沒有這些，報表一定做錯重來</h2>
+        </div>
+      </div>
+      <p class="why" style="margin-left:62px">這幾樣直接決定報表欄位與匯出格式，光用講的會猜錯。開會前先把這張清單傳給會計，請當天帶齊。</p>
+      <ul class="brings block">
+        <li class="opt"><span class="box"></span><span><b>現行月結報表的真實樣本</b>（Excel／紙本影本）—— 看實際欄位、排版、小計方式。</span></li>
+        <li class="opt"><span class="box"></span><span><b>給代書／記帳士／事務所的匯出檔樣本</b>（若現在有給）—— 格式、欄位、頻率。</span></li>
+        <li class="opt"><span class="box"></span><span><b>現行「對帳／核銷」怎麼做</b> —— 用什麼工具、對什麼、誰做、多久一次。</span></li>
+        <li class="opt"><span class="box"></span><span><b>會計科目表／傳票格式</b> —— 雜支分類要不要對應到會計科目。</span></li>
+        <li class="opt"><span class="box"></span><span><b>稅務處理</b> —— 發票／收據／無單據各怎麼認列？進項稅額要不要拆？</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- PART A -->
+  <section class="part">
+    <div class="part-head">
+      <span class="marker">A</span>
+      <div><span class="eyebrow">Part A</span><h2>核銷（會計端紅綠燈）</h2></div>
+    </div>
+    <p class="lede">核銷是接在主管「稽核 <code>audited</code>」之後的新階段。以下定義它怎麼運作。</p>
+    <div class="block">
+
+      <div class="q">
+        <h3>A1　核銷的「本質」是什麼？<span class="tag">單選</span></h3>
+        <p class="hint">決定整段流程，最關鍵。</p>
+        <ul class="opts">
+          <li class="opt rec"><span class="box"></span><span class="txt">(a) 逐筆確認入帳：<b>通過／退回</b>（退回要補件或改）</span></li>
+          <li class="opt"><span class="box"></span><span>(b) 只標「已對帳」，不退回（純確認看過、對得起來）</span></li>
+          <li class="opt"><span class="box"></span><span>(c) 批次核銷（整班／整日／整月一次過）</span></li>
+          <li class="opt"><span class="box"></span><span>(d) 其他：<span class="line" style="min-width:30%"></span></span></li>
+        </ul>
+      </div>
+
+      <div class="q">
+        <h3>A2　核銷的顆粒度？</h3>
+        <ul class="opts two">
+          <li class="opt"><span class="box"></span><span>逐筆</span></li>
+          <li class="opt"><span class="box"></span><span>一整班</span></li>
+          <li class="opt"><span class="box"></span><span>一整天</span></li>
+          <li class="opt"><span class="box"></span><span>一整月</span></li>
+        </ul>
+      </div>
+
+      <div class="q">
+        <h3>A3　若可「退回」——退回機制</h3>
+        <div class="fill">退給誰？<span class="line"></span></div>
+        <div class="fill">退回後誰能改（員工重送／主管改／只能補附件）？<span class="line"></span></div>
+        <div class="fill">退回原因要不要必填或用選單？<span class="line"></span></div>
+      </div>
+
+      <div class="q">
+        <h3>A4　會計端紅綠燈語意<span class="tag">系統第三套燈號</span></h3>
+        <p class="hint">跟員工燈、主管燈語意不同，要各自定義。</p>
+        <div class="fill">🟢 綠 ＝<span class="line"></span></div>
+        <div class="fill">🟡 黃 ＝<span class="line"></span></div>
+        <div class="fill">🔴 紅 ＝<span class="line"></span></div>
+      </div>
+
+      <div class="q">
+        <h3>A5　核銷「後」還能不能動？</h3>
+        <ul class="opts">
+          <li class="opt"><span class="box"></span><span>核銷後鎖死（要改先反核銷，留軌跡）</span></li>
+          <li class="opt"><span class="box"></span><span>核銷後仍可由會計調整</span></li>
+        </ul>
+        <div class="fill">誰有權反核銷？<span class="line"></span></div>
+      </div>
+
+      <div class="q">
+        <h3>A6　會計看得到的範圍</h3>
+        <p class="hint">現況：主管是單店；super_admin 要選定單店。會計要不要跨店總覽？</p>
+        <ul class="opts">
+          <li class="opt"><span class="box"></span><span>單店</span></li>
+          <li class="opt"><span class="box"></span><span>多店逐店</span></li>
+          <li class="opt"><span class="box"></span><span>全公司彙整</span></li>
+        </ul>
+      </div>
+
+      <div class="q">
+        <h3>A7　憑證／科目對應</h3>
+        <div class="fill">雜支分類（現有兩層）要不要在核銷時對應會計科目？<span class="line"></span></div>
+        <div class="fill">發票／收據／無單據要不要分開統計或不同處理？<span class="line"></span></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- PART B -->
+  <section class="part">
+    <div class="part-head">
+      <span class="marker">B</span>
+      <div><span class="eyebrow">Part B</span><h2>月結報表</h2></div>
+    </div>
+    <p class="lede">接在核銷之後。<b>對著 Part 0 帶來的真實樣本逐欄確認</b>，別憑空猜。</p>
+    <div class="block">
+
+      <div class="q">
+        <h3>B1　月結週期與「月界」</h3>
+        <ul class="opts">
+          <li class="opt"><span class="box"></span><span>自然月（1 號 00:00 ～ 月底）</span></li>
+          <li class="opt"><span class="box"></span><span>配合營業日 08:00 分界（跨月那天算哪個月？）</span></li>
+        </ul>
+        <div class="fill">幾號結算／產出？<span class="line"></span></div>
+      </div>
+
+      <div class="q">
+        <h3>B2　報表要「切」哪些維度？<span class="tag">可複選</span></h3>
+        <ul class="opts two">
+          <li class="opt"><span class="box"></span><span>分店別</span></li>
+          <li class="opt"><span class="box"></span><span>分類別（大類／細類）</span></li>
+          <li class="opt"><span class="box"></span><span>日別</span></li>
+          <li class="opt"><span class="box"></span><span>班別</span></li>
+          <li class="opt"><span class="box"></span><span>員工別</span></li>
+          <li class="opt"><span class="box"></span><span>付款方式</span></li>
+        </ul>
+      </div>
+
+      <div class="q">
+        <h3>B3　報表欄位</h3>
+        <div class="fill full">主要欄位（對著真實樣本）：<span class="line"></span></div>
+        <div class="fill full">小計／總計方式：<span class="line"></span></div>
+        <div class="fill">未核銷／退回的要不要另計？<span class="line"></span></div>
+      </div>
+
+      <div class="q">
+        <h3>B4　匯出格式與對象</h3>
+        <ul class="opts two">
+          <li class="opt"><span class="box"></span><span>Excel（.xlsx）</span></li>
+          <li class="opt"><span class="box"></span><span>CSV</span></li>
+          <li class="opt"><span class="box"></span><span>PDF</span></li>
+          <li class="opt"><span class="box"></span><span>對接事務所系統</span></li>
+        </ul>
+        <div class="fill">給誰、多久一次？<span class="line"></span></div>
+        <div class="fill">要不要附原始單據影像／連結？（注意：影像有保存期限與加密政策）<span class="line"></span></div>
+      </div>
+
+      <div class="q">
+        <h3>B5　月結與核銷的關係</h3>
+        <div class="fill">只有「已核銷」才進月結？未核銷怎麼呈現（另表／標記／不計）？<span class="line"></span></div>
+        <div class="fill">月結產出後該月能不能再改（封月）？<span class="line"></span></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- PART C -->
+  <section class="part">
+    <div class="part-head">
+      <span class="marker">C</span>
+      <div><span class="eyebrow">Part C</span><h2>兩者串接（整合成一條線）</h2></div>
+    </div>
+    <div class="block">
+      <div class="flowbar">
+        <span class="st">員工送出</span><span class="arw">→</span>
+        <span class="st">主管稽核交班</span><span class="arw">→</span>
+        <span class="st new">會計核銷</span><span class="arw">→</span>
+        <span class="st new">月結</span><span class="arw">→</span>
+        <span class="st">匯出／封月</span>
+      </div>
+      <ul class="opts">
+        <li class="opt"><span class="box"></span><span>核銷是月結的<b>前置條件</b>嗎？（沒核銷不進月結？）</span></li>
+        <li class="opt"><span class="box"></span><span>月結時發現錯的單，回頭反核銷／退回，走哪條路？</span></li>
+        <li class="opt"><span class="box"></span><span>每個環節「誰、在什麼時間點、做什麼」——現場畫一次流程給會計確認。</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- PART D -->
+  <section class="part">
+    <div class="part-head">
+      <span class="marker">D</span>
+      <div><span class="eyebrow">Part D · 讓會計只需「確認／微調」</span><h2>我方建議預設</h2></div>
+    </div>
+    <p class="lede">先用這套打底，會計沒意見就採用、有意見才改——比逐題空白問快得多。（皆待確認）</p>
+    <div class="panel block">
+      <dl>
+        <dt>核銷本質</dt><dd>(a) 逐筆通過／退回 ＋ 支援 (c) 批次一鍵核銷；日常走批次、有問題挑單退回。</dd>
+        <dt>顆粒度</dt><dd>以「日／班」為主要批次單位，可下鑽到單筆。</dd>
+        <dt>退回</dt><dd>退給開單員工並通知主管，原因用選單＋可補述，退回後員工重送。</dd>
+        <dt>會計燈號</dt><dd>綠＝已核銷、黃＝待補件、紅＝退回／存疑。</dd>
+        <dt>核銷後</dt><dd>鎖定；要改先反核銷並留軌跡（沿用現有 audit_log 機制）。</dd>
+        <dt>範圍</dt><dd>會計可跨店總覽（比主管多一層）。</dd>
+        <dt>月界</dt><dd>配合既有營業日 08:00 分界，跨月當天歸屬其所屬營業日的月份。</dd>
+        <dt>維度</dt><dd>分店 × 分類（大類彙總、可展開細類）× 月；日／班可下鑽。</dd>
+        <dt>匯出</dt><dd>先做 Excel（.xlsx），欄位對齊會計帶來的樣本；影像用連結不直接塞檔。</dd>
+        <dt>封月</dt><dd>月結產出後標記封月；反核銷需權限＋留軌跡。</dd>
+      </dl>
+    </div>
+  </section>
+
+  <hr class="rule">
+  <div class="after">
+    <h3>會後我方動作</h3>
+    <ol>
+      <li>依會計確認結果，把核銷 ＋ 月結合併走一輪 brainstorming（整合 spec）。</li>
+      <li>拿到真實報表樣本後才寫月結 parser／匯出格式（避免憑想像猜）。</li>
+      <li>照慣例：開 branch → SDD 逐 task → 測試＋業主驗收 → 明說才 merge。</li>
+    </ol>
+  </div>
+
+  <div class="foot">
+    <span>expense-report · 會計端雜支自動化報表系統</span>
+    <span>核銷 ＋ 月結需求蒐集 · 2026-07</span>
+  </div>
+
+</div>
+</body></html>
