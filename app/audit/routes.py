@@ -101,6 +101,12 @@ def edit(eid):
             return jsonify(status="error", message=err), 400
         e.amount = new_amount
         e.amount_parse_ok = new_amount is not None
+    if "note" in data:
+        # 主管/經理改備註（留軌跡）；規則同員工端（Task 3）：>200 拒絕、空白/空字串存 NULL
+        note = (data["note"] or "").strip()
+        if len(note) > 200:
+            return jsonify(status="error", message="note_too_long"), 400
+        e.note = note or None
     if log_edit_if_changed(e, current_user().id, before):
         e.is_modified_by_manager = True
     db.session.commit()

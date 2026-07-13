@@ -31,8 +31,8 @@ def test_log_edit_only_when_changed(app):
         db.session.commit()
         rows = AuditLog.query.filter_by(action="edit").all()
         assert len(rows) == 1
-        assert rows[0].before_json == {"amount": 100.0, "category_id": None}
-        assert rows[0].after_json == {"amount": 250.0, "category_id": None}
+        assert rows[0].before_json == {"amount": 100.0, "category_id": None, "note": None}
+        assert rows[0].after_json == {"amount": 250.0, "category_id": None, "note": None}
 
 
 def test_record_check(app):
