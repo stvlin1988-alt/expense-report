@@ -1,4 +1,3 @@
-from decimal import Decimal, InvalidOperation
 from datetime import datetime, timezone, timedelta
 from flask import request, jsonify
 from app.extensions import db
@@ -6,6 +5,7 @@ from app.models import Expense, Store, Handover, User, Category, AuditLog
 from app.auth.decorators import current_user, role_required
 from app.expenses.tasks import _valid_category_id
 from app.expenses.logic import iso_utc, format_doc_no
+from app.expenses.amount import parse_amount
 from app.storage.r2 import get_storage
 from app.audit import audit_bp
 from app.audit.log import snapshot, log_edit_if_changed, record_check
@@ -96,11 +96,11 @@ def edit(eid):
     if "category_id" in data:
         e.category_id = _valid_category_id(data["category_id"])
     if "amount" in data:
-        try:
-            e.amount = None if data["amount"] is None else Decimal(str(data["amount"]))
-            e.amount_parse_ok = e.amount is not None
-        except (InvalidOperation, ValueError):
-            e.amount = None; e.amount_parse_ok = False
+        new_amount, err = parse_amount(data["amount"])
+        if err:
+            return jsonify(status="error", message=err), 400
+        e.amount = new_amount
+        e.amount_parse_ok = new_amount is not None
     if log_edit_if_changed(e, current_user().id, before):
         e.is_modified_by_manager = True
     db.session.commit()

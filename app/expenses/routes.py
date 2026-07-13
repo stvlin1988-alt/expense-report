@@ -1,7 +1,6 @@
 import base64
 import uuid
 from datetime import datetime, timezone
-from decimal import Decimal, InvalidOperation
 
 from flask import request, jsonify, current_app
 from app.extensions import db
@@ -14,6 +13,7 @@ from app.expenses import expense_bp
 from app.expenses.tasks import schedule_ocr, reconcile_stale, _valid_category_id
 from app.expenses.serialize import serialize_expense
 from app.expenses.logic import compute_business_date, iso_utc
+from app.expenses.amount import parse_amount
 
 
 def _make_key(store_id):
@@ -162,11 +162,10 @@ def edit(eid):
             e.category_id = new_cat
             e.is_modified_by_user = True
     if "amount" in data:
-        try:
-            new_amount = None if data["amount"] is None else Decimal(str(data["amount"]))
-            new_parse_ok = new_amount is not None
-        except (InvalidOperation, ValueError):
-            new_amount, new_parse_ok = None, False
+        new_amount, err = parse_amount(data["amount"])
+        if err:
+            return jsonify(status="error", message=err), 400
+        new_parse_ok = new_amount is not None
         if new_amount != e.amount or new_parse_ok != e.amount_parse_ok:
             e.amount = new_amount
             e.amount_parse_ok = new_parse_ok
@@ -260,14 +259,9 @@ def no_receipt():
         return jsonify(status="error", message="no store"), 400
     data = request.get_json(silent=True) or {}
     reason = (data.get("reason") or "").strip()  # 原因（備註）非必填
-    amount, ok = None, False
-    if data.get("amount") is not None:
-        try:
-            amount = Decimal(str(data["amount"])); ok = True
-        except (InvalidOperation, ValueError):
-            ok = False
-    if not ok:
-        return jsonify(status="error", message="amount required"), 400
+    amount, err = parse_amount(data.get("amount"))
+    if err or amount is None:
+        return jsonify(status="error", message=err or "amount required"), 400
 
     # 可選附一張佐證照：壓縮存 R2，但不跑 OCR（純佐證，非收據）
     image_key = thumb_key = None
