@@ -6,6 +6,7 @@ from app.auth.decorators import current_user, role_required
 from app.expenses.tasks import _valid_category_id
 from app.expenses.logic import iso_utc, format_doc_no
 from app.expenses.amount import parse_amount
+from app.expenses.note import validate_note
 from app.storage.r2 import get_storage
 from app.audit import audit_bp
 from app.audit.log import snapshot, log_edit_if_changed, record_check
@@ -53,10 +54,10 @@ def pending():
     for bd in sorted(groups):
         items = groups[bd]
         subtotal = sum(float(x.amount) for x in items if x.amount is not None)
-        names, cats = _audit_maps(items)
+        names, cats, log_ids = _audit_maps(items)
         out.append({
             "business_date": bd, "subtotal": subtotal,
-            "items": [serialize_audit_item(x, storage, names, cats) for x in items],
+            "items": [serialize_audit_item(x, storage, names, cats, log_ids) for x in items],
         })
     return jsonify(status="ok", groups=out)
 
@@ -68,7 +69,12 @@ def _audit_maps(expenses):
     cids = {e.category_id for e in expenses if e.category_id}
     names = {u.id: u.name for u in User.query.filter(User.id.in_(uids)).all()} if uids else {}
     cats = {c.id: c.name for c in Category.query.filter(Category.id.in_(cids)).all()} if cids else {}
-    return names, cats
+    # 哪些單有 AuditLog（含純改備註那種不會動 last_modified_at 的）——軌跡按鈕要不要顯示靠這個判斷
+    eids = [e.id for e in expenses]
+    log_ids = ({r[0] for r in db.session.query(AuditLog.expense_id)
+               .filter(AuditLog.expense_id.in_(eids)).distinct().all()}
+               if eids else set())
+    return names, cats, log_ids
 
 
 def _load_in_scope(eid, store_id):
@@ -103,10 +109,10 @@ def edit(eid):
         e.amount_parse_ok = new_amount is not None
     if "note" in data:
         # 主管/經理改備註（留軌跡）；規則同員工端（Task 3）：>200 拒絕、空白/空字串存 NULL
-        note = (data["note"] or "").strip()
-        if len(note) > 200:
-            return jsonify(status="error", message="note_too_long"), 400
-        e.note = note or None
+        note, err = validate_note(data["note"])
+        if err:
+            return jsonify(status="error", message=err), 400
+        e.note = note
     if log_edit_if_changed(e, current_user().id, before):
         e.is_modified_by_manager = True
     db.session.commit()
@@ -207,9 +213,9 @@ def handover_items(hid):
             .filter_by(store_id=store_id, handover_id=hid)
             .order_by(Expense.submitted_at.asc(), Expense.created_at.asc()).all())
     storage = get_storage()
-    names, cats = _audit_maps(rows)
+    names, cats, log_ids = _audit_maps(rows)
     return jsonify(status="ok",
-                   items=[serialize_audit_item(e, storage, names, cats) for e in rows])
+                   items=[serialize_audit_item(e, storage, names, cats, log_ids) for e in rows])
 
 
 @audit_bp.get("/open-items")
@@ -223,9 +229,9 @@ def open_items():
                     Expense.handover_id.is_(None))
             .order_by(Expense.audited_at.asc()).all())
     storage = get_storage()
-    names, cats = _audit_maps(rows)
+    names, cats, log_ids = _audit_maps(rows)
     return jsonify(status="ok",
-                   items=[serialize_audit_item(e, storage, names, cats) for e in rows])
+                   items=[serialize_audit_item(e, storage, names, cats, log_ids) for e in rows])
 
 
 @audit_bp.get("/summary-dates")
@@ -268,7 +274,7 @@ def by_date():
                     Expense.business_date == d)
             .order_by(Expense.submitted_at.asc(), Expense.created_at.asc()).all())
     storage = get_storage()
-    names, cats = _audit_maps(rows)
+    names, cats, log_ids = _audit_maps(rows)
 
     groups = {}
     for e in rows:
@@ -288,7 +294,7 @@ def by_date():
             "closed_at": iso_utc(h.closed_at) if h else None,
             "subtotal": sum(float(x.amount) for x in items if x.amount is not None),
             "count": len(items),
-            "items": [serialize_audit_item(e, storage, names, cats) for e in items],
+            "items": [serialize_audit_item(e, storage, names, cats, log_ids) for e in items],
         }
 
     shifts = [_grp(hid, i) for i, hid in enumerate(ordered, start=1)]

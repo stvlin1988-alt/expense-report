@@ -59,7 +59,7 @@ function summaryRowHtml(e) {
       <td>${lightLabel(e.light)}</td>
       <td>${e.status === 'audited' ? '已稽核' : '待稽核'}</td>
       <td>${escapeHtml(e.audited_by_name || '')}</td>
-      <td>${e.last_modified_at ? `<button class="au-trail-btn" data-trail="${e.id}" type="button">軌跡</button>` : ''}</td>
+      <td>${e.has_audit_log ? `<button class="au-trail-btn" data-trail="${e.id}" type="button">軌跡</button>` : ''}</td>
     </tr>`;
 }
 
@@ -196,7 +196,7 @@ function rowHtml(e, tree) {
     <td><select data-f="category">${categoryOptionsHtml(tree, e.category_id)}</select>${lastModTag(e, 'category')}</td>
     <td><input value="${e.amount ?? ''}" inputmode="decimal" data-f="amount" style="width:80px">${lastModTag(e, 'amount')}</td>
     <td>${lightLabel(e.light)}</td>
-    <td><button data-act="check">打勾</button>${e.last_modified_at ? `<button class="au-trail-btn" data-trail="${e.id}" type="button">軌跡</button>` : ''}<div class="pd-row-err" data-f="err"></div></td>
+    <td><button data-act="check">打勾</button>${e.has_audit_log ? `<button class="au-trail-btn" data-trail="${e.id}" type="button">軌跡</button>` : ''}<div class="pd-row-err" data-f="err"></div></td>
   </tr>`;
 }
 

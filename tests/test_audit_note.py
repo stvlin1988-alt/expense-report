@@ -48,6 +48,18 @@ def test_note_edit_writes_audit_log(app):
     assert "edit" in actions
 
 
+def test_note_only_edit_trail_shows_note_change(app):
+    """純改備註的軌跡列不能是空 changes——不然主管在軌跡只看到光禿禿的「修改」，
+    看不出到底改了什麼（見 Task 4 review finding 1）。"""
+    mgr_id, sub_id = _seed(app)
+    c = _client(app, mgr_id)
+    c.patch(f"/audit/{sub_id}", json={"note": "主管補充"})
+    r = c.get(f"/expenses/{sub_id}/logs")
+    logs = r.get_json()["logs"]
+    edit_log = next(x for x in logs if x["action"] == "edit")
+    assert {"field": "備註", "from": None, "to": "主管補充"} in edit_log["changes"]
+
+
 def test_note_too_long_400(app):
     mgr_id, sub_id = _seed(app)
     c = _client(app, mgr_id)
@@ -64,6 +76,26 @@ def test_note_whitespace_only_stores_null(app):
     with app.app_context():
         e = db.session.get(Expense, sub_id)
         assert e.note is None
+
+
+def test_note_only_edit_exposes_has_audit_log_for_trail_button(app):
+    """純改備註不會動 last_modified_at，但前端軌跡按鈕要靠 has_audit_log 才打得開
+    （見 Task 4 review finding 3）：改過備註的單 True，完全沒動過的單 False。"""
+    mgr_id, sub_id = _seed(app)
+    with app.app_context():
+        s = db.session.get(Expense, sub_id).store_id
+        untouched = Expense(store_id=s, created_by=db.session.get(Expense, sub_id).created_by,
+                             status="submitted", created_at=datetime.now(timezone.utc),
+                             business_date=date(2026, 7, 7), amount=Decimal("20"),
+                             submitted_at=datetime.now(timezone.utc))
+        db.session.add(untouched); db.session.commit()
+        untouched_id = untouched.id
+    c = _client(app, mgr_id)
+    c.patch(f"/audit/{sub_id}", json={"note": "主管補充"})
+    items = c.get("/audit/pending").get_json()["groups"][0]["items"]
+    by_id = {i["id"]: i for i in items}
+    assert by_id[sub_id]["has_audit_log"] is True
+    assert by_id[untouched_id]["has_audit_log"] is False
 
 
 def test_note_only_edit_does_not_flag_manager_modified(app):
