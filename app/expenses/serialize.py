@@ -11,6 +11,7 @@ def serialize_expense(e, storage, with_main=False, name_by_id=None):
     d = {
         "id": e.id, "status": e.status,
         "summary": e.summary, "category_id": e.category_id,
+        "note": e.note,
         "amount": float(e.amount) if e.amount is not None else None,
         "light": light,
         "is_modified_by_user": e.is_modified_by_user,

@@ -170,6 +170,14 @@ def edit(eid):
             e.amount = new_amount
             e.amount_parse_ok = new_parse_ok
             e.is_modified_by_user = True
+    if "note" in data:
+        # note 只在 draft 可寫；送出後鎖（不能事後改說法），主管/經理才能改（Task 4）
+        if e.status != "draft":
+            return jsonify(status="error", message="note_locked"), 409
+        note = (data["note"] or "").strip()
+        if len(note) > 200:
+            return jsonify(status="error", message="note_too_long"), 400
+        e.note = note or None
     log_edit_if_changed(e, user.id, before)
     db.session.commit()
     return jsonify(status="ok", expense=serialize_expense(e, get_storage()))
@@ -289,6 +297,7 @@ def no_receipt():
         summary=data.get("summary"), category_id=_valid_category_id(data.get("category_id")),
         amount=amount, amount_parse_ok=True, is_modified_by_user=True,
         no_receipt_reason=(reason or None),
+        note=((data.get("note") or "").strip() or None),
     )
     db.session.add(e); db.session.commit()
     return jsonify(status="ok", id=e.id)
