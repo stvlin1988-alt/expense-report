@@ -5,10 +5,12 @@ from flask import request, jsonify
 from app.extensions import db
 from app.models import Expense, Store, Category, User
 from app.auth.decorators import role_required, current_user
-from app.audit.log import record_reconcile, record_reject
+from app.audit.log import record_reconcile, record_reject, snapshot, log_edit_if_changed
 from app.storage.r2 import get_storage
 from app.reconcile import reconcile_bp
 from app.reconcile.serialize import serialize_reconcile_item
+from app.expenses.amount import parse_amount
+from app.expenses.tasks import _valid_category_id
 
 VISIBLE = ("audited", "reconciled", "rejected")   # 會計看得到的狀態（submitted 不給看）
 MAX_BATCH_IDS = 500   # approve-batch 一次帶的 ids 上限，避免無界輸入
@@ -153,6 +155,29 @@ def approve_batch():
             skipped.append(raw)           # 原始元素回填，錯誤不能悄悄消失
     db.session.commit()
     return jsonify(status="ok", approved=approved, skipped=skipped)
+
+
+@reconcile_bp.patch("/<int:eid>")
+@role_required("accountant")
+def edit(eid):
+    e = db.session.get(Expense, eid)
+    if e is None:
+        return jsonify(status="error", message="not found"), 404
+    if e.status not in ("audited", "reconciled"):
+        return jsonify(status="error", message="not_editable"), 409
+    data = request.get_json(silent=True) or {}
+    before = snapshot(e)
+    if "amount" in data:
+        amount, err = parse_amount(data["amount"])
+        if err:
+            return jsonify(status="error", message=err), 400
+        e.amount = amount
+    if "category_id" in data:
+        e.category_id = _valid_category_id(data["category_id"])
+    # 會計改動只留軌跡，不碰 is_modified_by_user / is_modified_by_manager —— 燈號語意不變
+    log_edit_if_changed(e, current_user().id, before)
+    db.session.commit()
+    return jsonify(status="ok")
 
 
 @reconcile_bp.post("/<int:eid>/reject")
