@@ -11,6 +11,7 @@ from app.reconcile import reconcile_bp
 from app.reconcile.serialize import serialize_reconcile_item
 
 VISIBLE = ("audited", "reconciled", "rejected")   # 會計看得到的狀態（submitted 不給看）
+MAX_BATCH_IDS = 500   # approve-batch 一次帶的 ids 上限，避免無界輸入
 
 
 def _maps(rows):
@@ -139,6 +140,8 @@ def approve_batch():
     ids = (request.get_json(silent=True) or {}).get("ids") or []
     if not isinstance(ids, list):
         return jsonify(status="error", message="ids required"), 400
+    if len(ids) > MAX_BATCH_IDS:
+        return jsonify(status="error", message="too_many_ids"), 400
     actor_id = current_user().id
     approved, skipped = [], []
     for raw in ids:
