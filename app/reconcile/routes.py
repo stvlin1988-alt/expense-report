@@ -45,6 +45,15 @@ def _parse_int(raw):
         return None
 
 
+@reconcile_bp.get("/stores")
+@role_required("accountant")
+def stores():
+    """會計端店別下拉：只回 id/name（不含 code/secret 等欄位），不走 admin 藍圖
+    （admin 的 /admin/stores 是 manager/super_admin 專用，會計不應被放進 admin 權限範圍）。"""
+    rows = Store.query.order_by(Store.name.asc()).all()
+    return jsonify(status="ok", stores=[{"id": s.id, "name": s.name} for s in rows])
+
+
 @reconcile_bp.get("/pending")
 @role_required("accountant")
 def pending():

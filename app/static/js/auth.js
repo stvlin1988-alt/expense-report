@@ -1,5 +1,6 @@
 import { Camera } from './camera.js';
 import { showAdminPanel } from './admin.js';
+import { showReconcilePanel } from './reconcile.js';
 import { escapeHtml } from './admin_util.js';
 import { showCaptureView } from './capture.js';
 import { showPendingView } from './pending.js';
@@ -141,7 +142,8 @@ async function openLoginFlow() {
       if (data.status === 'ok') {
         cam.stop();
         const identity = { id: data.id, name: data.name, role: data.role, store_id: data.store_id ?? null };
-        if (data.role === 'manager' || data.role === 'super_admin') showAdminPanel(identity);
+        if (data.role === 'accountant') showReconcilePanel(identity);
+        else if (data.role === 'manager' || data.role === 'super_admin') showAdminPanel(identity);
         else showAppView({ name: data.name, role: data.role });
         return;
       }

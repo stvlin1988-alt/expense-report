@@ -208,3 +208,17 @@ tr.au-open-row td { font-weight: 600; }
 .au-trail-tr td { background: #f6f6f8; color: #444; font-size: .8rem; padding: 4px 10px; }
 .au-trail-row { padding: 1px 0; }
 .au-trail-empty { color: #999; }
+
+/* ---- 會計核銷面板 ---- */
+.rc-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.rc-filters select, .rc-filters input[type="date"] {
+  font-size: 14px; padding: 6px 8px; border-radius: 6px; border: 1px solid #ccc;
+}
+.rc-totals { font-size: 15px; margin: 8px 0 12px; display: flex; gap: 16px; flex-wrap: wrap; }
+.rc-amt { font-variant-numeric: tabular-nums; font-weight: 600; }
+.rc-neg { color: #c62828; }
+.rc-batchbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.rc-msg { font-size: 14px; color: #c62828; }
+.rc-manual-form { margin-bottom: 16px; }
+.rc-reject-reason { color: #c62828; font-size: .78rem; margin-top: 2px; }
+.rc-rowbtns { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }

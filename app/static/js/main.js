@@ -4,6 +4,7 @@ import { loadRates } from './fx.js';
 import { canonicalToken, buildSequence, matchesSecret, withinWindow } from './secret.js';
 import { openAuth, showAppView } from './auth.js';
 import { showAdminPanel } from './admin.js';
+import { showReconcilePanel } from './reconcile.js';
 import { setE2ESample } from './camera.js';
 
 const cfg = JSON.parse(document.getElementById('app-config').textContent);
@@ -160,7 +161,9 @@ if (cfg.identity) {
   const orig = window.__openAuth;
   window.__openAuth = function (seedMode) {
     if (cfg.identity) {
-      if (cfg.identity.role === 'manager' || cfg.identity.role === 'super_admin') {
+      if (cfg.identity.role === 'accountant') {
+        showReconcilePanel(cfg.identity);
+      } else if (cfg.identity.role === 'manager' || cfg.identity.role === 'super_admin') {
         showAdminPanel(cfg.identity);
       } else {
         showAppView(cfg.identity);

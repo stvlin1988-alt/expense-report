@@ -67,6 +67,21 @@ def login_manager():
     return redirect("/")
 
 
+@dev_bp.get("/login-accountant")
+def login_accountant():
+    """一鍵登入測試會計。會計是跨店角色，store_id=None（不屬於任何店）。"""
+    if _blocked():
+        return jsonify(status="not_found"), 404
+    acct = User.query.filter_by(name="測試會計").first()
+    if acct is None:
+        acct = User(name="測試會計", role="accountant", store_id=None)
+        acct.set_password("1234"); db.session.add(acct); db.session.commit()
+    session["user_id"] = acct.id
+    session.permanent = True
+    session["_last_request_at"] = int(time.time())
+    return redirect("/")
+
+
 @dev_bp.get("/login-super")
 def login_super():
     """一鍵登入測試經理(super_admin，全域、無綁定店)。確保 ≥2 間店，調店切換才有得選。"""
