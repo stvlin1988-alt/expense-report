@@ -344,7 +344,7 @@ def submitted():
     cat_names = ({c.id: c.name for c in Category.query.filter(Category.id.in_(cids)).all()}
                  if cids else {})
     out = []
-    keep = ("id", "doc_no", "summary", "amount", "thumb_url", "image_url")
+    keep = ("id", "doc_no", "summary", "amount", "thumb_url", "image_url", "note")
     for e in rows:
         d = serialize_expense(e, storage, with_main=True)
         row = {k: d[k] for k in keep if k in d}

@@ -14,7 +14,7 @@ export async function showReviewView(onBack) {
       <div id="rv-msg" class="modal-msg"></div>
       <div class="pd-table-wrap">
         <table id="rv-table"><thead><tr>
-          <th>單號</th><th>圖</th><th>摘要</th><th>分類</th><th class="rv-amt">金額</th>
+          <th>單號</th><th>圖</th><th>摘要</th><th>分類</th><th>備註</th><th class="rv-amt">金額</th>
         </tr></thead><tbody></tbody></table>
       </div>
       <div id="rv-total" class="rv-total" hidden></div>
@@ -36,6 +36,7 @@ export async function showReviewView(onBack) {
       <td>${thumb}</td>
       <td>${escapeHtml(e.summary || '')}</td>
       <td>${escapeHtml(e.category_name || '')}</td>
+      <td>${e.note ? escapeHtml(e.note) : ''}</td>
       <td class="rv-amt">${formatAmount(e.amount)}</td>`;
     const thumbEl = tr.querySelector('.au-thumb');
     if (thumbEl && thumbEl.dataset.zoom) {

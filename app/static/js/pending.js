@@ -19,7 +19,7 @@ export async function showPendingView(onBack) {
       <div id="pd-msg" class="modal-msg"></div>
       <div class="pd-table-wrap">
         <table id="pd-table"><thead><tr>
-          <th>圖</th><th>建立</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th></th>
+          <th>圖</th><th>建立</th><th>摘要</th><th>分類</th><th>金額</th><th>備註</th><th>燈</th><th></th>
         </tr></thead><tbody></tbody></table>
       </div>
       <button class="modal-btn secondary" id="pd-back" type="button">返回</button>
@@ -48,6 +48,9 @@ export async function showPendingView(onBack) {
         : `<input value="${escapeHtml(e.summary || '')}" data-f="summary">`}</td>
       <td><select data-f="category"></select></td>
       <td><input value="${e.amount ?? ''}" inputmode="decimal" data-f="amount" style="width:80px"></td>
+      <td>${e.status === 'pending_ocr'
+        ? (e.note ? escapeHtml(e.note) : '')
+        : `<input value="${escapeHtml(e.note || '')}" maxlength="200" placeholder="備註（可留空）" data-f="note" class="pd-note">`}</td>
       <td>${lightLabel(e.light)}</td>
       <td>
         ${e.status === 'pending_ocr' ? '' : '<button data-act="submit">送出</button>'}<button data-act="del">丟棄</button>
@@ -74,6 +77,19 @@ export async function showPendingView(onBack) {
         setErr('分類儲存失敗，送出前會再試一次');
       }
     });
+    const noteInput = tr.querySelector('[data-f="note"]');
+    if (noteInput) {
+      noteInput.addEventListener('change', async () => {
+        setErr('');
+        // 即時修正、不阻塞送出；失敗要出聲，否則使用者以為已存
+        try {
+          const { status } = await patchExpense(e.id, { note: noteInput.value });
+          if (status !== 200) setErr('備註儲存失敗，送出前會再試一次');
+        } catch {
+          setErr('備註儲存失敗，送出前會再試一次');
+        }
+      });
+    }
     const submitBtn = tr.querySelector('[data-act="submit"]');
     if (submitBtn) {
       submitBtn.addEventListener('click', async () => {
@@ -82,7 +98,9 @@ export async function showPendingView(onBack) {
         const parsed = parseAmountInput(tr.querySelector('[data-f="amount"]').value);
         if (!parsed.valid) { setErr('金額格式不正確，請重新輸入'); return; }
         const categoryId = catSelect.value === '' ? null : Number(catSelect.value);
-        await patchExpense(e.id, { summary, amount: parsed.value, category_id: categoryId });
+        const patch = { summary, amount: parsed.value, category_id: categoryId };
+        if (noteInput) patch.note = noteInput.value;
+        await patchExpense(e.id, patch);
         const { status } = await submitExpense(e.id);
         if (status === 200) tr.remove();
         else setErr('送出失敗，請稍後再試');

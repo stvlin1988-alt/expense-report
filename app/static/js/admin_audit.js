@@ -56,6 +56,7 @@ function summaryRowHtml(e) {
       <td>${escapeHtml(e.summary || '')}${e.is_no_receipt ? ' <span class="au-mod">無單據</span>' : ''}</td>
       <td>${escapeHtml(e.category_name || '')}${lastModTag(e, 'category')}</td>
       <td>${e.amount ?? ''}${e.is_modified_by_manager ? ' <span class="au-mod">主管改</span>' : ''}${lastModTag(e, 'amount')}</td>
+      <td>${e.note ? escapeHtml(e.note) : ''}</td>
       <td>${lightLabel(e.light)}</td>
       <td>${e.status === 'audited' ? '已稽核' : '待稽核'}</td>
       <td>${escapeHtml(e.audited_by_name || '')}</td>
@@ -99,7 +100,7 @@ async function renderSummary(body, sid, dateStr) {
       <div class="au-group-head">${shiftLabel(sh)}　小計 ${formatMoney(sh.subtotal)}（${sh.count} 筆）</div>
       <div class="pd-table-wrap">
       <table class="pd-table"><thead><tr>
-        <th>單號</th><th>建立</th><th>建立者</th><th>圖</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th>狀態</th><th>稽核者</th><th>軌跡</th>
+        <th>單號</th><th>建立</th><th>建立者</th><th>圖</th><th>摘要</th><th>分類</th><th>金額</th><th>備註</th><th>燈</th><th>狀態</th><th>稽核者</th><th>軌跡</th>
       </tr></thead><tbody>${sh.items.map(summaryRowHtml).join('')}</tbody></table>
       </div>
     </div>`).join('');
@@ -113,30 +114,43 @@ async function renderSummary(body, sid, dateStr) {
   });
   body.querySelectorAll('.au-thumb').forEach((img) =>
     img.addEventListener('click', () => openImageLightbox(img.dataset.zoom)));
-  wireTrails(body, 11);
+  wireTrails(body, 12);
+}
+
+// 逾期橫幅：清單載入時同時打 /audit/overdue，count>0 就在清單上方插一條提醒。
+// 失敗（網路/權限）就當沒有逾期，不擋主流程。
+async function overdueBannerHtml(sid) {
+  try {
+    const { status, data } = await api.auditOverdue(sid);
+    if (status === 200 && data && data.count > 0) {
+      return `<div class="ap-overdue">有 ${data.count} 筆 `
+        + `${escapeHtml(data.oldest_business_date || '')} 以前的單還沒打勾</div>`;
+    }
+  } catch { /* 逾期提醒非關鍵路徑，靜默略過 */ }
+  return '';
 }
 
 async function renderPending(body, sid) {
   body.innerHTML = '載入中…';
-  const { data } = await api.auditPending(sid);
+  const [{ data }, banner] = await Promise.all([api.auditPending(sid), overdueBannerHtml(sid)]);
   // 分類清單（供下拉）——沿用員工端 /expenses/categories
   const catResp = await fetch('/expenses/categories').then((r) => r.json()).catch(() => ({}));
   const tree = (catResp && catResp.categories) || [];
   const groups = (data && data.groups) || [];
   if (!groups.length) {
-    body.innerHTML = '<div class="ap-empty">沒有待稽核單據</div>';
+    body.innerHTML = `${banner}<div class="ap-empty">沒有待稽核單據</div>`;
   } else {
-    body.innerHTML = groups.map((g) => `
+    body.innerHTML = banner + groups.map((g) => `
       <div class="au-group">
         <div class="au-group-head">${g.business_date}　日小計 ${formatMoney(g.subtotal)}</div>
         <table class="pd-table"><thead><tr>
-          <th>單號</th><th>圖</th><th>建立</th><th>建立者</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th></th>
+          <th>單號</th><th>圖</th><th>建立</th><th>建立者</th><th>摘要</th><th>分類</th><th>金額</th><th>備註</th><th>燈</th><th></th>
         </tr></thead><tbody>
         ${g.items.map((e) => rowHtml(e, tree)).join('')}
         </tbody></table>
       </div>`).join('');
     wireRows(body, sid);
-    wireTrails(body, 9);
+    wireTrails(body, 10);
   }
   // 交班/結班/取消：交班狀態與待稽核佇列無關，即使清空也需常駐可操作
   body.appendChild(actionBar(sid, body));
@@ -187,7 +201,7 @@ function rowHtml(e, tree) {
   const thumb = e.thumb_url
     ? `<img src="${e.thumb_url}" loading="lazy" width="48" class="au-thumb" data-zoom="${e.image_url || ''}">`
     : '—';
-  return `<tr data-id="${e.id}">
+  return `<tr data-id="${e.id}"${e.is_rejected ? ' class="ap-row-rejected"' : ''}>
     <td class="au-docno">${escapeHtml(e.doc_no || `#${e.id}`)}</td>
     <td>${thumb}</td>
     <td class="au-time">${formatDateTimeTW(e.created_at)}</td>
@@ -195,8 +209,12 @@ function rowHtml(e, tree) {
     <td>${escapeHtml(e.summary || '')}</td>
     <td><select data-f="category">${categoryOptionsHtml(tree, e.category_id)}</select>${lastModTag(e, 'category')}</td>
     <td><input value="${e.amount ?? ''}" inputmode="decimal" data-f="amount" style="width:80px">${lastModTag(e, 'amount')}</td>
+    <td><input value="${escapeHtml(e.note || '')}" maxlength="200" placeholder="備註（可留空）" data-f="note" class="pd-note"></td>
     <td>${lightLabel(e.light)}</td>
-    <td><button data-act="check">打勾</button>${e.has_audit_log ? `<button class="au-trail-btn" data-trail="${e.id}" type="button">軌跡</button>` : ''}<div class="pd-row-err" data-f="err"></div></td>
+    <td>
+      ${e.is_rejected ? `<div class="ap-reject-reason">會計退回：${escapeHtml(e.reject_reason || '')}</div>` : ''}
+      <button data-act="check">打勾</button>${e.has_audit_log ? `<button class="au-trail-btn" data-trail="${e.id}" type="button">軌跡</button>` : ''}<div class="pd-row-err" data-f="err"></div>
+    </td>
   </tr>`;
 }
 
@@ -205,6 +223,7 @@ function wireRows(body, sid) {
     const id = Number(tr.dataset.id);
     const err = tr.querySelector('[data-f="err"]');
     const cat = tr.querySelector('[data-f="category"]');
+    const note = tr.querySelector('[data-f="note"]');
     const thumbEl = tr.querySelector('.au-thumb');
     if (thumbEl) thumbEl.addEventListener('click', () => openImageLightbox(thumbEl.dataset.zoom));
     cat.addEventListener('change', async () => {
@@ -215,14 +234,23 @@ function wireRows(body, sid) {
         if (status !== 200) err.textContent = '分類儲存失敗';
       } catch { err.textContent = '分類儲存失敗'; }
     });
+    note.addEventListener('change', async () => {
+      err.textContent = '';
+      try {
+        const { status } = await api.auditEdit(id, { note: note.value }, sid);
+        if (status !== 200) err.textContent = '備註儲存失敗';
+      } catch { err.textContent = '備註儲存失敗'; }
+    });
     tr.querySelector('[data-act="check"]').addEventListener('click', async () => {
       err.textContent = '';
       const parsed = parseAmountInput(tr.querySelector('[data-f="amount"]').value);
       if (!parsed.valid) { err.textContent = '金額格式不正確'; return; }
       const categoryId = cat.value === '' ? null : Number(cat.value);
       try {
-        const editRes = await api.auditEdit(id, { amount: parsed.value, category_id: categoryId }, sid);
-        if (editRes.status !== 200) { err.textContent = '金額/分類儲存失敗'; return; }
+        const editRes = await api.auditEdit(
+          id, { amount: parsed.value, category_id: categoryId, note: note.value }, sid,
+        );
+        if (editRes.status !== 200) { err.textContent = '金額/分類/備註儲存失敗'; return; }
         const { status } = await api.auditCheck(id, sid);
         if (status === 200) {
           const trail = tr.nextElementSibling;

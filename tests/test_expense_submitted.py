@@ -125,6 +125,30 @@ def test_no_status_leak(app):
         assert "status" not in row
 
 
+def test_note_present_but_no_audit_metadata_leak(app):
+    """員工複查區可看到自己填的備註（唯讀），但仍不能揭露稽核/改動狀態
+    （note 是門市內部欄位，加進白名單不能連帶鬆綁其他欄位）。"""
+    r2mod._mock_singleton = None
+    sid, uid, _ = _seed(app)
+    with app.app_context():
+        e = _mk(sid, uid, "audited", 100, datetime.now(timezone.utc), day_seq=1)
+        e.note = "備註內容"
+        # reject_reason 正常只在 status=rejected 時有值，這裡強塞是為了確認
+        # 序列化器本身不會洩漏這個欄位，不代表真實資料組合
+        e.reject_reason = "單據不清楚"
+        e.last_modified_by = uid
+        e.last_modified_at = datetime.now(timezone.utc)
+        e.last_modified_fields = "amount"
+        e.is_modified_by_manager = True
+        db.session.add(e); db.session.commit()
+    c = _client(app, uid)
+    row = c.get("/expenses/submitted").get_json()["expenses"][0]
+    assert row["note"] == "備註內容"
+    for leaked in ("status", "reject_reason", "last_modified_by", "last_modified_at",
+                   "last_modified_fields", "is_modified_by_manager"):
+        assert leaked not in row, f"{leaked} 不應出現在員工複查回傳"
+
+
 def test_payload_whitelist_hides_audit_metadata(app):
     """員工複查區不揭露主管稽核/改動狀態：即使主管已改過金額/分類，回傳也不能帶
     last_modified_at/last_modified_fields/light/ocr_failed 等 metadata，只能有唯讀白名單欄位。"""

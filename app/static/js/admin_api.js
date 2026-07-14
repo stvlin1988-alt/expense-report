@@ -30,6 +30,7 @@ export const api = {
   changeMyPassword: (oldp, newp) =>
     req('POST', '/admin/me/password', { old_password: oldp, new_password: newp }),
   auditPending: (storeId) => req('GET', withStore('/audit/pending', storeId)),
+  auditOverdue: (storeId) => req('GET', withStore('/audit/overdue', storeId)),
   auditEdit: (id, patch, storeId) => req('PATCH', withStore(`/audit/${id}`, storeId), patch),
   auditCheck: (id, storeId) => req('POST', withStore(`/audit/${id}/check`, storeId)),
   auditSummary: (storeId, before) => {
