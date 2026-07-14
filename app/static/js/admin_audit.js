@@ -1,7 +1,7 @@
 import { api } from './admin_api.js';
 import { escapeHtml } from './admin_util.js';
 import { categoryOptionsHtml, lightLabel, parseAmountInput } from './expenses_util.js';
-import { formatMoney, formatDateTimeTW, renderTrailRows } from './audit_util.js';
+import { formatMoney, formatDateTimeTW, renderTrailRows, status_label } from './audit_util.js';
 import { openImageLightbox } from './lightbox.js';
 
 // storeId：super_admin 選定的店；manager 傳 null（後端用本店）
@@ -58,8 +58,8 @@ function summaryRowHtml(e) {
       <td>${e.amount ?? ''}${e.is_modified_by_manager ? ' <span class="au-mod">主管改</span>' : ''}${lastModTag(e, 'amount')}</td>
       <td>${e.note ? escapeHtml(e.note) : ''}</td>
       <td>${lightLabel(e.light)}</td>
-      <td>${e.status === 'audited' ? '已稽核' : '待稽核'}</td>
-      <td>${escapeHtml(e.audited_by_name || '')}</td>
+      <td>${escapeHtml(status_label(e.status))}</td>
+      <td>${escapeHtml(e.audited_by_name || '—')}</td>
       <td>${e.has_audit_log ? `<button class="au-trail-btn" data-trail="${e.id}" type="button">軌跡</button>` : ''}</td>
     </tr>`;
 }

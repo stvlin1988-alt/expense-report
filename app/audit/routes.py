@@ -145,7 +145,12 @@ def check(eid):
     e, err = _load_in_scope(eid, store_id)
     if err:
         return err
-    if e.status not in ("submitted", "rejected"):
+    # rejected 只有「先前真的經過主管打勾過」（audited_at 已存在）才可再次 check——
+    # 會計自建的 manual 單被退回也會落在 status=="rejected"，但它從沒被主管打勾過
+    # （audited_at 一律 NULL，且 business_date 可能回溯數月）。若這裡放行，會替它蓋上
+    # audited_at，讓它變成可被下一次交班掃描收編，污染該班現金小計。
+    checkable = e.status == "submitted" or (e.status == "rejected" and e.audited_at is not None)
+    if not checkable:
         return jsonify(status="error", message="not checkable"), 409
     e.status = "audited"
     e.reject_reason = None          # 重送後清掉退回原因

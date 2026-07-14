@@ -23,6 +23,17 @@ export function action_label(action) {
   return action || '';
 }
 
+const STATUS_LABELS = {
+  submitted: '待稽核',
+  audited: '已稽核',
+  reconciled: '已核銷',
+  rejected: '會計退回',
+};
+
+export function status_label(status) {
+  return STATUS_LABELS[status] || status || '';
+}
+
 function fmtVal(v) {
   return (v === null || v === undefined || v === '') ? '（空）' : String(v);
 }

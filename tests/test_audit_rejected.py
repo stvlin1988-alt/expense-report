@@ -8,7 +8,10 @@ import pytest
 
 @pytest.fixture
 def rejected_expense_id(app):
-    """Create a rejected expense in app context"""
+    """Create a rejected expense in app context.
+    這是「正常員工單」的退回情境：audited（主管打勾，蓋 audited_at）→ 會計退回（rejected）。
+    audited_at 必須確實有值，才能跟「會計 manual 單被退回」（audited_at 永遠 NULL）區分
+    ——M2：/audit/<id>/check 現在用 audited_at is not None 判斷 rejected 單能不能再被打勾。"""
     with app.app_context():
         db.create_all()
         s = Store(name="A", code="A")
@@ -16,7 +19,9 @@ def rejected_expense_id(app):
         db.session.commit()
         emp = User(name="emp", role="employee", store_id=s.id)
         emp.set_password("1234")
-        db.session.add(emp)
+        first_mgr = User(name="mgr0", role="manager", store_id=s.id)
+        first_mgr.set_password("1234")
+        db.session.add_all([emp, first_mgr])
         db.session.commit()
         now = datetime.now(timezone.utc)
         e = Expense(
@@ -28,6 +33,8 @@ def rejected_expense_id(app):
             business_date=date(2026, 7, 7),
             amount=Decimal("100"),
             submitted_at=now,
+            audited_by=first_mgr.id,
+            audited_at=now,
         )
         db.session.add(e)
         db.session.commit()

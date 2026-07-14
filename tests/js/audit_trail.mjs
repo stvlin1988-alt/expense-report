@@ -1,12 +1,22 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { action_label, renderTrailRows } from '../../app/static/js/audit_util.js';
+import { action_label, status_label, renderTrailRows } from '../../app/static/js/audit_util.js';
 
 test('action_label 對映', () => {
   assert.equal(action_label('edit'), '修改');
   assert.equal(action_label('check'), '簽核');
   assert.equal(action_label('weird'), 'weird');
   assert.equal(action_label(''), '');
+});
+
+test('status_label 對映（總表查詢新狀態不再全部顯示「待稽核」）', () => {
+  assert.equal(status_label('submitted'), '待稽核');
+  assert.equal(status_label('audited'), '已稽核');
+  assert.equal(status_label('reconciled'), '已核銷');
+  assert.equal(status_label('rejected'), '會計退回');
+  assert.equal(status_label('weird'), 'weird');
+  assert.equal(status_label(''), '');
+  assert.equal(status_label(undefined), '');
 });
 
 test('renderTrailRows 空陣列', () => {

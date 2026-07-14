@@ -81,6 +81,16 @@ def test_rounds_to_two_decimals():
     assert -val.as_tuple().exponent == 2
 
 
+# ---------- M4 回歸：ROUND_HALF_UP（Postgres numeric 的四捨五入行為），
+# 不可用 Decimal 預設的 ROUND_HALF_EVEN（銀行家捨入）：
+# 100.005 用 HALF_EVEN 會捨到 100.00，但 Postgres numeric 存 100.01。----------
+
+def test_half_up_rounding_matches_postgres_numeric():
+    assert parse_amount("100.005") == (Decimal("100.01"), None)
+    assert parse_amount("100.015") == (Decimal("100.02"), None)
+    assert parse_amount("-100.005") == (Decimal("-100.01"), None)
+
+
 # ---------- API 層測試：共用 seed/login helper（照抄各自既有測試檔的模式）----------
 
 def _seed(app):

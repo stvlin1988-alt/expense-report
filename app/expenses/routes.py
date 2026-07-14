@@ -324,7 +324,7 @@ def categories():
 @expense_bp.get("/submitted")
 def submitted():
     """員工唯讀複查區：本人這一班已送出、主管尚未交/結班的單。
-    界定＝本人 + submitted/audited + handover_id 空 + submitted_at 晚於本店最近一次 handover。
+    界定＝本人 + submitted/Expense.CHECKED_STATUSES + handover_id 空 + submitted_at 晚於本店最近一次 handover。
     交班與結班都建 Handover，故兩者一致地以時間界清空複查區（含主管沒核到的 submitted）。"""
     user = current_user()
     if user is None:
