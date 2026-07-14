@@ -250,7 +250,9 @@ def manual():
         category_id=_valid_category_id(data.get("category_id")),
         amount=amount, amount_parse_ok=True,
         is_no_receipt=True, is_modified_by_user=True,
-        audited_by=actor.id, audited_at=now,      # 不回頭走主管打勾
+        # audited_by / audited_at 一律留 NULL：這筆從沒被主管打勾過（也不回頭走主管打勾）。
+        # audited_at IS NULL 就是主管端各查詢（交班掃描 / 未歸班清單 / 班別小計）用來
+        # 排除 manual 單的判別依據——不可在這裡蓋時間戳，否則它會被掃進某個班別的小計。
         reconciled_by=actor.id, reconciled_at=now,
     )
     db.session.add(e)

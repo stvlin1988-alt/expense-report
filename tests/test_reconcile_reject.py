@@ -193,23 +193,25 @@ def test_unauthenticated_401(client, app, audited_id):
     assert r.status_code == 401
 
 
-def test_rejected_expense_excluded_from_submitted_queryset(client, app, audited_id):
-    """注意：這條測的是「rejected 的單根本不會出現在 /expenses/submitted 回傳裡」，
-    因為該端點的 query 只挑 status in (submitted, audited)（app/expenses/routes.py
-    的 submitted() 內 Expense.status.in_(["submitted", "audited"])），rejected 列
-    在序列化之前就被排除，不是靠白名單擋掉。曾經誤把這條當成「白名單有擋 status/
-    reject_reason 洩漏」的證據——事實上就算把 submitted() 裡的 keep 白名單加寬到含
-    "status"，這條測試依然會 PASS（因為根本沒有 rejected 列可以序列化），對白名單
-    沒有任何回歸保護力。
-    真正的白名單保護（同一份 payload 不能洩漏 status/last_modified_*/category_id 等
-    稽核中繼資料）已經在 tests/test_expense_submitted.py 的
-    test_no_status_leak（第 111 行）與 test_payload_whitelist_hides_audit_metadata
-    （第 128 行）覆蓋，故這裡不重複造一份；只保留「rejected 列整批被排除在複查區外」
-    這個值得釘住的行為，並如實改名/加註說明，避免誤導。"""
+def test_rejected_expense_still_in_submitted_queryset_but_leaks_nothing(client, app, audited_id):
+    """（本條原名 test_rejected_expense_excluded_from_submitted_queryset，釘的是
+    「rejected 的單整批被排除在員工複查區外」。那個行為是舊 query 只挑
+    status in (submitted, audited) 的副作用，而不是設計意圖：submitted() 的 docstring
+    明說複查區是「本人這一班已送出、主管尚未交/結班的單」，清空時機只有 handover。
+    會計核銷/退回並不代表主管結班了，卻會讓該列從員工畫面憑空消失 → 改成
+    ("submitted",) + CHECKED_STATUSES 後，rejected 列會留下來，故本條斷言反轉。
+
+    原 docstring 自己就寫明：這條對白名單「沒有任何回歸保護力」，因為根本沒有 rejected
+    列可以序列化。現在真的有 rejected 列會被序列化了，於是這裡補上白名單斷言——
+    保護力比原本更強，不是變弱。）"""
     login_accountant(client, app)
     client.post(f"/reconcile/{audited_id}/reject", json={"reason": "金額不符"})
     login_employee(client, app)
     r = client.get("/expenses/submitted")     # 員工複查端點
     body = r.get_json()
-    returned_ids = [row["id"] for row in body["expenses"]]
-    assert audited_id not in returned_ids
+    rows = {row["id"]: row for row in body["expenses"]}
+    assert audited_id in rows, "主管還沒結班，會計退回不該讓該筆從員工複查區消失"
+    row = rows[audited_id]
+    for leaked in ("status", "reject_reason", "is_rejected", "last_modified_by",
+                   "last_modified_at", "last_modified_fields", "is_modified_by_manager"):
+        assert leaked not in row, f"{leaked} 不應出現在員工複查回傳（rejected 列也一樣）"

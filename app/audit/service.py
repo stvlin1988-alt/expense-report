@@ -4,9 +4,14 @@ from app.expenses.logic import iso_utc
 
 
 def _sum(store_id, handover_id):
+    # audited_at IS NOT NULL＝真的經過主管打勾（/audit/<id>/check）。會計自建的 manual 單
+    # 沒有這個時間戳，且永遠不會被交班掃描收編（handover_id 恆為 NULL），所以若不排除，
+    # 它會永久灌進 open 小計與 day_total，且沒有任何操作能把它清掉。
+    # 主管端彙整＝「這幾班門市花了多少」，manual 是會計自己補的帳，不屬於任何班別。
     rows = (Expense.query
             .filter_by(store_id=store_id, handover_id=handover_id)
-            .filter(Expense.status.in_(Expense.CHECKED_STATUSES)).all())
+            .filter(Expense.status.in_(Expense.CHECKED_STATUSES),
+                    Expense.audited_at.isnot(None)).all())
     subtotal = sum(float(x.amount) for x in rows if x.amount is not None)
     return subtotal, len(rows)
 

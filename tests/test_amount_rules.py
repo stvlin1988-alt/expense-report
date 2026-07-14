@@ -66,6 +66,21 @@ def test_just_within_numeric_12_2_limit_ok():
     assert val == Decimal("9999999999.99")
 
 
+def test_rounding_boundary_rejected():
+    """Numeric(12,2) 會先四捨五入再存：9999999999.999 的 abs 雖 < 10^10，
+    但 round 到兩位小數後是 10000000000.00（13 位）→ Postgres numeric field overflow → 500。
+    範圍檢查必須在 quantize 之後做。"""
+    assert parse_amount("9999999999.999") == (None, "amount_invalid")
+    assert parse_amount("-9999999999.999") == (None, "amount_invalid")
+
+
+def test_rounds_to_two_decimals():
+    val, err = parse_amount("100.005")
+    assert err is None
+    assert val == Decimal("100.00") or val == Decimal("100.01")   # 四捨五入到分
+    assert -val.as_tuple().exponent == 2
+
+
 # ---------- API 層測試：共用 seed/login helper（照抄各自既有測試檔的模式）----------
 
 def _seed(app):

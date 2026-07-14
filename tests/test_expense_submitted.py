@@ -172,6 +172,51 @@ def test_payload_whitelist_hides_audit_metadata(app):
         assert wanted in row, f"{wanted} 應出現在員工複查回傳"
 
 
+def test_still_listed_after_accountant_reconciles_before_handover(app):
+    """會計核銷（audited → reconciled）不該讓該筆從員工複查區提早消失：
+    複查區的界定是「主管尚未交/結班」，清空時機只有 handover，不是會計動作。
+    status 篩選只寫 [submitted, audited] 時，會計一按核銷該列就憑空不見。"""
+    r2mod._mock_singleton = None
+    sid, uid, _ = _seed(app)
+    with app.app_context():
+        acct = User(name="會計", role="accountant"); acct.set_password("0000")
+        db.session.add(acct); db.session.commit()
+        acct_id = acct.id
+        e = _mk(sid, uid, "audited", 100, datetime.now(timezone.utc), day_seq=1)
+        db.session.add(e); db.session.commit()
+        eid = e.id
+
+    ac = app.test_client()
+    with ac.session_transaction() as sess:
+        sess["user_id"] = acct_id; sess["_last_request_at"] = int(time.time())
+    assert ac.post(f"/reconcile/{eid}/approve").status_code == 200
+    with app.app_context():
+        assert db.session.get(Expense, eid).status == "reconciled"
+
+    c = _client(app, uid)
+    body = c.get("/expenses/submitted").get_json()
+    assert [e["id"] for e in body["expenses"]] == [eid], (
+        "主管還沒結班，會計核銷不該讓該筆從員工複查區消失"
+    )
+
+
+def test_still_listed_after_accountant_rejects_before_handover(app):
+    """會計退回（audited → rejected）同理：主管未結班前，該筆仍留在員工複查區。
+    （複查區是唯讀的，仍不得洩漏 status / reject_reason —— 見 whitelist 守門測）"""
+    r2mod._mock_singleton = None
+    sid, uid, _ = _seed(app)
+    with app.app_context():
+        e = _mk(sid, uid, "rejected", 100, datetime.now(timezone.utc), day_seq=1)
+        e.reject_reason = "金額不符"
+        db.session.add(e); db.session.commit()
+        eid = e.id
+    c = _client(app, uid)
+    body = c.get("/expenses/submitted").get_json()
+    assert [x["id"] for x in body["expenses"]] == [eid]
+    assert "reject_reason" not in body["expenses"][0]
+    assert "status" not in body["expenses"][0]
+
+
 def test_unauth_401(app):
     r2mod._mock_singleton = None
     _seed(app)

@@ -171,19 +171,16 @@ def handover():
     db.session.add(h); db.session.flush()
     # 「主管已打勾」現在對應 CHECKED_STATUSES（audited/reconciled/rejected），不只 audited——
     # 會計可能在主管結班前就先核銷/退回，那筆單這時已經不是 audited 了，但仍要被這次交班掃到。
-    # 但要排除會計自建的 manual 單（/reconcile/manual）：它從沒被主管打勾過，handover_id
-    # 該永遠是 NULL。manual 單的判別依據：audited_by 指向的是一個 accountant 角色的使用者——
-    # 這在正常流程下不可能發生（/audit/<id>/check 只有 manager/super_admin 打得到，
-    # 所以 audited_by 正常只會是這兩種角色），manual() 是唯一會讓 audited_by 指向
-    # accountant 自己的入口。
-    manual_entry_ids = (db.session.query(Expense.id)
-                        .join(User, Expense.audited_by == User.id)
-                        .filter(User.role == "accountant"))
+    # 但要排除會計自建的 manual 單（/reconcile/manual）：它從沒被主管打勾過（也可能回溯到
+    # 幾個月前的營業日），handover_id 該永遠是 NULL。判別依據＝ audited_at IS NOT NULL：
+    # 只有 /audit/<id>/check 會蓋這個時間戳，manual() 不蓋（見 app/reconcile/routes.py）。
+    # 不可改用「audited_by 這個人現在是不是 accountant」來判斷——User.role 是可變的
+    # （/admin/users/<id>/role），會計一改角色，歷史 manual 單就會突然變成可掃描。
     count = (Expense.query
              .filter(Expense.store_id == store_id,
                      Expense.status.in_(Expense.CHECKED_STATUSES),
-                     Expense.handover_id.is_(None),
-                     ~Expense.id.in_(manual_entry_ids))
+                     Expense.audited_at.isnot(None),
+                     Expense.handover_id.is_(None))
              .update({Expense.handover_id: h.id}, synchronize_session=False))
     if count == 0:
         db.session.rollback()
@@ -254,9 +251,13 @@ def open_items():
     store_id, err = _scope_store_id()
     if err:
         return err
+    # audited_at IS NOT NULL＝真的經過主管打勾。會計自建的 manual 單沒有這個時間戳，
+    # 也不該進「未歸班」清單：交班掃描（上面 handover()）同樣排除它，
+    # 它一旦進來就永遠關不掉（唯一會清掉它的地方正是排除它的地方）。
     rows = (Expense.query
             .filter(Expense.store_id == store_id,
                     Expense.status.in_(Expense.CHECKED_STATUSES),
+                    Expense.audited_at.isnot(None),
                     Expense.handover_id.is_(None))
             .order_by(Expense.audited_at.asc()).all())
     storage = get_storage()

@@ -331,10 +331,12 @@ def submitted():
         return jsonify(status="error", message="unauthenticated"), 401
     last = (Handover.query.filter_by(store_id=user.store_id)
             .order_by(Handover.closed_at.desc(), Handover.id.desc()).first())
+    # 已打勾的狀態集合＝CHECKED_STATUSES（audited/reconciled/rejected）：會計在主管結班前
+    # 就核銷/退回時，該筆仍屬於「本班未交班」，不能提早從複查區消失（清空時機只有 handover）。
     q = (Expense.query
          .filter(Expense.created_by == user.id,
                  Expense.store_id == user.store_id,
-                 Expense.status.in_(["submitted", "audited"]),
+                 Expense.status.in_(("submitted",) + Expense.CHECKED_STATUSES),
                  Expense.handover_id.is_(None)))
     if last is not None:
         q = q.filter(Expense.submitted_at > last.closed_at)

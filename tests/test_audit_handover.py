@@ -16,8 +16,13 @@ def _seed(app):
         now = datetime.now(timezone.utc)
 
         def mk(status, amt):
+            # audited 的單一定同時帶 audited_by/audited_at —— /audit/<id>/check 是唯一
+            # 產生 audited 的入口，它一定會蓋這兩個欄位。fixture 不補就不是真實資料，
+            # 而 audited_at IS NOT NULL 正是交班掃描用來排除「會計 manual 單」的判別依據。
             return Expense(store_id=s.id, created_by=emp.id, status=status,
-                           created_at=now, amount=Decimal(str(amt)))
+                           created_at=now, amount=Decimal(str(amt)),
+                           audited_by=(mgr.id if status == "audited" else None),
+                           audited_at=(now if status == "audited" else None))
         a1 = mk("audited", 100); a2 = mk("audited", 50); sub = mk("submitted", 999)
         db.session.add_all([a1, a2, sub]); db.session.commit()
         return mgr.id, s.id, a1.id, a2.id, sub.id

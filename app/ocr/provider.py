@@ -1,17 +1,25 @@
 from flask import current_app
 
+from app.expenses.amount import parse_amount
+
 
 def coerce_amount(value):
-    """→ (float|None, ok)。接受 int/float/字串（可含千分位逗號、貨幣符號）。"""
+    """→ (Decimal|None, ok)。接受 int/float/字串（可含千分位逗號、貨幣符號）。
+    清掉貨幣格式後一律交給 parse_amount 把關：裸 float() 會吃下 Infinity / NaN / 1e400
+    （`json.loads('{"amount": 1e999}')` → inf 是合法 JSON，Gemini 幻覺金額真的會走到這裡），
+    值一旦進 DB，/expenses/pending 就會吐出裸的 Infinity/NaN token，瀏覽器嚴格 JSON.parse
+    直接丟例外 → 員工暫存區整頁死掉，而那正是唯一能修那筆的畫面。
+    垃圾金額（含 0、超出 Numeric(12,2) 範圍）一律回「沒讀到金額」→ 該筆亮紅/黃燈由員工手 key。"""
     if value is None:
         return None, False
-    if isinstance(value, (int, float)):
-        return float(value), True
-    s = str(value).strip().replace(",", "").replace("NT$", "").replace("$", "")
-    try:
-        return float(s), True
-    except ValueError:
+    if isinstance(value, str):
+        value = value.strip().replace(",", "").replace("NT$", "").replace("$", "")
+    elif not isinstance(value, (int, float)):
         return None, False
+    val, err = parse_amount(value)
+    if err or val is None:
+        return None, False
+    return val, True
 
 
 class OCRProvider:

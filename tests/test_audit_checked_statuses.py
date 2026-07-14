@@ -134,6 +134,100 @@ def test_expense_reconciled_before_handover_close_still_gets_swept(app):
         )
 
 
+def test_manual_entry_not_swept_even_after_accountant_role_changed(app):
+    """manual 單的排除依據不能綁在「audited_by 這個人現在是不是 accountant」上：
+    User.role 是可變的（/admin/users/<id>/role）。會計帳號一改角色，歷史 manual 單
+    就會突然變成可掃描 —— 一筆回溯到幾個月前的補帳會被掃進今天的班別，
+    污染該班現金小計。判別依據必須是資料本身（沒經過主管打勾 → audited_at IS NULL）。"""
+    mgr_id, emp_id, acct_id, sid, cat_id = _seed(app)
+    old_bd = date(2026, 6, 1)     # 回溯數月的補帳
+    today_bd = date(2026, 7, 8)
+
+    acct = _acct_client(app, acct_id)
+    r = acct.post("/reconcile/manual", json={
+        "store_id": sid, "business_date": old_bd.isoformat(),
+        "summary": "六月漏帳", "amount": 9999, "category_id": cat_id,
+    })
+    assert r.status_code == 200
+    manual_id = r.get_json()["id"]
+
+    # 事後把該會計帳號的角色改掉（super_admin 在 /admin/users/<id>/role 做得到）
+    with app.app_context():
+        u = db.session.get(User, acct_id)
+        u.role = "employee"
+        db.session.commit()
+
+    mgr = _mgr_client(app, mgr_id)
+    # 只有 manual 單時，交班應該「沒有可結的單」，不能把它掃進來
+    r0 = mgr.post("/audit/handover", json={"type": "shift"})
+    assert r0.status_code == 400, "只有 manual 單時不該有任何單可結班"
+    with app.app_context():
+        assert db.session.get(Expense, manual_id).handover_id is None
+
+    # 今天真的有一筆主管打勾的單 → 結班只該掃到那一筆
+    with app.app_context():
+        real = _audited(sid, emp_id, mgr_id, 80, today_bd)
+        db.session.add(real); db.session.commit()
+        real_id = real.id
+
+    body = mgr.post("/audit/handover", json={"type": "shift"}).get_json()
+    assert body["status"] == "ok" and body["count"] == 1
+    with app.app_context():
+        assert db.session.get(Expense, real_id).handover_id == body["handover_id"]
+        assert db.session.get(Expense, manual_id).handover_id is None, (
+            "會計角色被改掉後，歷史 manual 單仍不該被交接班掃描收編"
+        )
+
+
+def test_manual_entry_absent_from_open_items_and_summary(app):
+    """manual 單不能進主管的「未歸班」清單：它永遠不會被交班掃描清掉
+    （唯一會清掉它的地方正是排除它的地方），會變成永遠關不掉的一列，
+    而且 /audit/summary 的 open 小計與 day_total 會被永久灌水。"""
+    mgr_id, emp_id, acct_id, sid, cat_id = _seed(app)
+    bd = date(2026, 7, 8)
+
+    acct = _acct_client(app, acct_id)
+    r = acct.post("/reconcile/manual", json={
+        "store_id": sid, "business_date": bd.isoformat(),
+        "summary": "上期漏帳", "amount": 500, "category_id": cat_id,
+    })
+    assert r.status_code == 200
+
+    mgr = _mgr_client(app, mgr_id)
+    open_body = mgr.get("/audit/open-items").get_json()
+    assert open_body["items"] == [], "manual 單不該出現在主管的未歸班清單"
+
+    summary_body = mgr.get("/audit/summary").get_json()
+    assert summary_body["open"]["count"] == 0
+    assert summary_body["open"]["subtotal"] == 0.0, "manual 單不該灌進 open 小計"
+    assert summary_body["day_total"] == 0.0, "manual 單不該灌進 day_total"
+
+
+def test_manual_entry_rejected_by_accountant_still_not_swept(app):
+    """manual 單被會計自己退回（reconciled → rejected）後，status 落在 CHECKED_STATUSES 裡，
+    但它依然沒經過主管打勾，仍不該被交接班掃到、也不該進未歸班清單。"""
+    mgr_id, emp_id, acct_id, sid, cat_id = _seed(app)
+    bd = date(2026, 7, 8)
+
+    acct = _acct_client(app, acct_id)
+    manual_id = acct.post("/reconcile/manual", json={
+        "store_id": sid, "business_date": bd.isoformat(),
+        "summary": "打錯的補帳", "amount": 500, "category_id": cat_id,
+    }).get_json()["id"]
+    assert acct.post(f"/reconcile/{manual_id}/reject",
+                     json={"reason": "key 錯"}).status_code == 200
+
+    mgr = _mgr_client(app, mgr_id)
+    assert mgr.get("/audit/open-items").get_json()["items"] == []
+    with app.app_context():
+        real = _audited(sid, emp_id, mgr_id, 80, bd)
+        db.session.add(real); db.session.commit()
+    body = mgr.post("/audit/handover", json={"type": "shift"}).get_json()
+    assert body["count"] == 1
+    with app.app_context():
+        assert db.session.get(Expense, manual_id).handover_id is None
+
+
 def test_manual_entry_counted_in_by_date_but_never_swept_by_handover(app):
     """會計自建 manual 單：是門市真實支出，該計入該店該日 by-date 總額；
     但它沒經過主管打勾/交接班，handover_id 應該永遠維持 NULL —— 不能被之後任何一次
