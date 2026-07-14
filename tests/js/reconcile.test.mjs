@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fmtAmount, groupTotals, applyAmountEdit } from '../../app/static/js/reconcile.js';
+import { fmtAmount, groupTotals, applyAmountEdit, showResubmitBadge } from '../../app/static/js/reconcile.js';
 import { parseAmountInput } from '../../app/static/js/expenses_util.js';
 
 test('負數帶 negative 旗標', () => {
@@ -120,4 +120,22 @@ test('applyAmountEdit：找不到對應 id 回傳 null，不動原資料', () =>
   const groups = [{ business_date: '2026-07-01', subtotal: 10, items: [{ id: 1, amount: 10, status: 'audited' }] }];
   assert.equal(applyAmountEdit(groups, 999, 5), null);
   assert.equal(groups[0].subtotal, 10);
+});
+
+// Addendum 10.1：重送標記徽章只在「已重送且尚未核銷」期間出現（gate 在 status==='audited'，
+// 核銷/退回都不顯示，欄位本身不清空由後端負責）。
+test('showResubmitBadge：audited + 有 resubmitted_at → true', () => {
+  assert.equal(showResubmitBadge({ status: 'audited', resubmitted_at: '2026-07-10T03:00:00+00:00' }), true);
+});
+
+test('showResubmitBadge：audited + resubmitted_at 為 null → false', () => {
+  assert.equal(showResubmitBadge({ status: 'audited', resubmitted_at: null }), false);
+});
+
+test('showResubmitBadge：reconciled + 有 resubmitted_at → false（核銷後徽章消失）', () => {
+  assert.equal(showResubmitBadge({ status: 'reconciled', resubmitted_at: '2026-07-10T03:00:00+00:00' }), false);
+});
+
+test('showResubmitBadge：rejected + 有 resubmitted_at → false', () => {
+  assert.equal(showResubmitBadge({ status: 'rejected', resubmitted_at: '2026-07-10T03:00:00+00:00' }), false);
 });

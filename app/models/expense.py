@@ -58,6 +58,10 @@ class Expense(db.Model):
     reconciled_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     reconciled_at = db.Column(db.DateTime(timezone=True), nullable=True)
     reject_reason = db.Column(db.String(200), nullable=True)  # 會計退回原因
+    # 主管被會計退回（rejected）後改完重新打勾（check()）的時間戳；用來讓會計端
+    # 一眼認出「這張是重送過的」，因為 check() 會清掉 reject_reason，資料上
+    # 分不出跟從沒被退過的單的差異。首次從 submitted 打勾不設此欄。
+    resubmitted_at = db.Column(db.DateTime(timezone=True), nullable=True)
     note = db.Column(db.String(200), nullable=True)  # 員工備註；門市內部欄位，會計看不到
 
     __table_args__ = (

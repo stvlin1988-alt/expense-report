@@ -48,6 +48,39 @@ def test_check_non_submitted_409(app):
     assert c.post(f"/audit/{aud_id}/check").status_code == 409
 
 
+# ---------- Addendum 10.1：重送標記 resubmitted_at ----------
+
+def test_check_first_time_from_submitted_leaves_resubmitted_at_null(app):
+    mgr_id, sub_id, _ = _seed(app)
+    c = _client(app, mgr_id)
+    r = c.post(f"/audit/{sub_id}/check")
+    assert r.status_code == 200
+    with app.app_context():
+        e = db.session.get(Expense, sub_id)
+        assert e.resubmitted_at is None
+
+
+def test_check_rejected_resubmit_sets_resubmitted_at(app):
+    mgr_id, sub_id, _ = _seed(app)
+    c = _client(app, mgr_id)
+    # 先打勾一次成為 audited，模擬會計退回，回到 rejected 且 audited_at 已存在
+    assert c.post(f"/audit/{sub_id}/check").status_code == 200
+    with app.app_context():
+        e = db.session.get(Expense, sub_id)
+        assert e.audited_at is not None
+        e.status = "rejected"
+        e.reject_reason = "金額有誤"
+        db.session.commit()
+    # 主管改完重送（第二次 check）
+    r = c.post(f"/audit/{sub_id}/check")
+    assert r.status_code == 200
+    with app.app_context():
+        e = db.session.get(Expense, sub_id)
+        assert e.status == "audited"
+        assert e.reject_reason is None
+        assert e.resubmitted_at is not None
+
+
 def test_check_cross_store_forbidden(app):
     mgr_id, _, _ = _seed(app)
     with app.app_context():

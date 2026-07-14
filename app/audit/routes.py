@@ -152,6 +152,10 @@ def check(eid):
     checkable = e.status == "submitted" or (e.status == "rejected" and e.audited_at is not None)
     if not checkable:
         return jsonify(status="error", message="not checkable"), 409
+    # 這裡讀 e.status 一定要在改成 "audited" 之前：判斷「這是被會計退回後的重送」。
+    # 首次從 submitted 打勾不算重送，不設 resubmitted_at（Addendum 10.1）。
+    if e.status == "rejected":
+        e.resubmitted_at = datetime.now(timezone.utc)
     e.status = "audited"
     e.reject_reason = None          # 重送後清掉退回原因
     e.audited_by = current_user().id

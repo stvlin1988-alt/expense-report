@@ -60,11 +60,11 @@ function summaryRowHtml(e) {
       <td>${lightLabel(e.light)}</td>
       <td>${escapeHtml(status_label(e.status))}</td>
       <td>${escapeHtml(e.audited_by_name || '—')}</td>
-      <td>${e.has_audit_log ? `<button class="au-trail-btn" data-trail="${e.id}" type="button">軌跡</button>` : ''}</td>
+      <td>${e.has_audit_log ? `<button class="au-trail-btn" data-trail="${e.id}" type="button">歷程</button>` : ''}</td>
     </tr>`;
 }
 
-// 軌跡展開：委派綁定 scope 內的 [data-trail] 按鈕，點擊在該列下方插入一列
+// 歷程展開：委派綁定 scope 內的 [data-trail] 按鈕，點擊在該列下方插入一列
 // 顯示 誰・時間・動作（含員工確認區改的那筆 + 主管簽核那筆）。總表/待稽核共用。
 function wireTrails(scope, colspan) {
   scope.querySelectorAll('[data-trail]').forEach((btn) => {
@@ -80,7 +80,7 @@ function wireTrails(scope, colspan) {
         const { data } = await api.expenseLogs(btn.dataset.trail);
         box.innerHTML = `<td colspan="${colspan}">${renderTrailRows(data.logs)}</td>`;
       } catch {
-        box.innerHTML = `<td colspan="${colspan}">軌跡載入失敗</td>`;
+        box.innerHTML = `<td colspan="${colspan}">歷程載入失敗</td>`;
       }
     });
   });
@@ -100,7 +100,7 @@ async function renderSummary(body, sid, dateStr) {
       <div class="au-group-head">${shiftLabel(sh)}　小計 ${formatMoney(sh.subtotal)}（${sh.count} 筆）</div>
       <div class="pd-table-wrap">
       <table class="pd-table"><thead><tr>
-        <th>單號</th><th>建立</th><th>建立者</th><th>圖</th><th>摘要</th><th>分類</th><th>金額</th><th>備註</th><th>燈</th><th>狀態</th><th>稽核者</th><th>軌跡</th>
+        <th>單號</th><th>建立</th><th>建立者</th><th>圖</th><th>摘要</th><th>分類</th><th>金額</th><th>備註</th><th>燈</th><th>狀態</th><th>稽核者</th><th>歷程</th>
       </tr></thead><tbody>${sh.items.map(summaryRowHtml).join('')}</tbody></table>
       </div>
     </div>`).join('');
@@ -213,7 +213,7 @@ function rowHtml(e, tree) {
     <td>${lightLabel(e.light)}</td>
     <td>
       ${e.is_rejected ? `<div class="ap-reject-reason">會計退回：${escapeHtml(e.reject_reason || '')}</div>` : ''}
-      <button data-act="check">打勾</button>${e.has_audit_log ? `<button class="au-trail-btn" data-trail="${e.id}" type="button">軌跡</button>` : ''}<div class="pd-row-err" data-f="err"></div>
+      <button data-act="check">打勾</button>${e.has_audit_log ? `<button class="au-trail-btn" data-trail="${e.id}" type="button">歷程</button>` : ''}<div class="pd-row-err" data-f="err"></div>
     </td>
   </tr>`;
 }

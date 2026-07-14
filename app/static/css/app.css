@@ -226,3 +226,10 @@ tr.au-open-row td { font-weight: 600; }
 .rc-manual-form { margin-bottom: 16px; }
 .rc-reject-reason { color: #c62828; font-size: .78rem; margin-top: 2px; }
 .rc-rowbtns { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+/* Addendum 10.1：重送標記徽章——會計要一眼認出「主管重新確認過的單」，配色刻意跟
+   .rc-reject-reason（紅）/ .au-mod（橘）區隔，用醒目的藍紫底色 + 粗體。 */
+.rc-resubmit {
+  display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 10px;
+  background: #ede7f6; color: #4527a0; border: 1px solid #7e57c2;
+  font-size: .78rem; font-weight: 700; white-space: nowrap;
+}

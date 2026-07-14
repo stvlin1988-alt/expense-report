@@ -3,6 +3,7 @@ import { api as adminApi } from './admin_api.js';
 import { escapeHtml, isValidPin } from './admin_util.js';
 import { categoryOptionsHtml, parseAmountInput, lightLabel } from './expenses_util.js';
 import { openImageLightbox } from './lightbox.js';
+import { formatDateTimeTW } from './audit_util.js';
 
 const root = () => document.getElementById('modal-root');
 
@@ -74,6 +75,13 @@ export function applyAmountEdit(groups, id, newAmount) {
     }
   }
   return null;
+}
+
+// Addendum 10.1：重送標記徽章的顯示條件——只在「主管已重新打勾（audited）且
+// 這次是被會計退回後重送的（resubmitted_at 有值）」時顯示。gate 在 status === 'audited'，
+// 核銷後 status 變 reconciled 徽章自然消失，不必清空 resubmitted_at 欄位。
+export function showResubmitBadge(item) {
+  return item.status === 'audited' && !!item.resubmitted_at;
 }
 
 function amountCell(n) {
@@ -221,6 +229,8 @@ export async function showReconcilePanel(identity) {
     const { negative } = fmtAmount(e.amount);
     const rejectInfo = (e.status === 'rejected' && e.reject_reason)
       ? `<div class="rc-reject-reason">${escapeHtml(e.reject_reason)}</div>` : '';
+    const resubmitBadge = showResubmitBadge(e)
+      ? `<div class="rc-resubmit">🔄 主管已重送　${escapeHtml(formatDateTimeTW(e.resubmitted_at))}</div>` : '';
     return `<tr data-id="${e.id}" data-status="${e.status}">
       <td>${canApprove ? '<input type="checkbox" class="rc-sel">' : ''}</td>
       <td class="au-docno">${escapeHtml(e.doc_no || `#${e.id}`)}</td>
@@ -235,7 +245,7 @@ export async function showReconcilePanel(identity) {
         ? `<input value="${e.amount ?? ''}" inputmode="decimal" data-f="amount" class="rc-amt-input${negative ? ' rc-neg' : ''}" style="width:90px">`
         : amountCell(e.amount)}</td>
       <td>${lightLabel(e.light)}</td>
-      <td>${escapeHtml(STATUS_LABEL[e.status] || e.status)}${rejectInfo}</td>
+      <td>${escapeHtml(STATUS_LABEL[e.status] || e.status)}${rejectInfo}${resubmitBadge}</td>
       <td class="rc-rowbtns">
         ${canApprove ? '<button data-act="approve" type="button">核銷</button>' : ''}
         ${canReject ? '<button data-act="reject" type="button">退回</button>' : ''}

@@ -131,3 +131,28 @@ def test_store_id_filter_narrows_result(client, app, two_store_audited):
 def test_unauthenticated_401(client, app, two_store_audited):
     r = client.get("/reconcile/pending")
     assert r.status_code == 401
+
+
+# ---------- Addendum 10.1：resubmitted_at 白名單 ----------
+
+def test_resubmitted_at_null_when_never_rejected(client, app, two_store_audited):
+    login_accountant(client, app)
+    r = client.get("/reconcile/pending")
+    items = [i for g in r.get_json()["groups"] for i in g["items"]]
+    assert items
+    for i in items:
+        assert "resubmitted_at" in i
+        assert i["resubmitted_at"] is None
+
+
+def test_resubmitted_at_iso_utc_when_set(client, app, two_store_audited):
+    with app.app_context():
+        e = Expense.query.filter_by(store_id=two_store_audited["store_ids"][0], status="audited").first()
+        e.resubmitted_at = datetime(2026, 7, 10, 3, 0, 0, tzinfo=timezone.utc)
+        db.session.commit()
+        eid = e.id
+    login_accountant(client, app)
+    r = client.get("/reconcile/pending")
+    items = [i for g in r.get_json()["groups"] for i in g["items"]]
+    item = next(i for i in items if i["id"] == eid)
+    assert item["resubmitted_at"] == "2026-07-10T03:00:00+00:00"
