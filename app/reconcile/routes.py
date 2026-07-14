@@ -172,6 +172,7 @@ def edit(eid):
         if err:
             return jsonify(status="error", message=err), 400
         e.amount = amount
+        e.amount_parse_ok = amount is not None
     if "category_id" in data:
         e.category_id = _valid_category_id(data["category_id"])
     # 會計改動只留軌跡，不碰 is_modified_by_user / is_modified_by_manager —— 燈號語意不變

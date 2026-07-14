@@ -190,3 +190,56 @@ def test_edit_does_not_set_modified_by_user_or_manager_flags(client, app, audite
 def test_unauthenticated_401(client, app, audited_id):
     r = client.patch(f"/reconcile/{audited_id}", json={"amount": 100})
     assert r.status_code == 401
+
+
+def _light_of(payload, eid):
+    return [i for g in payload["groups"] for i in g["items"] if i["id"] == eid][0]["light"]
+
+
+@pytest.fixture
+def bad_amount_id(seeded, app):
+    """已 audited 但 amount_parse_ok=False（例如主管把金額清空後仍放行）
+    —— 燈號應為 red，這是會計端要能事後修正回綠燈的個案。"""
+    with app.app_context():
+        s1 = Store.query.first()
+        emp = User.query.filter_by(role="employee").first()
+        now = datetime.now(timezone.utc)
+        e = Expense(store_id=s1.id, created_by=emp.id, status="audited",
+                    created_at=now, business_date=date(2026, 7, 7),
+                    amount=None, amount_parse_ok=False, submitted_at=now,
+                    category_id=seeded["cat1_id"])
+        db.session.add(e)
+        db.session.commit()
+        return e.id
+
+
+def test_edit_fixes_bad_amount_parse_ok_and_clears_red_light(client, app, bad_amount_id):
+    """會計把 amount_parse_ok=False 的爛單補上合法金額後，
+    amount_parse_ok 要跟著轉 True、燈號不再是 red —— 這是這行程式碼存在的理由。"""
+    login_accountant(client, app)
+    before = client.get("/reconcile/pending").get_json()
+    assert _light_of(before, bad_amount_id) == "red"
+
+    r = client.patch(f"/reconcile/{bad_amount_id}", json={"amount": 500})
+    assert r.status_code == 200
+    with app.app_context():
+        e = db.session.get(Expense, bad_amount_id)
+        assert e.amount_parse_ok is True
+
+    after = client.get("/reconcile/pending").get_json()
+    assert _light_of(after, bad_amount_id) != "red"
+
+
+def test_edit_null_amount_sets_parse_ok_false_and_red_light(client, app, audited_id):
+    """會計把金額清空（amount: null）時，amount_parse_ok 要跟著變 False、
+    燈號轉 red —— 不能留下 amount=None 但 amount_parse_ok=True 的失真狀態。"""
+    login_accountant(client, app)
+    r = client.patch(f"/reconcile/{audited_id}", json={"amount": None})
+    assert r.status_code == 200
+    with app.app_context():
+        e = db.session.get(Expense, audited_id)
+        assert e.amount is None
+        assert e.amount_parse_ok is False
+
+    after = client.get("/reconcile/pending").get_json()
+    assert _light_of(after, audited_id) == "red"
