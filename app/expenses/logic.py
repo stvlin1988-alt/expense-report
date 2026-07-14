@@ -32,6 +32,18 @@ def format_doc_no(business_date, day_seq):
     return f"{business_date:%m%d}-{day_seq:02d}"
 
 
+def next_day_seq(store_id, business_date) -> int:
+    """當日店內序號（單號 MMDD-NN）：同店同營業日 max+1。低量門市 max+1 足夠；
+    多 worker 併發送出理論上可能撞號（follow-up：需唯一約束/重試），實務機率低。"""
+    from sqlalchemy import func
+    from app.extensions import db
+    from app.models import Expense
+    maxseq = (db.session.query(func.max(Expense.day_seq))
+              .filter(Expense.store_id == store_id,
+                      Expense.business_date == business_date).scalar()) or 0
+    return maxseq + 1
+
+
 def traffic_light(is_handwritten, confidence, amount_parse_ok,
                   is_modified, green_threshold: float = 0.85) -> str:
     """燈號＝金額可信度 / 要不要人工把關。

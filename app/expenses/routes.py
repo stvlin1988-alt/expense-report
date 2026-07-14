@@ -12,7 +12,7 @@ from app.storage.r2 import get_storage
 from app.expenses import expense_bp
 from app.expenses.tasks import schedule_ocr, reconcile_stale, _valid_category_id
 from app.expenses.serialize import serialize_expense
-from app.expenses.logic import compute_business_date, iso_utc
+from app.expenses.logic import compute_business_date, iso_utc, next_day_seq
 from app.expenses.amount import parse_amount
 from app.expenses.note import validate_note
 
@@ -199,13 +199,7 @@ def submit(eid):
         return jsonify(status="error", message="amount required"), 400
     e.status = "submitted"
     e.business_date = compute_business_date(e.created_at)
-    # 當日店內序號（單號 MMDD-NN）：同店同營業日 max+1。低量門市 max+1 足夠；
-    # 多 worker 併發送出理論上可能撞號（follow-up：需唯一約束/重試），實務機率低。
-    from sqlalchemy import func
-    maxseq = (db.session.query(func.max(Expense.day_seq))
-              .filter(Expense.store_id == e.store_id,
-                      Expense.business_date == e.business_date).scalar()) or 0
-    e.day_seq = maxseq + 1
+    e.day_seq = next_day_seq(e.store_id, e.business_date)
     e.submitted_at = datetime.now(timezone.utc)
     db.session.commit()
     return jsonify(status="ok")

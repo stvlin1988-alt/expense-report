@@ -11,6 +11,7 @@ from app.reconcile import reconcile_bp
 from app.reconcile.serialize import serialize_reconcile_item
 from app.expenses.amount import parse_amount
 from app.expenses.tasks import _valid_category_id
+from app.expenses.logic import next_day_seq
 
 VISIBLE = ("audited", "reconciled", "rejected")   # 會計看得到的狀態（submitted 不給看）
 MAX_BATCH_IDS = 500   # approve-batch 一次帶的 ids 上限，避免無界輸入
@@ -206,3 +207,45 @@ def reject(eid):
     e.reconciled_at = None
     db.session.commit()
     return jsonify(status="ok")
+
+
+@reconcile_bp.post("/manual")
+@role_required("accountant")
+def manual():
+    """會計自己新增一筆單據（例如上期主管沒打勾、沒進帳的單，這期會計要認就自己補一筆）。
+    建出來直接就是已核銷、無單據、可負數，不回頭走主管打勾。"""
+    data = request.get_json(silent=True) or {}
+    sid = _coerce_id(data.get("store_id"))
+    store = db.session.get(Store, sid) if sid is not None else None
+    if store is None:
+        return jsonify(status="error", message="store required"), 400
+    bd = _parse_date(data.get("business_date"))
+    if bd is None:
+        return jsonify(status="error", message="business_date required"), 400
+    raw_summary = data.get("summary")
+    if raw_summary is not None and not isinstance(raw_summary, str):
+        # 非字串（如 int/list/dict）不可直接 .strip() → AttributeError → 500，
+        # 一律當成「沒給合法摘要」回 400。
+        return jsonify(status="error", message="summary_invalid"), 400
+    amount, err = parse_amount(data.get("amount"))
+    if err or amount is None:
+        return jsonify(status="error", message=err or "amount required"), 400
+
+    actor = current_user()
+    now = datetime.now(timezone.utc)
+    e = Expense(
+        store_id=store.id, created_by=actor.id, status="reconciled",
+        created_at=now, submitted_at=now, business_date=bd,
+        day_seq=next_day_seq(store.id, bd),
+        summary=(raw_summary or "").strip() or None,
+        category_id=_valid_category_id(data.get("category_id")),
+        amount=amount, amount_parse_ok=True,
+        is_no_receipt=True, is_modified_by_user=True,
+        audited_by=actor.id, audited_at=now,      # 不回頭走主管打勾
+        reconciled_by=actor.id, reconciled_at=now,
+    )
+    db.session.add(e)
+    db.session.flush()
+    record_reconcile(e, actor.id)
+    db.session.commit()
+    return jsonify(status="ok", id=e.id)
