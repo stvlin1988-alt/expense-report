@@ -176,17 +176,40 @@ def test_reject_writes_log(client, app, audited_id):
         assert reject_log.after_json == {"status": "rejected", "reason": "金額不符"}
 
 
+def test_reject_writes_log_reconciled_branch(client, app, reconciled_id):
+    """退回已核銷單：record_reject 必須在 status 被覆寫成 rejected 之前呼叫，
+    否則 before_json 會誤記成 rejected 而非原本的 reconciled，稽核軌跡就失真。"""
+    login_accountant(client, app)
+    client.post(f"/reconcile/{reconciled_id}/reject", json={"reason": "科目錯了"})
+    with app.app_context():
+        logs = AuditLog.query.filter_by(expense_id=reconciled_id).all()
+        reject_log = next(l for l in logs if l.action == "reject")
+        assert reject_log.before_json == {"status": "reconciled"}
+        assert reject_log.after_json == {"status": "rejected", "reason": "科目錯了"}
+
+
 def test_unauthenticated_401(client, app, audited_id):
     r = client.post(f"/reconcile/{audited_id}/reject", json={"reason": "x"})
     assert r.status_code == 401
 
 
-def test_reject_never_shows_to_employee(client, app, audited_id):
+def test_rejected_expense_excluded_from_submitted_queryset(client, app, audited_id):
+    """注意：這條測的是「rejected 的單根本不會出現在 /expenses/submitted 回傳裡」，
+    因為該端點的 query 只挑 status in (submitted, audited)（app/expenses/routes.py
+    的 submitted() 內 Expense.status.in_(["submitted", "audited"])），rejected 列
+    在序列化之前就被排除，不是靠白名單擋掉。曾經誤把這條當成「白名單有擋 status/
+    reject_reason 洩漏」的證據——事實上就算把 submitted() 裡的 keep 白名單加寬到含
+    "status"，這條測試依然會 PASS（因為根本沒有 rejected 列可以序列化），對白名單
+    沒有任何回歸保護力。
+    真正的白名單保護（同一份 payload 不能洩漏 status/last_modified_*/category_id 等
+    稽核中繼資料）已經在 tests/test_expense_submitted.py 的
+    test_no_status_leak（第 111 行）與 test_payload_whitelist_hides_audit_metadata
+    （第 128 行）覆蓋，故這裡不重複造一份；只保留「rejected 列整批被排除在複查區外」
+    這個值得釘住的行為，並如實改名/加註說明，避免誤導。"""
     login_accountant(client, app)
     client.post(f"/reconcile/{audited_id}/reject", json={"reason": "金額不符"})
     login_employee(client, app)
     r = client.get("/expenses/submitted")     # 員工複查端點
     body = r.get_json()
-    dumped = str(body)
-    assert "金額不符" not in dumped
-    assert "rejected" not in dumped
+    returned_ids = [row["id"] for row in body["expenses"]]
+    assert audited_id not in returned_ids
