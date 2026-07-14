@@ -48,6 +48,34 @@ export function groupTotals(groups) {
   return { reconciled, pending, count };
 }
 
+// 該 group 的小計＝組內所有項目金額加總（不分狀態，含 rejected —— 對齊後端
+// app/reconcile/routes.py pending() 的算法：sum(amount for x in items if amount is not None)）。
+function groupSubtotal(items) {
+  return (items || []).reduce((acc, it) => {
+    const a = it.amount;
+    return acc + (a !== null && a !== undefined ? Number(a) : 0);
+  }, 0);
+}
+
+/**
+ * 行內編輯金額成功後，就地更新 groups 裡對應那筆的金額、重算其所屬 group 小計與整體合計。
+ * 純函式（除了必要的 item.amount 賦值副作用），不碰 DOM —— 呼叫端只需把回傳的
+ * group/total 拿去更新對應的顯示節點，不必整頁重繪，才不會蓋掉其他列使用者尚未
+ * 儲存的半輸入內容（做法對齊 admin_audit.js 的 refreshSubtotal：只更新數字，不重繪列表）。
+ * 找不到對應 id 時回傳 null（呼叫端可略過）。
+ */
+export function applyAmountEdit(groups, id, newAmount) {
+  for (const g of groups) {
+    const item = (g.items || []).find((it) => it.id === id);
+    if (item) {
+      item.amount = newAmount;
+      g.subtotal = groupSubtotal(g.items);
+      return { group: g, total: groupTotals(groups) };
+    }
+  }
+  return null;
+}
+
 function amountCell(n) {
   const { text, negative } = fmtAmount(n);
   return `<span class="rc-amt${negative ? ' rc-neg' : ''}">${text}</span>`;
@@ -218,11 +246,11 @@ export async function showReconcilePanel(identity) {
 
   function groupsHtml() {
     if (!state.groups.length) return '<div class="ap-empty">沒有符合條件的單據</div>';
-    return state.groups.map((g) => {
+    return state.groups.map((g, idx) => {
       const sub = amountCell(g.subtotal);
       return `
       <div class="au-group">
-        <div class="au-group-head">${escapeHtml(g.business_date)}　日小計 ${sub}</div>
+        <div class="au-group-head">${escapeHtml(g.business_date)}　日小計 <span id="rc-subtotal-${idx}">${sub}</span></div>
         <div class="pd-table-wrap">
         <table class="pd-table"><thead><tr>
           <th><input type="checkbox" class="rc-selall"></th>
@@ -249,9 +277,9 @@ export async function showReconcilePanel(identity) {
       </div>
       <div id="rc-manual-box"></div>
       <div class="rc-totals">
-        待核銷 ${amountCell(state.total.pending)}
-        已核銷 ${amountCell(state.total.reconciled)}
-        共 ${state.total.count} 筆
+        待核銷 <span id="rc-total-pending">${amountCell(state.total.pending)}</span>
+        已核銷 <span id="rc-total-reconciled">${amountCell(state.total.reconciled)}</span>
+        共 <span id="rc-total-count">${state.total.count}</span> 筆
       </div>
       <div class="rc-batchbar">
         <button class="ap-btn" id="rc-batch-approve" type="button">一鍵核銷勾選</button>
@@ -285,13 +313,20 @@ export async function showReconcilePanel(identity) {
       const store_id = storeSel.value ? Number(storeSel.value) : null;
       const business_date = box.querySelector('#rc-m-date').value;
       const summary = box.querySelector('#rc-m-summary').value;
-      const amount = box.querySelector('#rc-m-amount').value;
+      const rawAmount = box.querySelector('#rc-m-amount').value;
       const catSel = box.querySelector('#rc-m-cat');
       const category_id = catSel.value === '' ? null : Number(catSel.value);
       if (!store_id) { msg.textContent = '請選擇店別'; return; }
       if (!business_date) { msg.textContent = '請選擇營業日'; return; }
+      // 與行內編輯一致：先過 parseAmountInput 去千分位逗號/$/NT$/空白，
+      // 否則同一畫面「新增單據」打 1,250 會被後端 parse_amount 判 amount_invalid，
+      // 行內編輯打同樣的字卻能存 —— 對使用者是矛盾行為。0/負數仍交後端判（parse_amount 拒 0、允許負數）。
+      const parsed = parseAmountInput(rawAmount);
+      if (!parsed.valid) { msg.textContent = '金額格式不正確'; return; }
       try {
-        const { status, data } = await rcApi.manual({ store_id, business_date, summary, amount, category_id });
+        const { status, data } = await rcApi.manual({
+          store_id, business_date, summary, amount: parsed.value, category_id,
+        });
         if (status === 200) {
           box.innerHTML = ''; box.dataset.open = '';
           await renderReconcile(body);
@@ -317,7 +352,13 @@ export async function showReconcilePanel(identity) {
         const category_id = cat.value === '' ? null : Number(cat.value);
         try {
           const { status, data } = await rcApi.edit(id, { category_id });
-          if (status !== 200) err.textContent = errMsg(data && data.message);
+          if (status === 200) {
+            // 分類不影響合計/小計金額，只同步本機 state，不必重繪畫面。
+            const found = state.groups.flatMap((g) => g.items).find((it) => it.id === id);
+            if (found) found.category_id = category_id;
+          } else {
+            err.textContent = errMsg(data && data.message);
+          }
         } catch (e) { err.textContent = '分類儲存失敗，請重試'; }
       });
       if (amt) {
@@ -331,7 +372,25 @@ export async function showReconcilePanel(identity) {
           if (!parsed.valid) { err.textContent = '金額格式不正確'; return; }
           try {
             const { status, data } = await rcApi.edit(id, { amount: parsed.value });
-            if (status !== 200) err.textContent = errMsg(data && data.message);
+            if (status === 200) {
+              // 只更新合計/小計數字，不整頁重繪 —— 避免蓋掉其他列使用者尚未
+              // blur 儲存的半輸入內容（做法對齊 admin_audit.js 的 refreshSubtotal）。
+              const patched = applyAmountEdit(state.groups, id, parsed.value);
+              if (patched) {
+                state.total = patched.total;
+                const idx = state.groups.indexOf(patched.group);
+                const subEl = body.querySelector(`#rc-subtotal-${idx}`);
+                if (subEl) subEl.innerHTML = amountCell(patched.group.subtotal);
+                const pendEl = body.querySelector('#rc-total-pending');
+                if (pendEl) pendEl.innerHTML = amountCell(state.total.pending);
+                const recEl = body.querySelector('#rc-total-reconciled');
+                if (recEl) recEl.innerHTML = amountCell(state.total.reconciled);
+                const cntEl = body.querySelector('#rc-total-count');
+                if (cntEl) cntEl.textContent = state.total.count;
+              }
+            } else {
+              err.textContent = errMsg(data && data.message);
+            }
           } catch (e) { err.textContent = '金額儲存失敗，請重試'; }
         });
       }
