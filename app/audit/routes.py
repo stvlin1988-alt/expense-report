@@ -62,6 +62,23 @@ def pending():
     return jsonify(status="ok", groups=out)
 
 
+@audit_bp.get("/overdue")
+@role_required("manager", "super_admin")
+def overdue():
+    from app.expenses.logic import compute_business_date
+    store_id, err = _scope_store_id()
+    if err:
+        return err
+    today_bd = compute_business_date(datetime.now(timezone.utc))
+    rows = (Expense.query
+            .filter(Expense.store_id == store_id,
+                    Expense.status == "submitted",
+                    Expense.business_date < today_bd)
+            .order_by(Expense.business_date.asc()).all())
+    oldest = rows[0].business_date.isoformat() if rows else None
+    return jsonify(status="ok", count=len(rows), oldest_business_date=oldest)
+
+
 def _audit_maps(expenses):
     uids = {e.audited_by for e in expenses if e.audited_by}
     uids |= {e.created_by for e in expenses}
