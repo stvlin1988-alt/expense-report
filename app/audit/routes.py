@@ -42,7 +42,7 @@ def pending():
     if err:
         return err
     rows = (Expense.query
-            .filter(Expense.store_id == store_id, Expense.status == "submitted")
+            .filter(Expense.store_id == store_id, Expense.status.in_(["submitted", "rejected"]))
             .order_by(Expense.business_date.asc(), Expense.submitted_at.asc())
             .all())
     storage = get_storage()
@@ -95,7 +95,7 @@ def edit(eid):
     e, err = _load_in_scope(eid, store_id)
     if err:
         return err
-    if e.status != "submitted":
+    if e.status not in ("submitted", "rejected"):
         return jsonify(status="error", message="not editable"), 409
     data = request.get_json(silent=True) or {}
     before = snapshot(e)
@@ -128,9 +128,10 @@ def check(eid):
     e, err = _load_in_scope(eid, store_id)
     if err:
         return err
-    if e.status != "submitted":
+    if e.status not in ("submitted", "rejected"):
         return jsonify(status="error", message="not checkable"), 409
     e.status = "audited"
+    e.reject_reason = None          # 重送後清掉退回原因
     e.audited_by = current_user().id
     e.audited_at = datetime.now(timezone.utc)
     record_check(e, current_user().id)
