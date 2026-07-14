@@ -5,7 +5,7 @@ from flask import request, jsonify
 from app.extensions import db
 from app.models import Expense, Store, Category, User
 from app.auth.decorators import role_required, current_user
-from app.audit.log import record_reconcile
+from app.audit.log import record_reconcile, record_reject
 from app.storage.r2 import get_storage
 from app.reconcile import reconcile_bp
 from app.reconcile.serialize import serialize_reconcile_item
@@ -153,3 +153,30 @@ def approve_batch():
             skipped.append(raw)           # 原始元素回填，錯誤不能悄悄消失
     db.session.commit()
     return jsonify(status="ok", approved=approved, skipped=skipped)
+
+
+@reconcile_bp.post("/<int:eid>/reject")
+@role_required("accountant")
+def reject(eid):
+    e = db.session.get(Expense, eid)
+    if e is None:
+        return jsonify(status="error", message="not found"), 404
+    raw_reason = (request.get_json(silent=True) or {}).get("reason")
+    if raw_reason is not None and not isinstance(raw_reason, str):
+        # 非字串（如 int/list/dict）不可直接 .strip() → AttributeError → 500，
+        # 一律當成「沒給合法原因」回 400，不新增錯誤碼。
+        return jsonify(status="error", message="reason_required"), 400
+    reason = (raw_reason or "").strip()
+    if not reason:
+        return jsonify(status="error", message="reason_required"), 400
+    if len(reason) > 200:
+        return jsonify(status="error", message="reason_too_long"), 400
+    if e.status not in ("audited", "reconciled"):
+        return jsonify(status="error", message="not_rejectable"), 409
+    record_reject(e, current_user().id, reason)   # 改 status 之前呼叫，記得到原狀態
+    e.status = "rejected"
+    e.reject_reason = reason
+    e.reconciled_by = None            # 退回即撤銷核銷
+    e.reconciled_at = None
+    db.session.commit()
+    return jsonify(status="ok")

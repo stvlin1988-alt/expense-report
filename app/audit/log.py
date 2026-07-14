@@ -59,3 +59,13 @@ def record_reconcile(expense, actor_user_id):
         before_json=None, after_json={"status": "reconciled"},
         ts=datetime.now(timezone.utc),
     ))
+
+
+def record_reject(expense, actor_user_id, reason):
+    """要在改 status 之前呼叫，before_json 才記得到原狀態（audited 或 reconciled）。"""
+    db.session.add(AuditLog(
+        expense_id=expense.id, actor_user_id=actor_user_id, action="reject",
+        before_json={"status": expense.status},
+        after_json={"status": "rejected", "reason": reason},
+        ts=datetime.now(timezone.utc),
+    ))
