@@ -6,6 +6,14 @@ class Expense(db.Model):
 
     STATUSES = ("pending_ocr", "draft", "submitted", "audited", "reconciled", "rejected")
 
+    # 「主管已打勾／已認列」的狀態集合。本 branch 前，audited 是終態，等於這個語意；
+    # 本 branch 把 audited 變成過渡態（會計會把它推進 reconciled，或退回 rejected），
+    # 所以任何原本寫 status=="audited" 代表「主管已打勾」的彙整查詢，都要改用這個集合，
+    # 否則會計一動手，該單就從彙整裡悄悄消失（C1 finding）。
+    # 含 rejected：那筆錢確實花掉了（單據存在、現金離開收銀機），交接班對的是「這班花了多少」；
+    # 會計退回只是對金額/科目有異議，不代表沒花。
+    CHECKED_STATUSES = ("audited", "reconciled", "rejected")
+
     id = db.Column(db.Integer, primary_key=True)
     store_id = db.Column(db.Integer, db.ForeignKey("stores.id"), nullable=False, index=True)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)

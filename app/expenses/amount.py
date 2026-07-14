@@ -11,6 +11,10 @@ def parse_amount(raw):
         val = Decimal(str(raw))
     except (InvalidOperation, ValueError):
         return None, "amount_invalid"
+    if not val.is_finite():          # 擋 NaN / Infinity / -Infinity：jsonify 會吐出裸的
+        return None, "amount_invalid"  # Infinity/NaN token，瀏覽器 JSON.parse 嚴格模式直接丟例外
+    if abs(val) >= Decimal("10000000000"):   # Numeric(12,2) → 最多 10 位整數
+        return None, "amount_invalid"
     if val == 0:
         return None, "amount_zero"
     return val, None

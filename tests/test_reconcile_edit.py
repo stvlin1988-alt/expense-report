@@ -187,6 +187,56 @@ def test_edit_does_not_set_modified_by_user_or_manager_flags(client, app, audite
         assert getattr(e, "is_modified_by_manager", None) == before_manager_flag
 
 
+# ---------- I1 回歸：_valid_category_id 沒做型別防護 → dict/list/非數字字串會 500 ----------
+
+def test_edit_category_id_dict_not_500(client, app, audited_id):
+    login_accountant(client, app)
+    r = client.patch(f"/reconcile/{audited_id}", json={"category_id": {"a": 1}})
+    assert r.status_code == 200
+    with app.app_context():
+        assert db.session.get(Expense, audited_id).category_id is None
+
+
+def test_edit_category_id_list_not_500(client, app, audited_id):
+    login_accountant(client, app)
+    r = client.patch(f"/reconcile/{audited_id}", json={"category_id": [1]})
+    assert r.status_code == 200
+    with app.app_context():
+        assert db.session.get(Expense, audited_id).category_id is None
+
+
+def test_edit_category_id_non_numeric_string_clears(client, app, audited_id):
+    login_accountant(client, app)
+    r = client.patch(f"/reconcile/{audited_id}", json={"category_id": "abc"})
+    assert r.status_code == 200
+    with app.app_context():
+        assert db.session.get(Expense, audited_id).category_id is None
+
+
+def test_edit_category_id_bool_clears(client, app, audited_id):
+    login_accountant(client, app)
+    r = client.patch(f"/reconcile/{audited_id}", json={"category_id": True})
+    assert r.status_code == 200
+    with app.app_context():
+        assert db.session.get(Expense, audited_id).category_id is None
+
+
+def test_edit_category_id_none_clears(client, app, audited_id):
+    login_accountant(client, app)
+    r = client.patch(f"/reconcile/{audited_id}", json={"category_id": None})
+    assert r.status_code == 200
+    with app.app_context():
+        assert db.session.get(Expense, audited_id).category_id is None
+
+
+def test_edit_category_id_valid_id_still_works(client, app, audited_id, cat_id):
+    login_accountant(client, app)
+    r = client.patch(f"/reconcile/{audited_id}", json={"category_id": cat_id})
+    assert r.status_code == 200
+    with app.app_context():
+        assert db.session.get(Expense, audited_id).category_id == cat_id
+
+
 def test_unauthenticated_401(client, app, audited_id):
     r = client.patch(f"/reconcile/{audited_id}", json={"amount": 100})
     assert r.status_code == 401

@@ -4,8 +4,9 @@ from app.expenses.logic import iso_utc
 
 
 def _sum(store_id, handover_id):
-    rows = Expense.query.filter_by(store_id=store_id, handover_id=handover_id,
-                                   status="audited").all()
+    rows = (Expense.query
+            .filter_by(store_id=store_id, handover_id=handover_id)
+            .filter(Expense.status.in_(Expense.CHECKED_STATUSES)).all())
     subtotal = sum(float(x.amount) for x in rows if x.amount is not None)
     return subtotal, len(rows)
 

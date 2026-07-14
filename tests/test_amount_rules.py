@@ -36,6 +36,36 @@ def test_none_is_passthrough():
     assert parse_amount(None) == (None, None)
 
 
+# ---------- C2 回歸：NaN / Infinity / 溢位不得放行（會讓 jsonify 吐出非法 JSON） ----------
+
+def test_nan_rejected():
+    assert parse_amount("NaN") == (None, "amount_invalid")
+
+
+def test_infinity_rejected():
+    assert parse_amount("Infinity") == (None, "amount_invalid")
+
+
+def test_negative_infinity_rejected():
+    assert parse_amount("-Infinity") == (None, "amount_invalid")
+
+
+def test_huge_exponent_rejected():
+    assert parse_amount("1e400") == (None, "amount_invalid")
+
+
+def test_just_over_numeric_12_2_limit_rejected():
+    # Numeric(12,2) 最多 10 位整數；剛好超過上限應擋下
+    assert parse_amount("10000000000") == (None, "amount_invalid")
+
+
+def test_just_within_numeric_12_2_limit_ok():
+    # 剛好在上限內應放行
+    val, err = parse_amount("9999999999.99")
+    assert err is None
+    assert val == Decimal("9999999999.99")
+
+
 # ---------- API 層測試：共用 seed/login helper（照抄各自既有測試檔的模式）----------
 
 def _seed(app):

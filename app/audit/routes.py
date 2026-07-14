@@ -169,9 +169,21 @@ def handover():
     h = Handover(store_id=store_id, closed_at=datetime.now(timezone.utc),
                  closed_by=current_user().id, type=htype)
     db.session.add(h); db.session.flush()
+    # 「主管已打勾」現在對應 CHECKED_STATUSES（audited/reconciled/rejected），不只 audited——
+    # 會計可能在主管結班前就先核銷/退回，那筆單這時已經不是 audited 了，但仍要被這次交班掃到。
+    # 但要排除會計自建的 manual 單（/reconcile/manual）：它從沒被主管打勾過，handover_id
+    # 該永遠是 NULL。manual 單的判別依據：audited_by 指向的是一個 accountant 角色的使用者——
+    # 這在正常流程下不可能發生（/audit/<id>/check 只有 manager/super_admin 打得到，
+    # 所以 audited_by 正常只會是這兩種角色），manual() 是唯一會讓 audited_by 指向
+    # accountant 自己的入口。
+    manual_entry_ids = (db.session.query(Expense.id)
+                        .join(User, Expense.audited_by == User.id)
+                        .filter(User.role == "accountant"))
     count = (Expense.query
-             .filter(Expense.store_id == store_id, Expense.status == "audited",
-                     Expense.handover_id.is_(None))
+             .filter(Expense.store_id == store_id,
+                     Expense.status.in_(Expense.CHECKED_STATUSES),
+                     Expense.handover_id.is_(None),
+                     ~Expense.id.in_(manual_entry_ids))
              .update({Expense.handover_id: h.id}, synchronize_session=False))
     if count == 0:
         db.session.rollback()
@@ -243,7 +255,8 @@ def open_items():
     if err:
         return err
     rows = (Expense.query
-            .filter(Expense.store_id == store_id, Expense.status == "audited",
+            .filter(Expense.store_id == store_id,
+                    Expense.status.in_(Expense.CHECKED_STATUSES),
                     Expense.handover_id.is_(None))
             .order_by(Expense.audited_at.asc()).all())
     storage = get_storage()
@@ -262,7 +275,7 @@ def summary_dates():
         return err
     rows = (db.session.query(Expense.business_date)
             .filter(Expense.store_id == store_id,
-                    Expense.status.in_(["submitted", "audited"]),
+                    Expense.status.in_(("submitted",) + Expense.CHECKED_STATUSES),
                     Expense.business_date.isnot(None))
             .distinct().all())
     dates = sorted({r[0] for r in rows}, reverse=True)
@@ -288,7 +301,7 @@ def by_date():
         return jsonify(status="error", message="bad date"), 400
     rows = (Expense.query
             .filter(Expense.store_id == store_id,
-                    Expense.status.in_(["submitted", "audited"]),
+                    Expense.status.in_(("submitted",) + Expense.CHECKED_STATUSES),
                     Expense.business_date == d)
             .order_by(Expense.submitted_at.asc(), Expense.created_at.asc()).all())
     storage = get_storage()

@@ -20,7 +20,15 @@ def _aware_utc(dt):
 
 
 def _valid_category_id(cid):
-    if cid is None:
+    """cid 是原始 JSON 值，型別不可信（dict/list/字串/bool 都可能送進來）。
+    比照 app/reconcile/routes.py 的 _coerce_id：拒絕 bool、int() 包在 try 裡失敗回 None，
+    避免非法型別直接餵進 db.session.get() 炸 InvalidRequestError/DataError → 500。
+    查不到的 id 一樣回 None（清空科目）——語意不變。"""
+    if cid is None or isinstance(cid, bool):
+        return None
+    try:
+        cid = int(cid)
+    except (TypeError, ValueError):
         return None
     from app.models import Category
     return cid if db.session.get(Category, cid) is not None else None
