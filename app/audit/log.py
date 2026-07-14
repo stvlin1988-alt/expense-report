@@ -51,3 +51,11 @@ def record_check(expense, actor_user_id):
         before_json=None, after_json={"status": "audited"},
         ts=datetime.now(timezone.utc),
     ))
+
+
+def record_reconcile(expense, actor_user_id):
+    db.session.add(AuditLog(
+        expense_id=expense.id, actor_user_id=actor_user_id, action="reconcile",
+        before_json=None, after_json={"status": "reconciled"},
+        ts=datetime.now(timezone.utc),
+    ))

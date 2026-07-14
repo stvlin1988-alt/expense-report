@@ -1,9 +1,11 @@
-from datetime import date
+from datetime import date, datetime, timezone
 
 from flask import request, jsonify
 
+from app.extensions import db
 from app.models import Expense, Store, Category, User
-from app.auth.decorators import role_required
+from app.auth.decorators import role_required, current_user
+from app.audit.log import record_reconcile
 from app.storage.r2 import get_storage
 from app.reconcile import reconcile_bp
 from app.reconcile.serialize import serialize_reconcile_item
@@ -89,3 +91,62 @@ def pending():
         "count": len(rows),
     }
     return jsonify(status="ok", groups=groups, total=total)
+
+
+def _coerce_id(raw):
+    """batch ids 陣列元素轉 int；非數字（如 "abc"/null）回 None 代表跳過該筆，
+    不可讓 int() 直接炸 TypeError/ValueError → db.session.get 在 Postgres 上
+    對非法型別會炸 DataError → 500（brief 原碼的坑，這裡修掉）。"""
+    if isinstance(raw, bool):
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _approve_one(e, actor_id):
+    """狀態必須是 audited。回 True 表示這次真的核銷成功。"""
+    updated = (Expense.query
+               .filter(Expense.id == e.id, Expense.status == "audited")
+               .update({"status": "reconciled",
+                        "reconciled_by": actor_id,
+                        "reconciled_at": datetime.now(timezone.utc)},
+                       synchronize_session=False))
+    if not updated:
+        return False                      # 併發：別人先核掉了
+    db.session.refresh(e)
+    record_reconcile(e, actor_id)
+    return True
+
+
+@reconcile_bp.post("/<int:eid>/approve")
+@role_required("accountant")
+def approve(eid):
+    e = db.session.get(Expense, eid)
+    if e is None:
+        return jsonify(status="error", message="not found"), 404
+    if not _approve_one(e, current_user().id):
+        db.session.rollback()
+        return jsonify(status="error", message="not_reconcilable"), 409
+    db.session.commit()
+    return jsonify(status="ok")
+
+
+@reconcile_bp.post("/approve-batch")
+@role_required("accountant")
+def approve_batch():
+    ids = (request.get_json(silent=True) or {}).get("ids") or []
+    if not isinstance(ids, list):
+        return jsonify(status="error", message="ids required"), 400
+    actor_id = current_user().id
+    approved, skipped = [], []
+    for raw in ids:
+        eid = _coerce_id(raw)
+        e = db.session.get(Expense, eid) if eid is not None else None
+        if e is not None and _approve_one(e, actor_id):
+            approved.append(eid)
+        else:
+            skipped.append(raw)           # 原始元素回填，錯誤不能悄悄消失
+    db.session.commit()
+    return jsonify(status="ok", approved=approved, skipped=skipped)
