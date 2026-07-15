@@ -336,6 +336,34 @@ def manual():
     return jsonify(status="ok", id=e.id)
 
 
+@reconcile_bp.get("/unprocessed")
+@role_required("accountant")
+def unprocessed():
+    """上期未處理單：主管交接班沒打勾、封月後留原期沒進帳的 submitted 單（spec §5.4）。
+    只回白名單欄位，絕不可含 note（會計端鐵律）。"""
+    from app.models import AccountingPeriod
+    closed_ids = [p.id for p in AccountingPeriod.query
+                  .filter(AccountingPeriod.status == "closed").all()]
+    if not closed_ids:
+        return jsonify(status="ok", items=[])
+    rows = (Expense.query
+            .filter(Expense.period_id.in_(closed_ids), Expense.status == "submitted")
+            .order_by(Expense.business_date.asc(), Expense.store_id.asc(),
+                      Expense.day_seq.asc()).all())
+    storage = get_storage()
+    stores, cats, users = _maps(rows)
+    items = [{
+        "id": e.id,
+        "business_date": e.business_date.isoformat() if e.business_date else None,
+        "store_id": e.store_id,
+        "store_name": stores.get(e.store_id),
+        "summary": e.summary,
+        "amount": float(e.amount) if e.amount is not None else None,
+        "image_url": storage.presigned_url(e.image_key) if e.image_key else None,
+    } for e in rows]
+    return jsonify(status="ok", items=items)
+
+
 @reconcile_bp.get("/period/<int:pid>/close-preview")
 @role_required("accountant")
 def close_preview(pid):
