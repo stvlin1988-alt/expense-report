@@ -1,5 +1,7 @@
 import { rcApi } from './reconcile_api.js';
 import { api as adminApi } from './admin_api.js';
+import { periodsApi } from './periods_api.js';
+import { renderMonthReport } from './month_report.js';
 import { escapeHtml, isValidPin } from './admin_util.js';
 import { categoryOptionsHtml, parseAmountInput, lightLabel } from './expenses_util.js';
 import { openImageLightbox } from './lightbox.js';
@@ -21,7 +23,23 @@ const ERR_MSG = {
   not_reconcilable: '狀態已變更，請重新整理',
   not_editable: '此單無法編輯',
   not_rejectable: '此單無法退回',
+  // Task 17：期間篩選／挪期／提前封月／月結設定
+  period_closed: '此期已封月',
+  next_period_closed: '下一期已封月',
+  no_period: '此單尚未歸期',
+  already_closed: '已封月',
+  period_not_ended: '期間還在進行中，請先「調整結束日」把本期縮到今天／昨天，再提前封月',
+  bad_close_day: '月結日需 1–28',
+  bad_offset: '鎖定偏移需 0–168 小時',
+  end_before_start: '結束日不可早於起始日',
+  would_invert_next: '會使下一期起訖顛倒',
+  bad_date: '日期格式不正確',
 };
+
+// 期間狀態 → 徽章文案（純函式，供測試）。
+export function periodBadge(status) {
+  return { open: '進行中', closing: '寬限期', closed: '已封月' }[status] || status || '';
+}
 
 function errMsg(code) {
   return ERR_MSG[code] || '操作失敗，請重試';
@@ -89,6 +107,12 @@ function amountCell(n) {
   return `<span class="rc-amt${negative ? ' rc-neg' : ''}">${text}</span>`;
 }
 
+function periodBadgeHtml(period) {
+  if (!period) return '';
+  const cls = period.status === 'closed' ? 'closed' : period.status === 'closing' ? 'closing' : 'open';
+  return `<span class="ap-badge ${cls}">${escapeHtml(periodBadge(period.status))}</span>`;
+}
+
 // 分類樹攤平成 {id, name} 清單，供篩選列用（categoryOptionsHtml 是給「編輯單筆分類」用，
 // 首列固定「未分類」，語意跟篩選列的「全部分類」不同，這裡另外做一份給篩選用）。
 function flattenCategories(tree) {
@@ -106,10 +130,11 @@ export async function showReconcilePanel(identity) {
     tab: 'reconcile',
     stores: [],
     categories: [],
-    filters: { status: '', store_id: '', category_id: '', date_from: '', date_to: '' },
+    filters: { status: '', store_id: '', category_id: '', date_from: '', date_to: '', period_id: '' },
     groups: [],
     total: { reconciled: 0, pending: 0, count: 0 },
     batchMsg: '',
+    period: null, // 最近一次 pending() 回傳的 {id, label, status}（給期間抬頭 + 月結管理 tab 共用）
   };
 
   try {
@@ -123,6 +148,7 @@ export async function showReconcilePanel(identity) {
 
   const tabs = [
     { key: 'reconcile', label: '核銷' },
+    { key: 'period', label: '月結管理' },
     { key: 'mypw', label: '我的密碼' },
   ];
 
@@ -184,6 +210,7 @@ export async function showReconcilePanel(identity) {
     if (f.category_id !== '') q.category_id = f.category_id;
     if (f.date_from) q.date_from = f.date_from;
     if (f.date_to) q.date_to = f.date_to;
+    if (f.period_id !== '') q.period_id = f.period_id;
     return q;
   }
 
@@ -191,6 +218,22 @@ export async function showReconcilePanel(identity) {
     const { data } = await rcApi.pending(filtersToQuery(state.filters));
     state.groups = (data && data.groups) || [];
     state.total = groupTotals(state.groups);
+    state.period = (data && data.period) || null;
+  }
+
+  // 「月結管理」tab 用：確保 state.period 有值（若尚未進過核銷 tab 就直接切過來，先補抓一次當期）。
+  async function ensurePeriod() {
+    if (state.period) return state.period;
+    await refreshPeriod();
+    return state.period;
+  }
+
+  // 用指定 pid（或省略＝當期）重抓一次 period 資訊，更新 state.period（不動 groups/filters）。
+  async function refreshPeriod(pid) {
+    try {
+      const { data } = await rcApi.pending(pid ? { period_id: pid } : {});
+      if (data && data.period) state.period = data.period;
+    } catch (e) { /* 靜默 */ }
   }
 
   function statusOptionsHtml(sel) {
@@ -223,6 +266,7 @@ export async function showReconcilePanel(identity) {
     const editable = e.status === 'audited' || e.status === 'reconciled';
     const canApprove = e.status === 'audited';
     const canReject = editable;
+    const canMoveNext = e.status === 'audited' || e.status === 'rejected';
     const thumb = e.thumb_url
       ? `<img src="${e.thumb_url}" loading="lazy" width="48" class="au-thumb" data-zoom="${e.image_url || ''}">`
       : '—';
@@ -249,6 +293,7 @@ export async function showReconcilePanel(identity) {
       <td class="rc-rowbtns">
         ${canApprove ? '<button data-act="approve" type="button">核銷</button>' : ''}
         ${canReject ? '<button data-act="reject" type="button">退回</button>' : ''}
+        ${canMoveNext ? '<button data-act="movenext" type="button">挪下期</button>' : ''}
         <div class="pd-row-err" data-f="err"></div>
       </td>
     </tr>`;
@@ -271,9 +316,23 @@ export async function showReconcilePanel(identity) {
     }).join('');
   }
 
+  function periodBarHtml() {
+    const p = state.period;
+    const label = p ? escapeHtml(p.label) : '（無期間）';
+    return `
+      <div class="rc-period-bar">
+        <span class="rc-period-label">目前期間：${label}</span>
+        ${periodBadgeHtml(p)}
+        <input type="number" id="rc-period-switch" placeholder="期間 ID" value="${state.filters.period_id}" style="width:90px">
+        <button class="ap-btn secondary" id="rc-period-go" type="button">切換</button>
+        ${state.filters.period_id !== '' ? '<button class="ap-btn secondary" id="rc-period-clear" type="button">回目前期間</button>' : ''}
+      </div>`;
+  }
+
   function reconcileHtml() {
     const f = state.filters;
     return `
+      ${periodBarHtml()}
       <div class="rc-filters">
         <select id="rc-f-status">${statusOptionsHtml(f.status)}</select>
         <select id="rc-f-store">${storeOptionsHtml(f.store_id)}</select>
@@ -424,6 +483,15 @@ export async function showReconcilePanel(identity) {
           else err.textContent = errMsg(data && data.message);
         } catch (e) { err.textContent = '退回失敗，請重試'; }
       });
+      const moveNextBtn = tr.querySelector('[data-act="movenext"]');
+      if (moveNextBtn) moveNextBtn.addEventListener('click', async () => {
+        err.textContent = '';
+        try {
+          const { status, data } = await rcApi.moveNext(id);
+          if (status === 200) { state.batchMsg = ''; await renderReconcile(body); }
+          else err.textContent = errMsg(data && data.message);
+        } catch (e) { err.textContent = '挪期失敗，請重試'; }
+      });
     });
   }
 
@@ -461,6 +529,19 @@ export async function showReconcilePanel(identity) {
     });
     body.querySelector('#rc-manual-open').addEventListener('click', () => toggleManualForm(body));
 
+    body.querySelector('#rc-period-go').addEventListener('click', () => {
+      const v = body.querySelector('#rc-period-switch').value;
+      state.filters.period_id = v ? Number(v) : '';
+      state.batchMsg = '';
+      renderReconcile(body);
+    });
+    const periodClearBtn = body.querySelector('#rc-period-clear');
+    if (periodClearBtn) periodClearBtn.addEventListener('click', () => {
+      state.filters.period_id = '';
+      state.batchMsg = '';
+      renderReconcile(body);
+    });
+
     // 每組（依營業日分組）各有一顆全選 checkbox，只影響同一張表格內的列
     body.querySelectorAll('.rc-selall').forEach((el) => {
       el.addEventListener('change', () => {
@@ -480,11 +561,158 @@ export async function showReconcilePanel(identity) {
     wireReconcile(body);
   }
 
+  // ---- 月結管理（會計權限：調整結束日／提前封月／上期未處理單／月結設定／月報表） ----
+  function unprocessedTableHtml(items) {
+    if (!items.length) return '<div class="ap-empty">目前無上期未處理單</div>';
+    const rows = items.map((it) => {
+      const thumb = it.image_url
+        ? `<img src="${it.image_url}" loading="lazy" width="48" class="au-thumb" data-zoom="${it.image_url}">`
+        : '—';
+      return `<tr>
+        <td>${thumb}</td>
+        <td>${escapeHtml(it.store_name || '')}</td>
+        <td>${escapeHtml(it.business_date || '')}</td>
+        <td>${amountCell(it.amount)}</td>
+        <td>${escapeHtml(it.summary || '')}</td>
+      </tr>`;
+    }).join('');
+    return `<div class="pd-table-wrap"><table class="pd-table">
+      <thead><tr><th>圖</th><th>門店</th><th>營業日</th><th>金額</th><th>摘要</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+  }
+
+  function periodTabHtml(period, settings, items) {
+    const disabled = period ? '' : 'disabled';
+    return `
+      <section class="rc-period-section">
+        <h3>目前期間</h3>
+        <div class="rc-period-bar">
+          <span class="rc-period-label">${period ? escapeHtml(period.label) : '（無期間）'}</span>
+          ${periodBadgeHtml(period)}
+        </div>
+        <div class="ap-form">
+          <input type="date" id="rc-enddate-input" ${disabled}>
+          <button class="ap-btn secondary" id="rc-enddate-save" type="button" ${disabled}>調整結束日</button>
+          <button class="ap-btn" id="rc-close-preview" type="button" ${disabled}>提前封月</button>
+          <div class="ap-msg" id="rc-period-msg"></div>
+        </div>
+      </section>
+
+      <section class="rc-period-section">
+        <h3>上期未處理單</h3>
+        ${unprocessedTableHtml(items)}
+      </section>
+
+      <section class="rc-period-section">
+        <h3>月結設定（會計可編輯）</h3>
+        <div class="ap-form">
+          <label>月結日
+            <input type="number" id="rc-set-closeday" min="1" max="28" value="${escapeHtml(String(settings.period_close_day ?? ''))}" style="width:70px">
+          </label>
+          <label>鎖定偏移(小時)
+            <input type="number" id="rc-set-offset" min="0" max="168" value="${escapeHtml(String(settings.period_lock_offset_hours ?? ''))}" style="width:80px">
+          </label>
+          <button class="ap-btn" id="rc-set-save" type="button">儲存</button>
+          <div class="ap-msg" id="rc-set-msg"></div>
+        </div>
+      </section>
+
+      <section class="rc-period-section">
+        <h3>月報表</h3>
+        <div id="rc-mr-report"></div>
+      </section>`;
+  }
+
+  function wirePeriodTab(body, period) {
+    body.querySelectorAll('.au-thumb').forEach((el) => {
+      el.addEventListener('click', () => openImageLightbox(el.dataset.zoom));
+    });
+
+    const periodMsg = body.querySelector('#rc-period-msg');
+    const enddateBtn = body.querySelector('#rc-enddate-save');
+    if (enddateBtn && !enddateBtn.disabled) enddateBtn.addEventListener('click', async () => {
+      periodMsg.style.color = ''; periodMsg.textContent = '';
+      const v = body.querySelector('#rc-enddate-input').value;
+      if (!v) { periodMsg.style.color = '#c62828'; periodMsg.textContent = '請選擇日期'; return; }
+      try {
+        const { status, data } = await periodsApi.patchEndDate(period.id, v);
+        if (status === 200) {
+          await refreshPeriod(period.id);
+          await renderPeriod(body);
+          const msg2 = body.querySelector('#rc-period-msg');
+          if (msg2) { msg2.style.color = '#2e7d32'; msg2.textContent = '已更新結束日'; }
+        } else {
+          periodMsg.style.color = '#c62828'; periodMsg.textContent = errMsg(data && data.message);
+        }
+      } catch (e) { periodMsg.style.color = '#c62828'; periodMsg.textContent = '更新失敗，請重試'; }
+    });
+
+    const closeBtn = body.querySelector('#rc-close-preview');
+    if (closeBtn && !closeBtn.disabled) closeBtn.addEventListener('click', async () => {
+      periodMsg.style.color = ''; periodMsg.textContent = '';
+      try {
+        const { status, data } = await rcApi.closePreview(period.id);
+        if (status !== 200) { periodMsg.style.color = '#c62828'; periodMsg.textContent = '讀取失敗，請重試'; return; }
+        const n = data.unaudited_count || 0;
+        if (!window.confirm(`這期還有 ${n} 筆沒打勾，封月後這些單不進帳，確定要封嗎？`)) return;
+        const res = await rcApi.closePeriod(period.id);
+        if (res.status === 200) {
+          await refreshPeriod(period.id);
+          await renderPeriod(body);
+          const msg2 = body.querySelector('#rc-period-msg');
+          if (msg2) { msg2.style.color = '#2e7d32'; msg2.textContent = '已封月'; }
+        } else {
+          periodMsg.style.color = '#c62828'; periodMsg.textContent = errMsg(res.data && res.data.message);
+        }
+      } catch (e) { periodMsg.style.color = '#c62828'; periodMsg.textContent = '操作失敗，請重試'; }
+    });
+
+    const setMsg = body.querySelector('#rc-set-msg');
+    const setSaveBtn = body.querySelector('#rc-set-save');
+    if (setSaveBtn) setSaveBtn.addEventListener('click', async () => {
+      setMsg.style.color = ''; setMsg.textContent = '';
+      const closeDay = Number(body.querySelector('#rc-set-closeday').value);
+      const offset = Number(body.querySelector('#rc-set-offset').value);
+      try {
+        const { status, data } = await periodsApi.patchSettings({
+          period_close_day: closeDay, period_lock_offset_hours: offset,
+        });
+        if (status === 200) {
+          setMsg.style.color = '#2e7d32'; setMsg.textContent = '已儲存';
+        } else {
+          setMsg.style.color = '#c62828'; setMsg.textContent = errMsg(data && data.message);
+        }
+      } catch (e) { setMsg.style.color = '#c62828'; setMsg.textContent = '儲存失敗，請重試'; }
+    });
+  }
+
+  async function renderPeriod(body) {
+    body.innerHTML = '載入中…';
+    const period = await ensurePeriod();
+    let settings = { period_close_day: '', period_lock_offset_hours: '' };
+    try {
+      const { status, data } = await periodsApi.getSettings();
+      if (status === 200 && data.status === 'ok') settings = data;
+    } catch (e) { /* 靜默 */ }
+    let items = [];
+    try {
+      const { status, data } = await rcApi.unprocessed();
+      if (status === 200 && data.status === 'ok') items = data.items || [];
+    } catch (e) { /* 靜默 */ }
+
+    body.innerHTML = periodTabHtml(period, settings, items);
+    wirePeriodTab(body, period);
+    const reportDiv = body.querySelector('#rc-mr-report');
+    if (reportDiv) renderMonthReport(reportDiv, period ? { periodId: period.id } : {});
+  }
+
   async function renderActiveTab() {
     const body = document.getElementById('rc-body');
     if (!body) return;
     body.innerHTML = '';
     if (state.tab === 'reconcile') await renderReconcile(body);
+    else if (state.tab === 'period') await renderPeriod(body);
     else renderMyPassword(body);
   }
 

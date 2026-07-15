@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fmtAmount, groupTotals, applyAmountEdit, showResubmitBadge } from '../../app/static/js/reconcile.js';
+import { fmtAmount, groupTotals, applyAmountEdit, showResubmitBadge, periodBadge } from '../../app/static/js/reconcile.js';
 import { parseAmountInput } from '../../app/static/js/expenses_util.js';
 
 test('負數帶 negative 旗標', () => {
@@ -138,4 +138,15 @@ test('showResubmitBadge：reconciled + 有 resubmitted_at → false（核銷後�
 
 test('showResubmitBadge：rejected + 有 resubmitted_at → false', () => {
   assert.equal(showResubmitBadge({ status: 'rejected', resubmitted_at: '2026-07-10T03:00:00+00:00' }), false);
+});
+
+// Task 17：月結管理 tab 的期間狀態徽章文案。
+test('period badge labels', () => {
+  assert.equal(periodBadge('open'), '進行中');
+  assert.equal(periodBadge('closing'), '寬限期');
+  assert.equal(periodBadge('closed'), '已封月');
+});
+
+test('period badge：未知狀態原樣回傳（防呆，不吃掉錯誤）', () => {
+  assert.equal(periodBadge('weird'), 'weird');
 });

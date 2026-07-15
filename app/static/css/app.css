@@ -241,3 +241,12 @@ tr.au-open-row td { font-weight: 600; }
 }
 .mr-child-name { padding-left: 28px; color: #555; }
 .mr-total-row td { font-weight: 700; border-top: 2px solid #ddd; }
+
+/* ---- 會計月結管理 tab（期間狀態/挪期/提前封月/上期未處理單/月結設定，Task 17）---- */
+.rc-period-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.rc-period-label { font-size: 15px; font-weight: 600; }
+.ap-badge.open { background: #d4edda; color: #155724; }
+.ap-badge.closing { background: #fff3cd; color: #856404; }
+.ap-badge.closed { background: #e2e3e5; color: #6c757d; }
+.rc-period-section { margin-bottom: 24px; }
+.rc-period-section h3 { font-size: 16px; margin: 0 0 8px; color: #333; }

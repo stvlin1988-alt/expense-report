@@ -27,4 +27,8 @@ export const rcApi = {
   // 注意：不是 /admin/stores —— 那支是 manager/super_admin 專用，會計會 403。
   stores: () => j('/reconcile/stores'),
   categories: () => j('/expenses/categories'),
+  moveNext: (id) => j(`/reconcile/${id}/move-next`, { method: 'POST' }),
+  closePreview: (pid) => j(`/reconcile/period/${pid}/close-preview`),
+  closePeriod: (pid) => j(`/reconcile/period/${pid}/close`, { method: 'POST' }),
+  unprocessed: () => j('/reconcile/unprocessed'),
 };
