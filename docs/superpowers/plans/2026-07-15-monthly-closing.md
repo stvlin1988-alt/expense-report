@@ -32,8 +32,8 @@
 - `app/periods/__init__.py` — periods 套件（無 blueprint，純服務）
 - `app/periods/settings.py` — 設定讀寫 helper（含 typed getter 與預設值）
 - `app/periods/service.py` — 期間邊界純函式、`get_or_create_period`、`effective_status`、`maybe_autoclose`、`assert_period_writable`、`move_to_next_period`、`backfill_periods`
-- `app/periods/routes.py` — 經理端月結日設定 API（`period_bp`，掛在 `/api/periods`）
-- `app/reports/__init__.py` + `app/reports/routes.py` — 月報表 API（`report_bp`，掛在 `/api/reports`）
+- `app/periods/routes.py` — 經理端月結日設定 API（`period_bp`，掛在 `/periods`）
+- `app/reports/__init__.py` + `app/reports/routes.py` — 月報表 API（`report_bp`，掛在 `/reports`）
 - `app/reports/service.py` — 月報表交叉表聚合純函式
 - `app/static/js/month_report.js` — 月報表前端（會計/經理共用）
 - `app/static/js/periods_api.js`、`app/static/js/reports_api.js` — 前端 fetch 封裝
@@ -600,7 +600,7 @@ def test_is_period_closed(app, db_session):
 
 
 def test_reconcile_approve_blocked_when_closed(app, db_session, client, accountant_login):
-    # 建一張 audited 單掛在 closed 期，呼叫 /api/reconcile/<id>/approve → 409 period_closed
+    # 建一張 audited 單掛在 closed 期，呼叫 /reconcile/<id>/approve → 409 period_closed
     ...
 ```
 > 第二個測試比照 `tests/test_reconcile_approve.py` 建 audited 單 + 會計登入 client，另把該單 `period_id` 指到 `status="closed"` 的期，斷言回應 `409` 且 `message == "period_closed"`。
@@ -846,7 +846,7 @@ git commit -m "feat(periods): idempotent backfill of period_id for existing expe
 
 **Interfaces:**
 - Consumes: `get_or_create_period`、`effective_status`、`maybe_autoclose`、`get_close_day`。
-- Produces: `GET /api/reconcile/pending?period_id=<id>`（未帶則預設「當期」＝含今天營業日的期）。回傳新增 `period`：`{id, label, status}`（status 為 `effective_status`）。清單每列 serialize 新增 `period_id`、`period_label`（**仍不含 note**）。
+- Produces: `GET /reconcile/pending?period_id=<id>`（未帶則預設「當期」＝含今天營業日的期）。回傳新增 `period`：`{id, label, status}`（status 為 `effective_status`）。清單每列 serialize 新增 `period_id`、`period_label`（**仍不含 note**）。
 
 - [ ] **Step 1: 寫失敗測試**
 
@@ -855,7 +855,7 @@ git commit -m "feat(periods): idempotent backfill of period_id for existing expe
 def test_pending_defaults_to_current_period(app, db_session, client, accountant_login):
     # 建當期 audited 單 + 上一期 audited 單，pending() 不帶 period_id 應只回當期那筆
     ...
-    resp = client.get("/api/reconcile/pending")
+    resp = client.get("/reconcile/pending")
     data = resp.get_json()
     assert data["period"]["label"]  # 有當期資訊
     # 只含當期單
@@ -863,7 +863,7 @@ def test_pending_defaults_to_current_period(app, db_session, client, accountant_
 
 
 def test_pending_filter_by_period_id(app, db_session, client, accountant_login):
-    resp = client.get(f"/api/reconcile/pending?period_id={prev_period_id}")
+    resp = client.get(f"/reconcile/pending?period_id={prev_period_id}")
     ...
 ```
 > 比照 `tests/test_reconcile_list.py` 的 client + 會計登入 fixture。
@@ -940,7 +940,7 @@ git commit -m "feat(reconcile): period filter + autoclose-on-read + period in pa
 
 **Interfaces:**
 - Consumes: `get_or_create_period`、`is_period_closed`。
-- Produces: `POST /api/reconcile/<eid>/move-next`（會計）— 把單 `period_id` 改成「目前所屬期的下一期」。下一期若 closed → 409 `next_period_closed`；目前期 closed → 409 `period_closed`；單無 period → 409 `no_period`。留 `move_period` log。
+- Produces: `POST /reconcile/<eid>/move-next`（會計）— 把單 `period_id` 改成「目前所屬期的下一期」。下一期若 closed → 409 `next_period_closed`；目前期 closed → 409 `period_closed`；單無 period → 409 `no_period`。留 `move_period` log。
 
 - [ ] **Step 1: 寫失敗測試**
 
@@ -948,7 +948,7 @@ git commit -m "feat(reconcile): period filter + autoclose-on-read + period in pa
 ```python
 def test_move_next_changes_period(app, db_session, client, accountant_login):
     # audited 單掛 jan 期 → move-next → period 變 feb
-    resp = client.post(f"/api/reconcile/{eid}/move-next")
+    resp = client.post(f"/reconcile/{eid}/move-next")
     assert resp.status_code == 200
     db_session.refresh(e)
     assert e.period_id == feb_id
@@ -1023,8 +1023,8 @@ git commit -m "feat(reconcile): move-next-period endpoint with closed-period gua
 **Interfaces:**
 - Consumes: `effective_status`、`maybe_autoclose` 的挪期邏輯（重用一支 `close_period_now`）。
 - Produces:
-  - `GET /api/reconcile/period/<pid>/close-preview`（會計）— 回 `{unaudited_count}`（該期 `submitted` 筆數），供二次確認視窗顯示「這期還有 N 筆沒打勾」。
-  - `POST /api/reconcile/period/<pid>/close`（會計）— 提前封月，**限期間已結束（`effective_status == "closing"`，即寬限期內）**才可封；行為同 autoclose（挪 audited/rejected、留 submitted、設 closed），並記 `closed_by=會計`。
+  - `GET /reconcile/period/<pid>/close-preview`（會計）— 回 `{unaudited_count}`（該期 `submitted` 筆數），供二次確認視窗顯示「這期還有 N 筆沒打勾」。
+  - `POST /reconcile/period/<pid>/close`（會計）— 提前封月，**限期間已結束（`effective_status == "closing"`，即寬限期內）**才可封；行為同 autoclose（挪 audited/rejected、留 submitted、設 closed），並記 `closed_by=會計`。
     - `effective_status == "open"`（期間還在進行中）→ 409 `period_not_ended`（想提早鎖進行中的期，請先用「調 end_date」把期間縮到今天/昨天讓它進入寬限期，再封——避免把剩餘日的單卡死，見 Task 15）。
     - `effective_status == "closed"` → 409 `already_closed`。
 
@@ -1049,12 +1049,12 @@ def close_period_now(period, now_utc, closed_by):
 ```python
 def test_close_preview_counts_unaudited(app, db_session, client, accountant_login, jan_closing):
     # jan_closing 期含 2 筆 submitted + 1 筆 audited
-    resp = client.get(f"/api/reconcile/period/{jan_closing.id}/close-preview")
+    resp = client.get(f"/reconcile/period/{jan_closing.id}/close-preview")
     assert resp.get_json()["unaudited_count"] == 2
 
 
 def test_manual_close_moves_and_locks(app, db_session, client, accountant_login, jan_closing):
-    resp = client.post(f"/api/reconcile/period/{jan_closing.id}/close")
+    resp = client.post(f"/reconcile/period/{jan_closing.id}/close")
     assert resp.status_code == 200
     p = db_session.get(AccountingPeriod, jan_closing.id)
     assert p.status == "closed"
@@ -1072,14 +1072,14 @@ def test_cannot_close_open_period(app, db_session, client, accountant_login):
         p = get_or_create_period(compute_business_date(datetime.now(timezone.utc)))
         db_session.commit()
         pid = p.id
-    resp = client.post(f"/api/reconcile/period/{pid}/close")
+    resp = client.post(f"/reconcile/period/{pid}/close")
     assert resp.status_code == 409
     assert resp.get_json()["message"] == "period_not_ended"
 
 
 def test_manual_close_already_closed(app, db_session, client, accountant_login, jan_closing):
     jan_closing.status = "closed"; db_session.commit()
-    resp = client.post(f"/api/reconcile/period/{jan_closing.id}/close")
+    resp = client.post(f"/reconcile/period/{jan_closing.id}/close")
     assert resp.status_code == 409
     assert resp.get_json()["message"] == "already_closed"
 ```
@@ -1141,7 +1141,7 @@ git commit -m "feat(reconcile): accountant early manual close with unaudited-cou
 - Test: `tests/test_reconcile_unprocessed.py`
 
 **Interfaces:**
-- Produces: `GET /api/reconcile/unprocessed`（會計）— 列出所有 `status="closed"` 期裡仍為 `submitted` 的單（主管沒打勾、封月後留原期不進帳）。回門店、營業日、金額、摘要、原圖 URL；依營業日排序。**不含 note**。
+- Produces: `GET /reconcile/unprocessed`（會計）— 列出所有 `status="closed"` 期裡仍為 `submitted` 的單（主管沒打勾、封月後留原期不進帳）。回門店、營業日、金額、摘要、原圖 URL；依營業日排序。**不含 note**。
 
 - [ ] **Step 1: 寫失敗測試**
 
@@ -1149,7 +1149,7 @@ git commit -m "feat(reconcile): accountant early manual close with unaudited-cou
 ```python
 def test_unprocessed_lists_submitted_in_closed_periods(app, db_session, client, accountant_login):
     # closed 期含 1 筆 submitted + 1 筆 audited；open 期含 1 筆 submitted
-    resp = client.get("/api/reconcile/unprocessed")
+    resp = client.get("/reconcile/unprocessed")
     items = resp.get_json()["items"]
     # 只回 closed 期的那筆 submitted
     assert len(items) == 1
@@ -1209,7 +1209,7 @@ git commit -m "feat(reconcile): unprocessed list (submitted stuck in closed peri
 **Interfaces:**
 - Produces:
   - `build_cross_table(expenses, categories, stores, now_utc, period) -> dict`（`app/reports/service.py`）— 分店×科目大類交叉表。每格 `{reconciled, pending}`（有號數加總；`period` 若 closed 則 pending 恆 0）。含大類下的細類明細、各店合計（底列）、每列總計（最右欄）。單的大類＝其 category 的 level-1 祖先（category level==1 用自己，level==2 用 parent）。無科目的單歸「未分類」。
-  - `GET /api/reports/monthly?period_id=<id>`（`accountant` 或 `super_admin`）— 回該期交叉表；未帶 period_id 用當期。回傳 `period:{id,label,status}` + `stores:[{id,name}]`（欄順序）+ `rows:[{major_id, major_name, total:{reconciled,pending}, per_store:{store_id:{reconciled,pending}}, children:[...同結構(細類)]}]` + `store_totals` + `grand_total`。**不含 note、不含逐單明細**。
+  - `GET /reports/monthly?period_id=<id>`（`accountant` 或 `super_admin`）— 回該期交叉表；未帶 period_id 用當期。回傳 `period:{id,label,status}` + `stores:[{id,name}]`（欄順序）+ `rows:[{major_id, major_name, total:{reconciled,pending}, per_store:{store_id:{reconciled,pending}}, children:[...同結構(細類)]}]` + `store_totals` + `grand_total`。**不含 note、不含逐單明細**。
 
 - [ ] **Step 1: 寫聚合純函式失敗測試**
 
@@ -1295,7 +1295,7 @@ def monthly():
 `app/reports/__init__.py`：
 ```python
 from flask import Blueprint
-report_bp = Blueprint("reports", __name__, url_prefix="/api/reports")
+report_bp = Blueprint("reports", __name__, url_prefix="/reports")
 from app.reports import routes  # noqa: E402,F401
 ```
 
@@ -1307,7 +1307,7 @@ from app.reports import routes  # noqa: E402,F401
 
 - [ ] **Step 3: 寫 API 測試**
 
-`tests/test_report_api.py`：建兩店、兩大類、混 reconciled/audited/負數單掛同期，會計登入 GET `/api/reports/monthly?period_id=...`，斷言 rows/store_totals/grand_total 的 reconciled/pending 有號加總正確；另斷言 `super_admin` 也 200、`manager`/`employee` 403、回傳無 `note`。
+`tests/test_report_api.py`：建兩店、兩大類、混 reconciled/audited/負數單掛同期，會計登入 GET `/reports/monthly?period_id=...`，斷言 rows/store_totals/grand_total 的 reconciled/pending 有號加總正確；另斷言 `super_admin` 也 200、`manager`/`employee` 403、回傳無 `note`。
 
 - [ ] **Step 4: 跑測試**
 
@@ -1330,7 +1330,7 @@ git commit -m "feat(reports): monthly cross-table (store x major category, recon
 - Test: `tests/js/month_report.mjs`
 
 **Interfaces:**
-- Consumes: `GET /api/reports/monthly`。
+- Consumes: `GET /reports/monthly`。
 - Produces: `renderMonthReport(container, { periodId })`（`month_report.js`）— 抓資料並畫交叉表：欄＝各店＋總計，列＝科目大類（可展開細類），每格 `open/closing` 顯示「已核銷 / 待核銷」兩數、`closed` 顯示單一數；負數與算出為負的小計/合計標紅。純聚合輔助 `formatCell(cell, periodStatus)` 匯出供測試。
 
 - [ ] **Step 1: 寫前端純邏輯測試**
@@ -1362,7 +1362,7 @@ test('negative total marked red', () => {
 export const reportsApi = {
   async monthly(periodId) {
     const q = periodId ? `?period_id=${periodId}` : '';
-    const r = await fetch(`/api/reports/monthly${q}`);
+    const r = await fetch(`/reports/monthly${q}`);
     return { status: r.status, data: await r.json() };
   },
 };
@@ -1410,16 +1410,16 @@ git commit -m "feat(reports): shared month-report frontend module"
 
 **Interfaces:**（權限依 2026-07-15 user 修正：**會計編輯、經理唯讀**）
 - Produces:
-  - `GET /api/periods/settings`（`accountant` **或** `super_admin`——兩者皆可觀看）— 回 `{period_close_day, period_lock_offset_hours}`。
-  - `PATCH /api/periods/settings`（**僅 `accountant`**）— 改上述設定；`period_close_day` 限 1–28（避免月底 clamp 混淆）、`period_lock_offset_hours` 限 0–168。驗證失敗回 400。經理（super_admin）呼叫 → 403。
-  - `PATCH /api/periods/<pid>/end-date`（**僅 `accountant`**，農曆年調整）— 改該期 `end_date`；不得與相鄰期重疊/留洞、不得改已 closed 期；成功後**重算下一期**（若下一期存在，順移其 start_date 與 lock_at）。
+  - `GET /periods/settings`（`accountant` **或** `super_admin`——兩者皆可觀看）— 回 `{period_close_day, period_lock_offset_hours}`。
+  - `PATCH /periods/settings`（**僅 `accountant`**）— 改上述設定；`period_close_day` 限 1–28（避免月底 clamp 混淆）、`period_lock_offset_hours` 限 0–168。驗證失敗回 400。經理（super_admin）呼叫 → 403。
+  - `PATCH /periods/<pid>/end-date`（**僅 `accountant`**，農曆年調整）— 改該期 `end_date`；不得與相鄰期重疊/留洞、不得改已 closed 期；成功後**重算下一期**（若下一期存在，順移其 start_date 與 lock_at）。
 
 - [ ] **Step 1: 宣告 blueprint**
 
 `app/periods/__init__.py`：
 ```python
 from flask import Blueprint
-period_bp = Blueprint("periods", __name__, url_prefix="/api/periods")
+period_bp = Blueprint("periods", __name__, url_prefix="/periods")
 from app.periods import routes  # noqa: E402,F401
 ```
 `app/__init__.py` 註冊：
@@ -1433,26 +1433,26 @@ from app.periods import routes  # noqa: E402,F401
 `tests/test_period_settings_api.py`：
 ```python
 def test_accountant_can_get_and_patch_settings(app, db_session, client, accountant_login):
-    assert client.get("/api/periods/settings").get_json()["period_close_day"] == 1
-    r = client.patch("/api/periods/settings", json={"period_close_day": 5})
+    assert client.get("/periods/settings").get_json()["period_close_day"] == 1
+    r = client.patch("/periods/settings", json={"period_close_day": 5})
     assert r.status_code == 200
-    assert client.get("/api/periods/settings").get_json()["period_close_day"] == 5
+    assert client.get("/periods/settings").get_json()["period_close_day"] == 5
 
 
 def test_manager_general_can_view_but_not_edit(app, db_session, client, super_admin_login):
     # 經理(super_admin)：可觀看設定，但不能改
-    assert client.get("/api/periods/settings").status_code == 200
-    assert client.patch("/api/periods/settings", json={"period_close_day": 5}).status_code == 403
+    assert client.get("/periods/settings").status_code == 200
+    assert client.patch("/periods/settings", json={"period_close_day": 5}).status_code == 403
 
 
 def test_patch_settings_validates_range(app, client, accountant_login):
-    assert client.patch("/api/periods/settings", json={"period_close_day": 31}).status_code == 400
-    assert client.patch("/api/periods/settings", json={"period_close_day": 0}).status_code == 400
+    assert client.patch("/periods/settings", json={"period_close_day": 31}).status_code == 400
+    assert client.patch("/periods/settings", json={"period_close_day": 0}).status_code == 400
 
 
 def test_settings_forbidden_for_store_manager_and_employee(app, client, manager_login):
     # 主管(manager)與員工完全看不到
-    assert client.get("/api/periods/settings").status_code == 403
+    assert client.get("/periods/settings").status_code == 403
 
 
 def test_edit_end_date_shifts_existing_next_period(app, db_session, client, accountant_login):
@@ -1600,18 +1600,18 @@ git commit -m "feat(periods): settings API — accountant edits, general manager
 - Test: 手動（前端頁面）
 
 **Interfaces:**
-- Consumes: `GET /api/periods/settings`（唯讀觀看）、`renderMonthReport`。
+- Consumes: `GET /periods/settings`（唯讀觀看）、`renderMonthReport`。
 - Produces: admin panel（`super_admin`＝經理）新增「月結」分頁：上半**唯讀顯示**目前月結日/鎖定偏移（純文字，無輸入框、無存檔鈕——經理只有觀看權限）、下半掛 `renderMonthReport`（當期）。**經理端不提供任何編輯月結設定的 UI**（後端 PATCH 對 super_admin 也已 403）。
 
 - [ ] **Step 1: 實作 `periods_api.js`**
 ```javascript
 export const periodsApi = {
   async getSettings() {
-    const r = await fetch('/api/periods/settings');
+    const r = await fetch('/periods/settings');
     return { status: r.status, data: await r.json() };
   },
   async patchSettings(body) {
-    const r = await fetch('/api/periods/settings', {
+    const r = await fetch('/periods/settings', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
@@ -1619,7 +1619,7 @@ export const periodsApi = {
   },
   // 農曆年提早結期（會計）：改某期 end_date
   async patchEndDate(pid, endDate) {
-    const r = await fetch(`/api/periods/${pid}/end-date`, {
+    const r = await fetch(`/periods/${pid}/end-date`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ end_date: endDate }),
     });
@@ -1669,7 +1669,7 @@ git commit -m "feat(admin): general-manager 月結 tab (read-only settings + mon
 - Test: 更新/新增 `tests/js/reconcile.test.mjs`（純邏輯部分）；其餘手動
 
 **Interfaces:**
-- Consumes: pending 回傳的 `period`、`GET /api/reconcile/unprocessed`、`POST /api/reconcile/<id>/move-next`、`GET /api/reconcile/period/<pid>/close-preview`、`POST /api/reconcile/period/<pid>/close`、`renderMonthReport`、`GET/PATCH /api/periods/settings`（會計可編輯月結設定）。
+- Consumes: pending 回傳的 `period`、`GET /reconcile/unprocessed`、`POST /reconcile/<id>/move-next`、`GET /reconcile/period/<pid>/close-preview`、`POST /reconcile/period/<pid>/close`、`renderMonthReport`、`GET/PATCH /periods/settings`（會計可編輯月結設定）。
 - Produces: 會計面板加：期間下拉（切換 `period_id` 重載清單、顯示期間狀態 open/寬限/已封）、每列「挪下期」鈕（呼叫 move-next）、面板「提前封月」鈕（先 close-preview 顯示「還有 N 筆沒打勾」二次確認 → close）、「上期未處理單」入口、「月報表」入口（掛 `renderMonthReport`）、**「月結設定」編輯區**（月結日 1–28、鎖定偏移小時的輸入框 ＋ 儲存鈕 → `periodsApi.patchSettings`；初值用 `periodsApi.getSettings()`）——**編輯月結設定是會計的權限**（經理端唯讀）。
 
 - [ ] **Step 1: reconcile_api.js 加方法**
@@ -1677,19 +1677,19 @@ git commit -m "feat(admin): general-manager 月結 tab (read-only settings + mon
 export const rcApi = {
   // ...既有...
   async moveNext(id) {
-    const r = await fetch(`/api/reconcile/${id}/move-next`, { method: 'POST' });
+    const r = await fetch(`/reconcile/${id}/move-next`, { method: 'POST' });
     return { status: r.status, data: await r.json() };
   },
   async closePreview(pid) {
-    const r = await fetch(`/api/reconcile/period/${pid}/close-preview`);
+    const r = await fetch(`/reconcile/period/${pid}/close-preview`);
     return { status: r.status, data: await r.json() };
   },
   async closePeriod(pid) {
-    const r = await fetch(`/api/reconcile/period/${pid}/close`, { method: 'POST' });
+    const r = await fetch(`/reconcile/period/${pid}/close`, { method: 'POST' });
     return { status: r.status, data: await r.json() };
   },
   async unprocessed() {
-    const r = await fetch('/api/reconcile/unprocessed');
+    const r = await fetch('/reconcile/unprocessed');
     return { status: r.status, data: await r.json() };
   },
 };
@@ -1705,8 +1705,8 @@ export const rcApi = {
 - 「上期未處理單」：`rcApi.unprocessed()` 列表（門店/營業日/金額/摘要/原圖 lightbox）。
 - 「月報表」：`renderMonthReport(container, { periodId: 當期 })`。
 - **「月結設定」編輯區**（會計權限）：以 `periodsApi.getSettings()` 帶初值，月結日（數字 1–28）與鎖定偏移（小時）輸入框 ＋ 儲存鈕呼叫 `periodsApi.patchSettings({period_close_day, period_lock_offset_hours})`；成功顯示提示、`bad_close_day`/`bad_offset` 顯示對應錯誤。`periods_api.js` 於 Task 16 已建（含 `getSettings`/`patchSettings`/`patchEndDate`），此處 import 使用。
-- **「農曆年提早結期」**（會計權限，配合分兩步封月）：當期旁一個「調整結束日」動作，讓會計把當期 `end_date` 改早（呼叫 `periodsApi.patchEndDate(periodId, endDate)`＝`PATCH /api/periods/<pid>/end-date`）。改完期間進入寬限期後，才用「提前封月」鈕鎖定（見上）。`period_not_ended` 錯誤訊息要明確引導：「期間還在進行中，請先『調整結束日』把本期縮到今天／昨天，再提前封月」。
-- `periods_api.js` 需補一支 `patchEndDate(pid, endDate)`（`PATCH /api/periods/${pid}/end-date`，body `{end_date}`）。
+- **「農曆年提早結期」**（會計權限，配合分兩步封月）：當期旁一個「調整結束日」動作，讓會計把當期 `end_date` 改早（呼叫 `periodsApi.patchEndDate(periodId, endDate)`＝`PATCH /periods/<pid>/end-date`）。改完期間進入寬限期後，才用「提前封月」鈕鎖定（見上）。`period_not_ended` 錯誤訊息要明確引導：「期間還在進行中，請先『調整結束日』把本期縮到今天／昨天，再提前封月」。
+- `periods_api.js` 需補一支 `patchEndDate(pid, endDate)`（`PATCH /periods/${pid}/end-date`，body `{end_date}`）。
 - `ERR_MSG` 補：`period_closed`（此期已封月）、`next_period_closed`（下一期已封月）、`no_period`（此單尚未歸期）、`already_closed`（已封月）、`period_not_ended`（期間進行中，請先調整結束日）、`bad_close_day`（月結日需 1–28）、`bad_offset`（鎖定偏移需 0–168 小時）、`end_before_start`（結束日不可早於起始日）、`would_invert_next`（會使下一期起訖顛倒）。
 
 - [ ] **Step 3: 純邏輯測試（若抽出 helper）**
