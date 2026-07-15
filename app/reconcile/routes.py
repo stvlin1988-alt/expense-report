@@ -59,7 +59,25 @@ def stores():
 @reconcile_bp.get("/pending")
 @role_required("accountant")
 def pending():
+    from app.periods.service import get_or_create_period, effective_status, maybe_autoclose
+    from app.expenses.logic import compute_business_date
+    from app.models import AccountingPeriod
+
+    now = datetime.now(timezone.utc)
+    pid = _parse_int(request.args.get("period_id"))
+    if pid is not None:
+        period = db.session.get(AccountingPeriod, pid)
+    else:
+        period = get_or_create_period(compute_business_date(now))
+    # 碰到就檢查是否該自動封月（涵蓋剛好進入鎖定時刻的期）
+    if period is not None:
+        maybe_autoclose(period, now)
+    db.session.commit()
+
     q = Expense.query.filter(Expense.status.in_(VISIBLE))
+
+    if period is not None:
+        q = q.filter(Expense.period_id == period.id)
 
     st = request.args.get("status")
     if st in VISIBLE:
@@ -86,6 +104,11 @@ def pending():
     storage = get_storage()
     stores, cats, users = _maps(rows)
 
+    period_ids = {e.period_id for e in rows if e.period_id is not None}
+    period_label_by_id = ({p.id: p.label for p in
+                           AccountingPeriod.query.filter(AccountingPeriod.id.in_(period_ids)).all()}
+                          if period_ids else {})
+
     groups, by_date = [], {}
     for e in rows:
         key = e.business_date.isoformat() if e.business_date else "none"
@@ -95,7 +118,8 @@ def pending():
         groups.append({
             "business_date": bd,
             "subtotal": sum(float(x.amount) for x in items if x.amount is not None),
-            "items": [serialize_reconcile_item(x, storage, stores, cats, users) for x in items],
+            "items": [serialize_reconcile_item(x, storage, stores, cats, users, period_label_by_id)
+                     for x in items],
         })
 
     total = {
@@ -105,7 +129,9 @@ def pending():
                        if e.status in ("audited", "rejected") and e.amount is not None),
         "count": len(rows),
     }
-    return jsonify(status="ok", groups=groups, total=total)
+    period_out = ({"id": period.id, "label": period.label,
+                  "status": effective_status(period, now)} if period else None)
+    return jsonify(status="ok", groups=groups, total=total, period=period_out)
 
 
 def _coerce_id(raw):

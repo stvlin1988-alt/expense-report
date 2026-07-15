@@ -7,6 +7,12 @@ from app.models import AccountingPeriod, Expense
 from app.periods.settings import get_close_day, get_lock_offset_hours
 
 
+def _aware_utc(dt):
+    """SQLite 存 DateTime(timezone=True) 讀回會變 naive；補回 UTC 才能跟
+    tz-aware 的 now_utc 比較（同一個坑在 app/expenses/logic.py 等模組也有）。"""
+    return dt if dt is None or dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
 def _clamped(year, month, day):
     """該月第 day 天；月份不足（如 2/31）clamp 到月底。"""
     last = monthrange(year, month)[1]
@@ -104,7 +110,7 @@ def maybe_autoclose(period, now_utc):
     自動封月是系統動作、無 actor，故不寫單據級 audit_log（挪期由 period_id 現值 +
     該期 closed_at 可追溯；move_period 的軌跡留給會計手動挪期的 Task 10）。
     不自行 commit，交由呼叫端。"""
-    if period.status == "closed" or now_utc < period.lock_at:
+    if period.status == "closed" or _aware_utc(now_utc) < _aware_utc(period.lock_at):
         return False
 
     updated = (AccountingPeriod.query

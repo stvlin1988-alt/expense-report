@@ -4,6 +4,7 @@ from decimal import Decimal
 import pytest
 from app.extensions import db
 from app.models import Store, User, Device, Expense, AuditLog, Category
+from app.periods.service import get_or_create_period
 
 # 登入/建單 helper 照 tests/test_reconcile_approve.py 現成寫法
 
@@ -39,21 +40,26 @@ def seeded(app):
         db.session.add_all([emp, acct, dev, cat1, cat2])
         db.session.commit()
 
+        # pending() 現在預設只顯示「當期」單，所以測試單要掛上對應期間（Task 9）。
+        bd = date(2026, 7, 7)
+        period = get_or_create_period(bd)
+        db.session.commit()
+
         now = datetime.now(timezone.utc)
         audited = Expense(store_id=s1.id, created_by=emp.id, status="audited",
-                           created_at=now, business_date=date(2026, 7, 7),
+                           created_at=now, business_date=bd, period_id=period.id,
                            amount=Decimal("200"), amount_parse_ok=True, submitted_at=now,
                            category_id=cat1.id)
         submitted = Expense(store_id=s1.id, created_by=emp.id, status="submitted",
-                             created_at=now, business_date=date(2026, 7, 7),
+                             created_at=now, business_date=bd, period_id=period.id,
                              amount=Decimal("50"), amount_parse_ok=True, submitted_at=now,
                              category_id=cat1.id)
         reconciled = Expense(store_id=s1.id, created_by=emp.id, status="reconciled",
-                              created_at=now, business_date=date(2026, 7, 7),
+                              created_at=now, business_date=bd, period_id=period.id,
                               amount=Decimal("120"), amount_parse_ok=True, submitted_at=now,
                               reconciled_by=acct.id, reconciled_at=now, category_id=cat1.id)
         rejected = Expense(store_id=s1.id, created_by=emp.id, status="rejected",
-                            created_at=now, business_date=date(2026, 7, 7),
+                            created_at=now, business_date=bd, period_id=period.id,
                             amount=Decimal("80"), amount_parse_ok=True, submitted_at=now,
                             reject_reason="金額不符", category_id=cat1.id)
         db.session.add_all([audited, submitted, reconciled, rejected])
@@ -253,9 +259,11 @@ def bad_amount_id(seeded, app):
     with app.app_context():
         s1 = Store.query.first()
         emp = User.query.filter_by(role="employee").first()
+        bd = date(2026, 7, 7)
+        period = get_or_create_period(bd)
         now = datetime.now(timezone.utc)
         e = Expense(store_id=s1.id, created_by=emp.id, status="audited",
-                    created_at=now, business_date=date(2026, 7, 7),
+                    created_at=now, business_date=bd, period_id=period.id,
                     amount=None, amount_parse_ok=False, submitted_at=now,
                     category_id=seeded["cat1_id"])
         db.session.add(e)

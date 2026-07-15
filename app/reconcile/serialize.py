@@ -3,7 +3,9 @@ from flask import current_app
 from app.expenses.logic import audit_light, format_doc_no, iso_utc
 
 
-def serialize_reconcile_item(e, storage, store_name_by_id, cat_name_by_id, user_name_by_id):
+def serialize_reconcile_item(e, storage, store_name_by_id, cat_name_by_id, user_name_by_id,
+                             period_label_by_id=None):
+    period_label_by_id = period_label_by_id or {}
     return {
         "id": e.id,
         "doc_no": format_doc_no(e.business_date, e.day_seq),
@@ -22,6 +24,8 @@ def serialize_reconcile_item(e, storage, store_name_by_id, cat_name_by_id, user_
         "thumb_url": storage.presigned_url(e.thumb_key) if e.thumb_key else None,
         "image_url": storage.presigned_url(e.image_key) if e.image_key else None,
         "status": e.status,
+        "period_id": e.period_id,
+        "period_label": period_label_by_id.get(e.period_id),
         "reject_reason": e.reject_reason,
         # 主管被退回後重送的時間戳（Addendum 10.1）；讓會計端一眼認出重送過的單。
         # 白名單絕對不能加 note——tests/test_reconcile_list.py::test_note_never_leaks_to_accountant 守著。

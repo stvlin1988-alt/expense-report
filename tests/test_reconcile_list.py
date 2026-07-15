@@ -4,6 +4,7 @@ from decimal import Decimal
 import pytest
 from app.extensions import db
 from app.models import Store, User, Device, Expense
+from app.periods.service import get_or_create_period
 
 # 登入/建單 helper 照 tests/test_audit_*.py 現成寫法
 
@@ -46,15 +47,20 @@ def two_store_audited(app):
         db.session.add_all([emp, mgr, acct, dev])
         db.session.commit()
 
+        # pending() 現在預設只顯示「當期」單，所以測試單要掛上對應期間（Task 9）。
+        bd = date(2026, 7, 7)
+        period = get_or_create_period(bd)
+        db.session.commit()
+
         now = datetime.now(timezone.utc)
         e1 = Expense(store_id=s1.id, created_by=emp.id, status="audited",
-                     created_at=now, business_date=date(2026, 7, 7),
+                     created_at=now, business_date=bd, period_id=period.id,
                      amount=Decimal("200"), amount_parse_ok=True, submitted_at=now)
         e2 = Expense(store_id=s2.id, created_by=emp.id, status="audited",
-                     created_at=now, business_date=date(2026, 7, 7),
+                     created_at=now, business_date=bd, period_id=period.id,
                      amount=Decimal("-100"), amount_parse_ok=True, submitted_at=now)
         e3 = Expense(store_id=s1.id, created_by=emp.id, status="submitted",
-                     created_at=now, business_date=date(2026, 7, 7),
+                     created_at=now, business_date=bd, period_id=period.id,
                      amount=Decimal("50"), amount_parse_ok=True, submitted_at=now)
         db.session.add_all([e1, e2, e3])
         db.session.commit()
