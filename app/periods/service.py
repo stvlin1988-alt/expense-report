@@ -123,3 +123,15 @@ def maybe_autoclose(period, now_utc):
          .update({"period_id": nxt.id}, synchronize_session=False))
     db.session.refresh(period)
     return True
+
+
+def backfill_periods():
+    """對所有 period_id 為 None 且 business_date 已知的既有單，依 business_date
+    指派 period_id。冪等（無待補單時回 0）。不自行 commit，交由呼叫端。"""
+    rows = (Expense.query
+            .filter(Expense.period_id.is_(None),
+                    Expense.business_date.isnot(None))
+            .all())
+    for e in rows:
+        e.period_id = get_or_create_period(e.business_date).id
+    return len(rows)
