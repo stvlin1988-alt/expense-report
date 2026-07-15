@@ -63,6 +63,8 @@ class Expense(db.Model):
     # 分不出跟從沒被退過的單的差異。首次從 submitted 打勾不設此欄。
     resubmitted_at = db.Column(db.DateTime(timezone=True), nullable=True)
     note = db.Column(db.String(200), nullable=True)  # 員工備註；門市內部欄位，會計看不到
+    period_id = db.Column(db.Integer, db.ForeignKey("accounting_periods.id"),
+                          nullable=True, index=True)  # 認列期間；預設依 business_date 落期，挪下期即改此欄
 
     __table_args__ = (
         db.Index("ix_expenses_store_status", "store_id", "status"),
