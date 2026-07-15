@@ -12,6 +12,8 @@ from app.audit import audit_bp
 from app.audit.log import snapshot, log_edit_if_changed, record_check
 from app.audit.service import compute_summary
 from app.audit.serialize import serialize_audit_item
+# is_period_closed 用 local import（見 check()），避免 app.periods.service 頂層
+# import app.expenses.logic 觸發的循環引用（app.expenses → app.audit → app.periods）。
 
 _TW = timezone(timedelta(hours=8))
 
@@ -139,6 +141,7 @@ def edit(eid):
 @audit_bp.post("/<int:eid>/check")
 @role_required("manager", "super_admin")
 def check(eid):
+    from app.periods.service import is_period_closed
     store_id, err = _scope_store_id()
     if err:
         return err
@@ -152,6 +155,8 @@ def check(eid):
     checkable = e.status == "submitted" or (e.status == "rejected" and e.audited_at is not None)
     if not checkable:
         return jsonify(status="error", message="not checkable"), 409
+    if is_period_closed(e.period_id, datetime.now(timezone.utc)):
+        return jsonify(status="error", message="period_closed"), 409
     # 這裡讀 e.status 一定要在改成 "audited" 之前：判斷「這是被會計退回後的重送」。
     # 首次從 submitted 打勾不算重送，不設 resubmitted_at（Addendum 10.1）。
     if e.status == "rejected":

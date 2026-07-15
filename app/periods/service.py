@@ -82,3 +82,13 @@ def effective_status(period, now_utc):
     if today_tw <= period.end_date:
         return "open"
     return "closing"
+
+
+def is_period_closed(period_id, now_utc):
+    """寫入閘：period_id 為 None（單子還沒歸期）一律不擋。"""
+    if period_id is None:
+        return False
+    p = db.session.get(AccountingPeriod, period_id)
+    if p is None:
+        return False
+    return effective_status(p, now_utc) == "closed"

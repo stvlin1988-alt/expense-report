@@ -12,6 +12,8 @@ from app.reconcile.serialize import serialize_reconcile_item
 from app.expenses.amount import parse_amount
 from app.expenses.tasks import _valid_category_id
 from app.expenses.logic import next_day_seq
+# is_period_closed 用 local import（見各端點內），避免 app.periods.service 頂層
+# import app.expenses.logic 觸發的循環引用（app.expenses → app.audit → app.periods）。
 
 VISIBLE = ("audited", "reconciled", "rejected")   # 會計看得到的狀態（submitted 不給看）
 MAX_BATCH_IDS = 500   # approve-batch 一次帶的 ids 上限，避免無界輸入
@@ -136,9 +138,12 @@ def _approve_one(e, actor_id):
 @reconcile_bp.post("/<int:eid>/approve")
 @role_required("accountant")
 def approve(eid):
+    from app.periods.service import is_period_closed
     e = db.session.get(Expense, eid)
     if e is None:
         return jsonify(status="error", message="not found"), 404
+    if is_period_closed(e.period_id, datetime.now(timezone.utc)):
+        return jsonify(status="error", message="period_closed"), 409
     if not _approve_one(e, current_user().id):
         db.session.rollback()
         return jsonify(status="error", message="not_reconcilable"), 409
@@ -149,6 +154,7 @@ def approve(eid):
 @reconcile_bp.post("/approve-batch")
 @role_required("accountant")
 def approve_batch():
+    from app.periods.service import is_period_closed
     ids = (request.get_json(silent=True) or {}).get("ids") or []
     if not isinstance(ids, list):
         return jsonify(status="error", message="ids required"), 400
@@ -156,10 +162,12 @@ def approve_batch():
         return jsonify(status="error", message="too_many_ids"), 400
     actor_id = current_user().id
     approved, skipped = [], []
+    now = datetime.now(timezone.utc)
     for raw in ids:
         eid = _coerce_id(raw)
         e = db.session.get(Expense, eid) if eid is not None else None
-        if e is not None and _approve_one(e, actor_id):
+        if (e is not None and not is_period_closed(e.period_id, now)
+                and _approve_one(e, actor_id)):
             approved.append(eid)
         else:
             skipped.append(raw)           # 原始元素回填，錯誤不能悄悄消失
@@ -170,11 +178,14 @@ def approve_batch():
 @reconcile_bp.patch("/<int:eid>")
 @role_required("accountant")
 def edit(eid):
+    from app.periods.service import is_period_closed
     e = db.session.get(Expense, eid)
     if e is None:
         return jsonify(status="error", message="not found"), 404
     if e.status not in ("audited", "reconciled"):
         return jsonify(status="error", message="not_editable"), 409
+    if is_period_closed(e.period_id, datetime.now(timezone.utc)):
+        return jsonify(status="error", message="period_closed"), 409
     data = request.get_json(silent=True) or {}
     before = snapshot(e)
     if "amount" in data:
@@ -194,6 +205,7 @@ def edit(eid):
 @reconcile_bp.post("/<int:eid>/reject")
 @role_required("accountant")
 def reject(eid):
+    from app.periods.service import is_period_closed
     e = db.session.get(Expense, eid)
     if e is None:
         return jsonify(status="error", message="not found"), 404
@@ -209,6 +221,8 @@ def reject(eid):
         return jsonify(status="error", message="reason_too_long"), 400
     if e.status not in ("audited", "reconciled"):
         return jsonify(status="error", message="not_rejectable"), 409
+    if is_period_closed(e.period_id, datetime.now(timezone.utc)):
+        return jsonify(status="error", message="period_closed"), 409
     record_reject(e, current_user().id, reason)   # 改 status 之前呼叫，記得到原狀態
     e.status = "rejected"
     e.reject_reason = reason
@@ -257,8 +271,12 @@ def manual():
     )
     db.session.add(e)
     db.session.flush()
-    from app.periods.service import get_or_create_period
-    e.period_id = get_or_create_period(bd).id
+    from app.periods.service import get_or_create_period, is_period_closed
+    period = get_or_create_period(bd)
+    if is_period_closed(period.id, datetime.now(timezone.utc)):
+        db.session.rollback()
+        return jsonify(status="error", message="period_closed"), 409
+    e.period_id = period.id
     record_reconcile(e, actor.id)
     db.session.commit()
     return jsonify(status="ok", id=e.id)
