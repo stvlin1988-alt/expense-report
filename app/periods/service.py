@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from app.expenses.logic import TW_TZ
 from app.extensions import db
-from app.models import AccountingPeriod
+from app.models import AccountingPeriod, Expense
 from app.periods.settings import get_close_day, get_lock_offset_hours
 
 
@@ -92,3 +92,34 @@ def is_period_closed(period_id, now_utc):
     if p is None:
         return False
     return effective_status(p, now_utc) == "closed"
+
+
+def _next_period_of(period):
+    return get_or_create_period(period.end_date + timedelta(days=1))
+
+
+def maybe_autoclose(period, now_utc):
+    """碰觸即檢查：若該期已過鎖定時刻且尚未封月，封月並把 audited/rejected 單挪到下一期，
+    submitted 留原期不動。以條件更新確保多個 worker 同時碰到時只有一個真的封月。
+    自動封月是系統動作、無 actor，故不寫單據級 audit_log（挪期由 period_id 現值 +
+    該期 closed_at 可追溯；move_period 的軌跡留給會計手動挪期的 Task 10）。
+    不自行 commit，交由呼叫端。"""
+    if period.status == "closed" or now_utc < period.lock_at:
+        return False
+
+    updated = (AccountingPeriod.query
+               .filter(AccountingPeriod.id == period.id,
+                       AccountingPeriod.status != "closed")
+               .update({"status": "closed", "closed_at": now_utc},
+                       synchronize_session=False))
+    if not updated:
+        return False
+
+    nxt = _next_period_of(period)
+    if nxt.status != "closed":
+        (Expense.query
+         .filter(Expense.period_id == period.id,
+                 Expense.status.in_(("audited", "rejected")))
+         .update({"period_id": nxt.id}, synchronize_session=False))
+    db.session.refresh(period)
+    return True
