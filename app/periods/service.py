@@ -2,6 +2,9 @@ from calendar import monthrange
 from datetime import date, datetime, timedelta, timezone
 
 from app.expenses.logic import TW_TZ
+from app.extensions import db
+from app.models import AccountingPeriod
+from app.periods.settings import get_close_day, get_lock_offset_hours
 
 
 def _clamped(year, month, day):
@@ -42,3 +45,40 @@ def lock_at_for(next_start, offset_hours):
 
 def label_for(start):
     return f"{start.year:04d}-{start.month:02d}"
+
+
+def get_or_create_period(business_date):
+    p = (AccountingPeriod.query
+         .filter(AccountingPeriod.start_date <= business_date,
+                 AccountingPeriod.end_date >= business_date)
+         .first())
+    if p is not None:
+        return p
+
+    close_day = get_close_day()
+    start, end = canonical_bounds(business_date, close_day)
+
+    # 尊重既有相鄰期：經理可能手動延長過上一期 end_date，順延起始避免重疊/留洞。
+    prev = (AccountingPeriod.query
+            .filter(AccountingPeriod.start_date < start)
+            .order_by(AccountingPeriod.start_date.desc())
+            .first())
+    if prev is not None and prev.end_date >= start:
+        start = prev.end_date + timedelta(days=1)
+
+    next_start = end + timedelta(days=1)
+    p = AccountingPeriod(
+        label=label_for(start), start_date=start, end_date=end,
+        lock_at=lock_at_for(next_start, get_lock_offset_hours()), status="open")
+    db.session.add(p)
+    db.session.flush()
+    return p
+
+
+def effective_status(period, now_utc):
+    if period.status == "closed":
+        return "closed"
+    today_tw = now_utc.astimezone(TW_TZ).date()
+    if today_tw <= period.end_date:
+        return "open"
+    return "closing"
