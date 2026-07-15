@@ -40,7 +40,7 @@ export async function showAdminPanel(identity) {
     const storeOpts = isSuper
       ? `<select id="ap-store" class="ap-select">
            <option value=""${state.storeId == null ? ' selected' : ''}>全部店</option>
-           ${state.stores.map((s) => `<option value="${s.id}"${s.id === state.storeId ? ' selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
+           ${state.stores.map((s) => `<option value="${s.id}"${s.id === state.storeId ? ' selected' : ''}>${escapeHtml(s.code)}</option>`).join('')}
          </select>`
       : '';
     const tabBtns = tabs.map((t) =>
@@ -80,7 +80,7 @@ export async function showAdminPanel(identity) {
     if (sel) {
       const cur = sel.value;
       sel.innerHTML = `<option value="">全部店</option>` +
-        state.stores.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+        state.stores.map((s) => `<option value="${s.id}">${escapeHtml(s.code)}</option>`).join('');
       sel.value = cur;
     }
   }
@@ -120,14 +120,20 @@ export async function showAdminPanel(identity) {
 
   function renderStores(container) {
     // 僅 super_admin 進得來（tab 不對其他角色顯示）
-    const rows = state.stores.map((s) =>
-      `<tr><td>${escapeHtml(s.code)}</td>
-           <td class="ap-rowbtns"><button class="ap-btn danger" data-del="${s.id}" type="button">刪除</button></td></tr>`).join('');
+    const rows = state.stores.map((s) => {
+      const on = s.active !== false;
+      return `<tr><td>${escapeHtml(s.code)}</td>
+           <td>${on ? '啟用中' : '<span class="rc-neg">已停用</span>'}</td>
+           <td class="ap-rowbtns">
+             <button class="ap-btn" data-toggle="${s.id}" data-active="${on ? '1' : '0'}" type="button">${on ? '停用' : '啟用'}</button>
+             <button class="ap-btn danger" data-del="${s.id}" type="button">刪除</button>
+           </td></tr>`;
+    }).join('');
     container.innerHTML = `
       <div class="ap-table-wrap">
         <table class="ap-table">
-          <thead><tr><th>店別</th><th>操作</th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="2">尚無店別</td></tr>'}</tbody>
+          <thead><tr><th>店別</th><th>狀態</th><th>操作</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="3">尚無店別</td></tr>'}</tbody>
         </table>
       </div>
       <div class="ap-form">
@@ -146,6 +152,18 @@ export async function showAdminPanel(identity) {
           else if (status === 409) { msg.style.color = '#c62828'; msg.textContent = '店別有帳號或裝置，無法刪除'; }
           else { msg.style.color = '#c62828'; msg.textContent = '刪除失敗'; }
         } catch (e) { msg.style.color = '#c62828'; msg.textContent = '刪除失敗，請重試'; }
+      });
+    });
+    container.querySelectorAll('button[data-toggle]').forEach((b) => {
+      b.addEventListener('click', async () => {
+        msg.textContent = '';
+        const id = parseInt(b.dataset.toggle, 10);
+        const next = b.dataset.active !== '1';   // 目前啟用→停用(false)；目前停用→啟用(true)
+        try {
+          const { status, data } = await api.setStoreActive(id, next);
+          if (status === 200 && data.status === 'ok') { await refreshStores(); renderActiveTab(); }
+          else { msg.style.color = '#c62828'; msg.textContent = '切換失敗'; }
+        } catch (e) { msg.style.color = '#c62828'; msg.textContent = '切換失敗，請重試'; }
       });
     });
     container.querySelector('#st-add').addEventListener('click', async () => {

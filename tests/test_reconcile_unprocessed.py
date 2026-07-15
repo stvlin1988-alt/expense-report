@@ -69,7 +69,7 @@ def closed_and_open_periods(app):
         db.session.commit()
         result = {
             "store_id": s.id,
-            "store_name": s.name,
+            "store_name": s.code,   # 顯示一律用店代號（code），不露店名
             "stuck_id": stuck.id,
             "audited_in_closed_id": audited_in_closed.id,
             "submitted_in_open_id": submitted_in_open.id,

@@ -46,7 +46,7 @@ def list_stores():
     # 經理與主管皆回全部店：主管改「本店帳號」的店別時需要目標店清單（店代碼非敏感資料）。
     stores = Store.query.order_by(Store.id).all()
     return jsonify(status="ok", stores=[
-        {"id": s.id, "name": s.name, "code": s.code} for s in stores
+        {"id": s.id, "name": s.name, "code": s.code, "active": s.active} for s in stores
     ])
 
 
@@ -62,6 +62,22 @@ def delete_store(store_id):
     if Device.query.filter_by(store_id=store_id).count() > 0:
         return jsonify(status="error", message="store has devices"), 409
     db.session.delete(store); db.session.commit()
+    return jsonify(status="ok")
+
+
+@admin_bp.post("/stores/<int:store_id>/active")
+@role_required("super_admin")
+def set_store_active(store_id):
+    """啟用／停用店別（僅經理）。停用不刪資料，只是關掉這家店。"""
+    data = request.get_json(silent=True) or {}
+    active = data.get("active")
+    if not isinstance(active, bool):
+        return jsonify(status="error", message="active must be bool"), 400
+    store = db.session.get(Store, store_id)
+    if store is None:
+        return jsonify(status="error", message="store not found"), 404
+    store.active = active
+    db.session.commit()
     return jsonify(status="ok")
 
 

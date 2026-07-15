@@ -31,8 +31,9 @@ def monthly():
         Expense.status.in_(Expense.CHECKED_STATUSES)).all()
     cats = {c.id: {"level": c.level, "parent_id": c.parent_id, "name": c.name}
             for c in Category.query.all()}
-    stores = [{"id": s.id, "name": s.name}
-              for s in Store.query.order_by(Store.name.asc()).all()]
+    # 店別顯示一律用英文代號（code），欄名帶 code 值（全系統不露店名，user 決策）
+    stores = [{"id": s.id, "name": s.code}
+              for s in Store.query.order_by(Store.code.asc()).all()]
     table = build_cross_table(rows, cats, stores, now, period)
     table["period"] = {"id": period.id, "label": period.label,
                        "status": effective_status(period, now)}

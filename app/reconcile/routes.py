@@ -23,7 +23,8 @@ def _maps(rows):
     sids = {e.store_id for e in rows}
     cids = {e.category_id for e in rows if e.category_id}
     uids = {e.created_by for e in rows}
-    stores = {s.id: s.name for s in Store.query.filter(Store.id.in_(sids)).all()} if sids else {}
+    # 店別顯示一律用英文代號（code），全系統不露店名（user 決策：全部用代號）
+    stores = {s.id: s.code for s in Store.query.filter(Store.id.in_(sids)).all()} if sids else {}
     cats = {c.id: c.name for c in Category.query.filter(Category.id.in_(cids)).all()} if cids else {}
     users = {u.id: u.name for u in User.query.filter(User.id.in_(uids)).all()} if uids else {}
     return stores, cats, users
@@ -50,10 +51,11 @@ def _parse_int(raw):
 @reconcile_bp.get("/stores")
 @role_required("accountant")
 def stores():
-    """會計端店別下拉：只回 id/name（不含 code/secret 等欄位），不走 admin 藍圖
-    （admin 的 /admin/stores 是 manager/super_admin 專用，會計不應被放進 admin 權限範圍）。"""
-    rows = Store.query.order_by(Store.name.asc()).all()
-    return jsonify(status="ok", stores=[{"id": s.id, "name": s.name} for s in rows])
+    """會計端店別下拉：回 id + name，但 name 值一律填店的英文代號（code）——
+    全系統以代號識別、不露店名（user 決策）。維持 {id,name} 欄位形狀（白名單不含 code/secret 鍵）。
+    不走 admin 藍圖（admin 的 /admin/stores 是 manager/super_admin 專用，會計不應被放進 admin 權限範圍）。"""
+    rows = Store.query.order_by(Store.code.asc()).all()
+    return jsonify(status="ok", stores=[{"id": s.id, "name": s.code} for s in rows])
 
 
 @reconcile_bp.get("/pending")
