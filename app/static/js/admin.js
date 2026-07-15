@@ -4,6 +4,8 @@ import { renderAccounts } from './admin_accounts.js';
 import { renderDevices } from './admin_devices.js';
 import { renderAudit } from './admin_audit.js';
 import { renderLogs } from './admin_logs.js';
+import { renderMonthReport } from './month_report.js';
+import { periodsApi } from './periods_api.js';
 
 const root = () => document.getElementById('modal-root');
 
@@ -29,7 +31,7 @@ export async function showAdminPanel(identity) {
     { key: 'logs', label: '操作記錄' },
     { key: 'accounts', label: '帳號' },
     { key: 'devices', label: '裝置' },
-    ...(isSuper ? [{ key: 'stores', label: '店別' }] : []),
+    ...(isSuper ? [{ key: 'stores', label: '店別' }, { key: 'monthly', label: '月結' }] : []),
     { key: 'mypw', label: '我的密碼' },
   ];
 
@@ -166,6 +168,28 @@ export async function showAdminPanel(identity) {
     });
   }
 
+  // 經理（super_admin）唯讀：月結日/鎖定偏移純文字顯示（不提供編輯，後端 PATCH 對經理亦 403）＋當期月報表。
+  async function renderMonthly(container, identity) {
+    container.innerHTML = `
+      <div class="ap-form" id="mo-settings"><div class="ap-empty">載入中…</div></div>
+      <div id="mo-report"></div>`;
+    const settingsBox = container.querySelector('#mo-settings');
+    try {
+      const { status, data } = await periodsApi.getSettings();
+      if (status === 200 && data.status === 'ok') {
+        settingsBox.innerHTML = `
+          <div>月結日：${escapeHtml(String(data.period_close_day))} 號</div>
+          <div>鎖定偏移：${escapeHtml(String(data.period_lock_offset_hours))} 小時（換期日後 ${escapeHtml(String(data.period_lock_offset_hours))} 小時鎖定）</div>`;
+      } else {
+        settingsBox.innerHTML = '<div class="ap-empty">載入失敗，請重試</div>';
+      }
+    } catch (e) {
+      settingsBox.innerHTML = '<div class="ap-empty">載入失敗，請重試</div>';
+    }
+    const reportDiv = container.querySelector('#mo-report');
+    renderMonthReport(reportDiv, {});
+  }
+
   function renderActiveTab() {
     const body = document.getElementById('ap-body');
     if (!body) return;
@@ -180,6 +204,7 @@ export async function showAdminPanel(identity) {
     else if (state.tab === 'audit') renderAudit(body, identity, state.storeId);
     else if (state.tab === 'logs') renderLogs(body, identity, state.storeId);
     else if (state.tab === 'stores') renderStores(body);
+    else if (state.tab === 'monthly') renderMonthly(body, identity);
     else if (state.tab === 'mypw') renderMyPassword(body);
   }
 
