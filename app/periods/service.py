@@ -81,6 +81,18 @@ def get_or_create_period(business_date):
     return p
 
 
+def successor_bounds(period, close_day):
+    """period 之後那一期（下一標籤月）的 (start, end, label)。
+    start 接在 period.end_date+1；標籤月＝period.label 月 +1（權威，不看 start_date，
+    因為調整後 start_date 可能落在上一個日曆月而算錯月份）。"""
+    y, m = int(period.label[:4]), int(period.label[5:7])
+    ny, nm = _add_month(y, m)          # 下一標籤月
+    ny2, nm2 = _add_month(ny, nm)      # 再下個月，用來算 end 邊界
+    start = period.end_date + timedelta(days=1)
+    end = _clamped(ny2, nm2, close_day) - timedelta(days=1)
+    return start, end, f"{ny:04d}-{nm:02d}"
+
+
 def effective_status(period, now_utc):
     if period.status == "closed":
         return "closed"
