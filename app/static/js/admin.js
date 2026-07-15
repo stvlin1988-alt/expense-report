@@ -40,7 +40,7 @@ export async function showAdminPanel(identity) {
     const storeOpts = isSuper
       ? `<select id="ap-store" class="ap-select">
            <option value=""${state.storeId == null ? ' selected' : ''}>全部店</option>
-           ${state.stores.map((s) => `<option value="${s.id}"${s.id === state.storeId ? ' selected' : ''}>${escapeHtml(s.code)}</option>`).join('')}
+           ${state.stores.filter((s) => s.viewable !== false).map((s) => `<option value="${s.id}"${s.id === state.storeId ? ' selected' : ''}>${escapeHtml(s.code)}</option>`).join('')}
          </select>`
       : '';
     const tabBtns = tabs.map((t) =>
@@ -80,7 +80,7 @@ export async function showAdminPanel(identity) {
     if (sel) {
       const cur = sel.value;
       sel.innerHTML = `<option value="">全部店</option>` +
-        state.stores.map((s) => `<option value="${s.id}">${escapeHtml(s.code)}</option>`).join('');
+        state.stores.filter((s) => s.viewable !== false).map((s) => `<option value="${s.id}">${escapeHtml(s.code)}</option>`).join('');
       sel.value = cur;
     }
   }
@@ -121,21 +121,23 @@ export async function showAdminPanel(identity) {
   function renderStores(container) {
     // 僅 super_admin 進得來（tab 不對其他角色顯示）
     const rows = state.stores.map((s) => {
-      const on = s.active !== false;
+      const view = s.viewable !== false;
+      const conn = s.active !== false;
       return `<tr><td>${escapeHtml(s.code)}</td>
-           <td><label class="st-onoff"><input type="checkbox" class="st-active" data-id="${s.id}"${on ? ' checked' : ''}> 啟用</label></td>
-           <td class="ap-rowbtns">
-             <button class="ap-btn danger" data-del="${s.id}" type="button">刪除</button>
-           </td></tr>`;
+           <td><label class="st-onoff"><input type="checkbox" class="st-viewable" data-id="${s.id}"${view ? ' checked' : ''}> 顯示</label></td>
+           <td>${conn ? '連線中' : '<span class="rc-neg">已關閉</span>'}
+               <button class="ap-btn" data-conn="${s.id}" data-active="${conn ? '1' : '0'}" type="button">${conn ? '關閉對外連結' : '開啟對外連結'}</button></td>
+           <td class="ap-rowbtns"><button class="ap-btn danger" data-del="${s.id}" type="button">刪除</button></td></tr>`;
     }).join('');
     container.innerHTML = `
       <div class="ap-table-wrap">
         <table class="ap-table">
-          <thead><tr><th>店別</th><th>啟用</th><th>操作</th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="3">尚無店別</td></tr>'}</tbody>
+          <thead><tr><th>店別</th><th>檢視</th><th>對外連結</th><th>操作</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="4">尚無店別</td></tr>'}</tbody>
         </table>
       </div>
-      <p class="ap-hint">取消勾選＝停用該店：該店所有人員／主管立即被擋在計算機外（進不去），僅經理可改。</p>
+      <p class="ap-hint">「檢視」打勾＝這家店會出現在選店選單／月報表等檢視裡（取消只是隱藏，不影響營運）。<br>
+      「對外連結」關閉＝該店所有人員／主管立即被擋在計算機外、進不去（真正停用該店）。兩者互不影響，僅經理可改。</p>
       <div class="ap-form">
         <input type="text" id="st-code" placeholder="店別（英文）" autocomplete="off">
         <button class="ap-btn" id="st-add" type="button">新增店</button>
@@ -154,21 +156,36 @@ export async function showAdminPanel(identity) {
         } catch (e) { msg.style.color = '#c62828'; msg.textContent = '刪除失敗，請重試'; }
       });
     });
-    container.querySelectorAll('input.st-active').forEach((cb) => {
+    // 檢視顯示：打勾方框（顯示/隱藏於檢視，不影響營運）
+    container.querySelectorAll('input.st-viewable').forEach((cb) => {
       cb.addEventListener('change', async () => {
         msg.textContent = '';
         const id = parseInt(cb.dataset.id, 10);
-        const next = cb.checked;   // 打勾＝啟用，取消＝停用
+        const next = cb.checked;
         try {
-          const { status, data } = await api.setStoreActive(id, next);
+          const { status, data } = await api.setStoreViewable(id, next);
           if (!(status === 200 && data.status === 'ok')) {
-            cb.checked = !next;   // 失敗還原勾選狀態
+            cb.checked = !next;
             msg.style.color = '#c62828'; msg.textContent = '切換失敗';
-          }
+          } else { await refreshStores(); }
         } catch (e) {
           cb.checked = !next;
           msg.style.color = '#c62828'; msg.textContent = '切換失敗，請重試';
         }
+      });
+    });
+    // 對外連結：停用/啟用按鈕（真正關掉該店＝把人員擋在計算機外）
+    container.querySelectorAll('button[data-conn]').forEach((b) => {
+      b.addEventListener('click', async () => {
+        msg.textContent = '';
+        const id = parseInt(b.dataset.conn, 10);
+        const next = b.dataset.active !== '1';   // 目前連線→關閉(false)；目前關閉→開啟(true)
+        if (!next && !confirm('關閉對外連結後，這家店所有人員／主管會立即被擋在計算機外、無法進入。確定？')) return;
+        try {
+          const { status, data } = await api.setStoreActive(id, next);
+          if (status === 200 && data.status === 'ok') { await refreshStores(); renderActiveTab(); }
+          else { msg.style.color = '#c62828'; msg.textContent = '切換失敗'; }
+        } catch (e) { msg.style.color = '#c62828'; msg.textContent = '切換失敗，請重試'; }
       });
     });
     container.querySelector('#st-add').addEventListener('click', async () => {

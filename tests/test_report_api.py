@@ -106,8 +106,21 @@ def test_accountant_sees_correct_cross_table(client, app, two_store_two_major):
     assert body["store_totals"][str(s1)] == {"reconciled": 300.0, "pending": -50.0}
     assert body["store_totals"][str(s2)] == {"reconciled": 120.0, "pending": -20.0}
     assert body["grand_total"] == {"reconciled": 420.0, "pending": -70.0}
-
     assert body["period"]["id"] == two_store_two_major["period_id"]
+
+
+def test_non_viewable_store_excluded_from_report(client, app, two_store_two_major):
+    # 把 s2 設為不可檢視 → 報表欄位與其單據(食物 120/-20)都不出現
+    from app.models import Store
+    with app.app_context():
+        db.session.get(Store, two_store_two_major["store_ids"][1]).viewable = False
+        db.session.commit()
+    _login(client, app, "accountant")
+    body = client.get(f"/reports/monthly?period_id={two_store_two_major['period_id']}").get_json()
+    store_ids = {s["id"] for s in body["stores"]}
+    assert two_store_two_major["store_ids"][1] not in store_ids   # s2 欄位不見了
+    rows_by_major = {row["major_name"]: row for row in body["rows"]}
+    assert "餐飲" not in rows_by_major   # s2 的餐飲單被排除，該大類無資料
 
 
 def test_super_admin_can_view(client, app, two_store_two_major):

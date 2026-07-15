@@ -82,6 +82,32 @@ def test_store_active_forbidden_for_manager(app):
     assert c.post(f"/admin/stores/{ids['a']}/active", json={"active": False}).status_code == 403
 
 
+def test_list_stores_includes_viewable_default_true(app):
+    ids = _base(app)
+    c = _login_as(app, ids["sa"], uid="devSA")
+    stores = c.get("/admin/stores").get_json()["stores"]
+    assert all(s["viewable"] is True for s in stores)
+
+
+def test_super_admin_toggles_store_viewable(app):
+    ids = _base(app)
+    c = _login_as(app, ids["sa"], uid="devSA")
+    r = c.post(f"/admin/stores/{ids['a']}/viewable", json={"viewable": False})
+    assert r.status_code == 200 and r.get_json()["status"] == "ok"
+    stores = {s["id"]: s for s in c.get("/admin/stores").get_json()["stores"]}
+    assert stores[ids["a"]]["viewable"] is False
+    assert stores[ids["a"]]["active"] is True   # 檢視與對外連結互不影響
+    assert stores[ids["b"]]["viewable"] is True
+
+
+def test_store_viewable_forbidden_for_manager_and_bad_body(app):
+    ids = _base(app)
+    sa = _login_as(app, ids["sa"], uid="devSA")
+    assert sa.post(f"/admin/stores/{ids['a']}/viewable", json={"viewable": "x"}).status_code == 400
+    mgr = _login_as(app, ids["mgr"], uid="devMgr")
+    assert mgr.post(f"/admin/stores/{ids['a']}/viewable", json={"viewable": False}).status_code == 403
+
+
 def test_super_admin_lists_all_users(app):
     ids = _base(app)
     c = _login_as(app, ids["sa"], uid="devSA")

@@ -59,6 +59,18 @@ def test_accountant_sees_all_stores(client, app, two_stores):
         assert set(s.keys()) == {"id", "name"}
 
 
+def test_non_viewable_store_hidden_from_dropdown(client, app, two_stores):
+    from app.models import Store
+    with app.app_context():
+        s = db.session.get(Store, two_stores["store_ids"][0])
+        s.viewable = False
+        db.session.commit()
+    login_accountant(client, app)
+    ids = {s["id"] for s in client.get("/reconcile/stores").get_json()["stores"]}
+    assert two_stores["store_ids"][0] not in ids      # 不勾檢視 → 選單看不到
+    assert two_stores["store_ids"][1] in ids
+
+
 def test_unauthenticated_401(client, app, two_stores):
     r = client.get("/reconcile/stores")
     assert r.status_code == 401

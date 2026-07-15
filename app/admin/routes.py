@@ -46,7 +46,8 @@ def list_stores():
     # 經理與主管皆回全部店：主管改「本店帳號」的店別時需要目標店清單（店代碼非敏感資料）。
     stores = Store.query.order_by(Store.id).all()
     return jsonify(status="ok", stores=[
-        {"id": s.id, "name": s.name, "code": s.code, "active": s.active} for s in stores
+        {"id": s.id, "name": s.name, "code": s.code,
+         "active": s.active, "viewable": s.viewable} for s in stores
     ])
 
 
@@ -68,7 +69,8 @@ def delete_store(store_id):
 @admin_bp.post("/stores/<int:store_id>/active")
 @role_required("super_admin")
 def set_store_active(store_id):
-    """啟用／停用店別（僅經理）。停用不刪資料，只是關掉這家店。"""
+    """停用／啟用店別的「對外連結」（僅經理）：停用→該店裝置擋在計算機外（見 is_device_authorized）。
+    與 viewable（檢視顯示）是兩回事，互不影響。"""
     data = request.get_json(silent=True) or {}
     active = data.get("active")
     if not isinstance(active, bool):
@@ -77,6 +79,23 @@ def set_store_active(store_id):
     if store is None:
         return jsonify(status="error", message="store not found"), 404
     store.active = active
+    db.session.commit()
+    return jsonify(status="ok")
+
+
+@admin_bp.post("/stores/<int:store_id>/viewable")
+@role_required("super_admin")
+def set_store_viewable(store_id):
+    """設定店別是否出現在檢視裡（選店選單／月報表等，僅經理）：不勾→從檢視隱藏，
+    但不影響該店營運（與 active 對外連結分開）。"""
+    data = request.get_json(silent=True) or {}
+    viewable = data.get("viewable")
+    if not isinstance(viewable, bool):
+        return jsonify(status="error", message="viewable must be bool"), 400
+    store = db.session.get(Store, store_id)
+    if store is None:
+        return jsonify(status="error", message="store not found"), 404
+    store.viewable = viewable
     db.session.commit()
     return jsonify(status="ok")
 

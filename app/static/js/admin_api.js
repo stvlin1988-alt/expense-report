@@ -26,6 +26,7 @@ export const api = {
   createStore: (name, code) => req('POST', '/admin/stores', { name, code }),
   deleteStore: (id) => req('DELETE', `/admin/stores/${id}`),
   setStoreActive: (id, active) => req('POST', `/admin/stores/${id}/active`, { active }),
+  setStoreViewable: (id, viewable) => req('POST', `/admin/stores/${id}/viewable`, { viewable }),
   approveDevice: (id, payload) => req('POST', `/admin/devices/${id}/approve`, payload),
   revokeDevice: (id) => req('POST', `/admin/devices/${id}/revoke`),
   changeMyPassword: (oldp, newp) =>

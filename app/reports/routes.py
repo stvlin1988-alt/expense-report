@@ -26,14 +26,17 @@ def monthly():
     maybe_autoclose(period, now)
     db.session.commit()
 
+    # 月報表只納入「可檢視」的店（viewable）；不勾的店連同其單據都不出現在報表
+    viewable_stores = Store.query.filter(Store.viewable.is_(True)).order_by(Store.code.asc()).all()
+    viewable_ids = [s.id for s in viewable_stores]
     rows = Expense.query.filter(
         Expense.period_id == period.id,
-        Expense.status.in_(Expense.CHECKED_STATUSES)).all()
+        Expense.store_id.in_(viewable_ids),
+        Expense.status.in_(Expense.CHECKED_STATUSES)).all() if viewable_ids else []
     cats = {c.id: {"level": c.level, "parent_id": c.parent_id, "name": c.name}
             for c in Category.query.all()}
     # 店別顯示一律用英文代號（code），欄名帶 code 值（全系統不露店名，user 決策）
-    stores = [{"id": s.id, "name": s.code}
-              for s in Store.query.order_by(Store.code.asc()).all()]
+    stores = [{"id": s.id, "name": s.code} for s in viewable_stores]
     table = build_cross_table(rows, cats, stores, now, period)
     table["period"] = {"id": period.id, "label": period.label,
                        "status": effective_status(period, now)}
