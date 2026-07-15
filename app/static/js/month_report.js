@@ -84,14 +84,19 @@ function tableHtml(data, storeId) {
     </div>`;
 }
 
-function headerHtml(data, storeId) {
+function headerHtml(data, storeId, showPicker) {
   const stores = data.stores || [];
   const label = (data.period && data.period.label) || '';
+  const periodSpan = `<span class="mr-period">期間 ${escapeHtml(label)}</span>`;
+  if (!showPicker) {
+    // 門市由外層（經理後台標頭店別選單）控制，這裡不再重複下拉。
+    return `<div class="mr-head">${periodSpan}</div>`;
+  }
   const opts = [`<option value=""${storeId === '' ? ' selected' : ''}>全部門市</option>`]
     .concat(stores.map((s) =>
       `<option value="${s.id}"${String(s.id) === String(storeId) ? ' selected' : ''}>${escapeHtml(s.name)}</option>`));
   return `<div class="mr-head">
-      <span class="mr-period">期間 ${escapeHtml(label)}</span>
+      ${periodSpan}
       <label class="mr-store-pick">門市：
         <select class="mr-store-select ap-select">${opts.join('')}</select>
       </label>
@@ -113,11 +118,14 @@ function wireToggles(container) {
 }
 
 /**
- * 抓 /reports/monthly 資料並畫月報表到 container。periodId 可省略（取當期）。
- * UI：上方門市下拉。「全部門市」＝各店一欄＋總計；選單店＝收成「科目→金額」一欄。
- * 切換門市走 client 端重繪，不重新抓資料。
+ * 抓 /reports/monthly 資料並畫月報表到 container。
+ * opts.periodId：可省略（取當期）。
+ * opts.storeId：預選門市（空字串＝全部門市）。
+ * opts.lockStore：true 時門市由外層控制（不畫自己的下拉，用 opts.storeId 固定）——
+ *   給經理後台用（標頭店別選單同時管稽核與月結）；會計端不帶此旗標，走自己的下拉。
+ * 「全部門市」＝各店一欄＋總計；選單店＝收成「科目→金額」一欄。切換門市 client 端重繪。
  */
-export async function renderMonthReport(container, { periodId } = {}) {
+export async function renderMonthReport(container, { periodId, storeId = '', lockStore = false } = {}) {
   container.innerHTML = '<div class="ap-empty">載入中…</div>';
   let status, data;
   try {
@@ -130,11 +138,17 @@ export async function renderMonthReport(container, { periodId } = {}) {
     container.innerHTML = '<div class="ap-empty">載入失敗，請重試</div>';
     return;
   }
-  let storeId = '';   // 預設「全部門市」（各店攤開）
+  if (lockStore) {
+    // 門市由外層固定，不畫下拉、不需重繪
+    container.innerHTML = headerHtml(data, storeId, false) + tableHtml(data, storeId);
+    wireToggles(container);
+    return;
+  }
+  let sel = storeId || '';
   const render = () => {
-    container.innerHTML = headerHtml(data, storeId) + tableHtml(data, storeId);
-    const sel = container.querySelector('.mr-store-select');
-    if (sel) sel.addEventListener('change', () => { storeId = sel.value; render(); });
+    container.innerHTML = headerHtml(data, sel, true) + tableHtml(data, sel);
+    const s = container.querySelector('.mr-store-select');
+    if (s) s.addEventListener('change', () => { sel = s.value; render(); });
     wireToggles(container);
   };
   render();

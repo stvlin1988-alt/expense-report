@@ -187,8 +187,13 @@ export async function showAdminPanel(identity) {
     } catch (e) {
       settingsBox.innerHTML = '<div class="ap-empty">載入失敗，請重試</div>';
     }
+    // 月報表跟隨標頭的店別選單（同一個選店同時管稽核與月結）：
+    // 選特定店→只看該店；選「全部店」(storeId null)→各店攤開。
     const reportDiv = container.querySelector('#mo-report');
-    renderMonthReport(reportDiv, {});
+    renderMonthReport(reportDiv, {
+      storeId: state.storeId != null ? String(state.storeId) : '',
+      lockStore: true,
+    });
   }
 
   function renderActiveTab() {
