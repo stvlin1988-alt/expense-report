@@ -8,8 +8,10 @@ from app.models.expense import Expense
 from app.models.handover import Handover
 from app.models.audit_log import AuditLog
 from app.models.ocr_log import OcrLog
+from app.models.app_setting import AppSetting
 
 __all__ = [
     "Store", "User", "ROLES", "is_valid_pin", "Category", "DocType",
     "Device", "FxRate", "Expense", "Handover", "AuditLog", "OcrLog",
+    "AppSetting",
 ]
