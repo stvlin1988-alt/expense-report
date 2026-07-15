@@ -28,10 +28,11 @@ export async function showAdminPanel(identity) {
 
   const tabs = [
     { key: 'audit', label: '稽核' },
+    ...(isSuper ? [{ key: 'monthly', label: '月結' }] : []),
     { key: 'logs', label: '操作記錄' },
     { key: 'accounts', label: '帳號' },
     { key: 'devices', label: '裝置' },
-    ...(isSuper ? [{ key: 'stores', label: '店別' }, { key: 'monthly', label: '月結' }] : []),
+    ...(isSuper ? [{ key: 'stores', label: '店別' }] : []),
     { key: 'mypw', label: '我的密碼' },
   ];
 
