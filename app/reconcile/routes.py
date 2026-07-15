@@ -257,6 +257,8 @@ def manual():
     )
     db.session.add(e)
     db.session.flush()
+    from app.periods.service import get_or_create_period
+    e.period_id = get_or_create_period(bd).id
     record_reconcile(e, actor.id)
     db.session.commit()
     return jsonify(status="ok", id=e.id)

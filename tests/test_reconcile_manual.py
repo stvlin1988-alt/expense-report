@@ -2,7 +2,7 @@ import time
 from datetime import datetime, timezone
 import pytest
 from app.extensions import db
-from app.models import Store, User, Device, Expense, Category
+from app.models import Store, User, Device, Expense, Category, AccountingPeriod
 
 # 登入/建單 helper 照 tests/test_reconcile_edit.py / test_reconcile_approve.py 現成寫法
 
@@ -62,6 +62,9 @@ def test_manual_creates_reconciled(client, app, store_id, cat_id):
         assert e.reconciled_by is not None
         assert e.note is None
         assert e.day_seq is not None
+        assert e.period_id is not None
+        p = db.session.get(AccountingPeriod, e.period_id)
+        assert p.start_date <= e.business_date <= p.end_date
 
 
 def test_manual_allows_negative(client, app, store_id, cat_id):

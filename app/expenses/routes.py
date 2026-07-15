@@ -200,6 +200,8 @@ def submit(eid):
     e.status = "submitted"
     e.business_date = compute_business_date(e.created_at)
     e.day_seq = next_day_seq(e.store_id, e.business_date)
+    from app.periods.service import get_or_create_period
+    e.period_id = get_or_create_period(e.business_date).id
     e.submitted_at = datetime.now(timezone.utc)
     db.session.commit()
     return jsonify(status="ok")
