@@ -2,18 +2,14 @@ import { reportsApi } from './reports_api.js';
 import { escapeHtml } from './admin_util.js';
 
 /**
- * 純函式：把一個 cell（{reconciled, pending}）依 period 狀態格式化成顯示文字。
- * closed：pending 恆為 0，只顯示單一數字。open/closing：顯示「已核銷 / 待核銷」。
- * negative：reconciled 或（open/closing 時的）pending 任一為負，供呼叫端套紅字 class。
+ * 純函式：把一個 cell（{reconciled, pending}）格式化成「單一總額」顯示文字。
+ * 月報表看的是該期整體已確認金額（已核銷＋待核銷合計），不拆「已核銷／待核銷」——
+ * 報表用途是回顧該期金額狀況，核銷過程在核銷清單看即可，報表不重複這雜訊。
+ * negative：合計為負時供呼叫端套紅字 class。（periodStatus 保留參數但不再影響顯示）
  */
-export function formatCell(cell, periodStatus) {
-  const r = Number((cell && cell.reconciled) || 0);
-  const p = Number((cell && cell.pending) || 0);
-  const fmt = (n) => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
-  if (periodStatus === 'closed') {
-    return { text: fmt(r), negative: r < 0 };
-  }
-  return { text: `${fmt(r)} / ${fmt(p)}`, negative: r < 0 || p < 0 };
+export function formatCell(cell) {
+  const total = Number((cell && cell.reconciled) || 0) + Number((cell && cell.pending) || 0);
+  return { text: total.toLocaleString('en-US', { maximumFractionDigits: 2 }), negative: total < 0 };
 }
 
 function cellHtml(cell, periodStatus) {
