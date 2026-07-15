@@ -258,6 +258,34 @@ def reject(eid):
     return jsonify(status="ok")
 
 
+@reconcile_bp.post("/<int:eid>/move-next")
+@role_required("accountant")
+def move_next(eid):
+    from datetime import timedelta
+    from app.periods.service import get_or_create_period, is_period_closed
+    from app.audit.log import record_move_period
+    from app.models import AccountingPeriod
+
+    e = db.session.get(Expense, eid)
+    if e is None:
+        return jsonify(status="error", message="not found"), 404
+    if e.period_id is None:
+        return jsonify(status="error", message="no_period"), 409
+    now = datetime.now(timezone.utc)
+    if is_period_closed(e.period_id, now):
+        return jsonify(status="error", message="period_closed"), 409
+    cur = db.session.get(AccountingPeriod, e.period_id)
+    nxt = get_or_create_period(cur.end_date + timedelta(days=1))
+    if is_period_closed(nxt.id, now):
+        db.session.rollback()
+        return jsonify(status="error", message="next_period_closed"), 409
+    from_pid = e.period_id
+    e.period_id = nxt.id
+    record_move_period(e, current_user().id, from_pid, nxt.id)
+    db.session.commit()
+    return jsonify(status="ok", period_id=nxt.id, period_label=nxt.label)
+
+
 @reconcile_bp.post("/manual")
 @role_required("accountant")
 def manual():

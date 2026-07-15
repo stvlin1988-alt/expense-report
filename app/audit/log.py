@@ -69,3 +69,12 @@ def record_reject(expense, actor_user_id, reason):
         after_json={"status": "rejected", "reason": reason},
         ts=datetime.now(timezone.utc),
     ))
+
+
+def record_move_period(expense, actor_user_id, from_pid, to_pid):
+    """會計手動把單挪到下一期的軌跡（跟 maybe_autoclose 的系統自動挪期區分開）。"""
+    db.session.add(AuditLog(
+        expense_id=expense.id, actor_user_id=actor_user_id, action="move_period",
+        before_json={"period_id": from_pid}, after_json={"period_id": to_pid},
+        ts=datetime.now(timezone.utc),
+    ))
