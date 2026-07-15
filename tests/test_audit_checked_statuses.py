@@ -3,10 +3,10 @@
 導致會計一動手，這些彙整就悄悄漏掉那些單。
 「主管已打勾／已認列」這件事現在對應的集合是 CHECKED_STATUSES = (audited, reconciled, rejected)。"""
 import time
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, timedelta
 from decimal import Decimal
 from app.extensions import db
-from app.models import Store, User, Device, Expense, Handover, Category
+from app.models import Store, User, Device, Expense, Handover, Category, AccountingPeriod
 
 
 def _seed(app):
@@ -142,6 +142,17 @@ def test_manual_entry_not_swept_even_after_accountant_role_changed(app):
     mgr_id, emp_id, acct_id, sid, cat_id = _seed(app)
     old_bd = date(2026, 6, 1)     # 回溯數月的補帳
     today_bd = date(2026, 7, 8)
+
+    # 手動先建好 old_bd 所在期間、給遙遠未來的 lock_at：這裡要測的是「回溯到不同期間的
+    # manual 單不受角色變動影響」，跟該期間本身鎖了沒無關（那個由 C1/test_period_gate.py
+    # 專門測）。若讓 manual() 內部用預設 lock_offset 建期，這期早就因為真實時鐘走到現在
+    # （currentDate 已過 2026-06 期的 lock_at）被 effective_status 判成 closed，
+    # manual() 會先被 period_closed 擋下、測試失真。
+    with app.app_context():
+        p = AccountingPeriod(label="2026-06", start_date=date(2026, 6, 1), end_date=date(2026, 6, 30),
+                              lock_at=datetime.now(timezone.utc) + timedelta(days=400), status="open")
+        db.session.add(p)
+        db.session.commit()
 
     acct = _acct_client(app, acct_id)
     r = acct.post("/reconcile/manual", json={

@@ -121,8 +121,12 @@ def test_check_rejected_manual_row_409_and_stays_unswept(app):
     with acct_c.session_transaction() as sess:
         sess["user_id"] = acct_id; sess["_last_request_at"] = int(time.time())
 
+    # business_date 用「今天」而非寫死的過去日期：這個測試要驗證的是 check() 對
+    # rejected manual 單的 409 閘門，跟 business_date 落在哪個期間無關；寫死日期
+    # 會隨真實時鐘走到該期 lock_at 之後被封月讀成 closed，manual() 建單先被period_closed
+    # 擋下、測試失真（C1 修好 effective_status 改用時間判斷後才會踩到這個坑）。
     manual = acct_c.post("/reconcile/manual", json={
-        "store_id": store_id, "business_date": "2026-06-01",
+        "store_id": store_id, "business_date": date.today().isoformat(),
         "summary": "回溯補帳", "amount": 500,
     })
     assert manual.status_code == 200

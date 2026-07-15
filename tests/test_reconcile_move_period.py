@@ -40,8 +40,13 @@ def seeded(app):
         db.session.add_all([emp, acct, dev])
         db.session.commit()
 
-        # 建當期期間（jan），單掛在這期
+        # 建當期期間（jan），單掛在這期。lock_at 蓋成遙遠未來：這裡固定寫死 2026-01 是
+        # 為了讓 feb（下一期）邊界好算，跟「jan 目前是否已過鎖定時刻」無關；若沿用預設
+        # lock_offset 算出的 lock_at，等真實時鐘走過 2026-01 期的鎖定時刻後，jan 會被
+        # C1 修好的 effective_status（改用時間判斷）讀成 closed，move-next 會先被
+        # period_closed 擋下、測試失真（jan 本該是「當期」，即 open）。
         jan = get_or_create_period(date(2026, 1, 15))
+        jan.lock_at = datetime.now(timezone.utc) + timedelta(days=400)
         db.session.commit()
 
         now = datetime.now(timezone.utc)
@@ -76,6 +81,9 @@ def test_move_next_changes_period(client, app, seeded):
 
     with app.app_context():
         feb = get_or_create_period(seeded["jan_end"] + timedelta(days=1))
+        # feb 也要蓋成遙遠未來 lock_at，理由同 jan（見 fixture 註解）：feb 的預設 lock_at
+        # 一樣早就被真實時鐘超過，不蓋的話 move-next 會被判成 next_period_closed。
+        feb.lock_at = datetime.now(timezone.utc) + timedelta(days=400)
         db.session.commit()
         feb_id = feb.id
         feb_label = feb.label

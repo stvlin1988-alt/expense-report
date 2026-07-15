@@ -1,5 +1,5 @@
 import time
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from decimal import Decimal
 import pytest
 from app.extensions import db
@@ -242,5 +242,89 @@ def test_expenses_submit_blocked_when_target_period_closed(client, app, seeded):
     assert r.get_json()["message"] == "period_closed"
     with app.app_context():
         e = db.session.get(Expense, seeded["draft_closed_id"])
+        assert e.status == "draft"
+        assert e.period_id is None
+
+
+# ---------------------------------------------------------------------------
+# C1 回歸：effective_status 要用時間（lock_at）判斷，不能只看 period.status 這個
+# 持久欄位。DB 欄位翻轉只在 maybe_autoclose 被「碰觸」時才發生（查看該期的
+# pending/reports），一個剛過鎖定時刻、還沒被任何人碰過的「上一期」在修好之前會一直讀成
+# closing，寫入閘形同虛設。這裡刻意讓 period.status 維持 "open"、只讓 lock_at 落在過去。
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def stale_open_period(app):
+    """lock_at 已過去，但 period.status 這個持久欄位還沒被 maybe_autoclose 翻成 closed
+    （模擬「沒人剛好去碰那個期間」的情境）。用相對「今天」的日期建期，避免寫死年份的
+    期間隨真實時鐘推移而意外落入/跳出鎖定窗。"""
+    with app.app_context():
+        db.create_all()
+        s1 = Store(name="A店", code="A")
+        db.session.add(s1)
+        db.session.commit()
+
+        emp = User(name="員工A", role="employee", store_id=s1.id)
+        emp.set_password("0000")
+        mgr = User(name="主管", role="manager", store_id=s1.id)
+        mgr.set_password("0000")
+        dev = Device(client_uid="dev1", store_id=s1.id, is_approved=True)
+        cat1 = Category(name="文具", level=1)
+        db.session.add_all([emp, mgr, dev, cat1])
+        db.session.commit()
+
+        end_date = date.today() - timedelta(days=40)
+        start_date = end_date - timedelta(days=29)
+        lock_at = datetime.now(timezone.utc) - timedelta(days=1)   # 已過鎖定時刻
+        p = AccountingPeriod(label="stale", start_date=start_date, end_date=end_date,
+                              lock_at=lock_at, status="open")      # 持久欄位還沒被翻
+        db.session.add(p)
+        db.session.commit()
+
+        now = datetime.now(timezone.utc)
+        submitted = Expense(store_id=s1.id, created_by=emp.id, status="submitted",
+                             created_at=now, business_date=end_date, period_id=p.id,
+                             amount=Decimal("70"), amount_parse_ok=True, submitted_at=now)
+        # created_at 落在 end_date 當天台灣時間 18:00（08:00 分界後）→ compute_business_date
+        # 會算出 business_date == end_date，落在這個尚未真正 flip 的過期期間裡。
+        draft = Expense(store_id=s1.id, created_by=emp.id, status="draft",
+                         created_at=datetime(end_date.year, end_date.month, end_date.day,
+                                              10, 0, tzinfo=timezone.utc),
+                         amount=Decimal("60"), amount_parse_ok=True, category_id=cat1.id)
+        db.session.add_all([submitted, draft])
+        db.session.commit()
+        result = {
+            "period_id": p.id,
+            "submitted_id": submitted.id,
+            "draft_id": draft.id,
+        }
+    return result
+
+
+def test_is_period_closed_true_when_lock_at_passed_but_status_still_open(app, stale_open_period):
+    with app.app_context():
+        p = db.session.get(AccountingPeriod, stale_open_period["period_id"])
+        assert p.status == "open"           # 持久欄位確實還沒被翻
+        assert is_period_closed(p.id, datetime.now(timezone.utc)) is True
+
+
+def test_audit_check_blocked_when_lock_at_passed_but_status_open(client, app, stale_open_period):
+    login_as(client, app, "manager")
+    r = client.post(f"/audit/{stale_open_period['submitted_id']}/check")
+    assert r.status_code == 409
+    assert r.get_json()["message"] == "period_closed"
+    with app.app_context():
+        e = db.session.get(Expense, stale_open_period["submitted_id"])
+        assert e.status == "submitted"
+        assert e.audited_by is None
+
+
+def test_expenses_submit_blocked_when_lock_at_passed_but_status_open(client, app, stale_open_period):
+    login_as(client, app, "employee")
+    r = client.post(f"/expenses/{stale_open_period['draft_id']}/submit")
+    assert r.status_code == 409
+    assert r.get_json()["message"] == "period_closed"
+    with app.app_context():
+        e = db.session.get(Expense, stale_open_period["draft_id"])
         assert e.status == "draft"
         assert e.period_id is None

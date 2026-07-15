@@ -116,6 +116,9 @@ def edit(eid):
         return err
     if e.status not in ("submitted", "rejected"):
         return jsonify(status="error", message="not editable"), 409
+    from app.periods.service import is_period_closed
+    if is_period_closed(e.period_id, datetime.now(timezone.utc)):
+        return jsonify(status="error", message="period_closed"), 409
     data = request.get_json(silent=True) or {}
     before = snapshot(e)
     if "category_id" in data:

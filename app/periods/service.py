@@ -99,6 +99,11 @@ def effective_status(period, now_utc):
     today_tw = now_utc.astimezone(TW_TZ).date()
     if today_tw <= period.end_date:
         return "open"
+    # 寬限期已過 lock_at 即視為 closed（時間到即鎖，不等 maybe_autoclose 真正 flip DB）——
+    # DB 欄位翻轉只在真的被碰觸（pending/reports 查看該期）時才發生，若只靠 period.status
+    # 判斷，一個剛過鎖定時刻但還沒被任何人碰過的「上一期」會一直讀成 closing，寫入閘形同虛設。
+    if _aware_utc(now_utc) >= _aware_utc(period.lock_at):
+        return "closed"
     return "closing"
 
 
