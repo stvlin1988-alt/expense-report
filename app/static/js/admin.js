@@ -123,19 +123,19 @@ export async function showAdminPanel(identity) {
     const rows = state.stores.map((s) => {
       const on = s.active !== false;
       return `<tr><td>${escapeHtml(s.code)}</td>
-           <td>${on ? '啟用中' : '<span class="rc-neg">已停用</span>'}</td>
+           <td><label class="st-onoff"><input type="checkbox" class="st-active" data-id="${s.id}"${on ? ' checked' : ''}> 啟用</label></td>
            <td class="ap-rowbtns">
-             <button class="ap-btn" data-toggle="${s.id}" data-active="${on ? '1' : '0'}" type="button">${on ? '停用' : '啟用'}</button>
              <button class="ap-btn danger" data-del="${s.id}" type="button">刪除</button>
            </td></tr>`;
     }).join('');
     container.innerHTML = `
       <div class="ap-table-wrap">
         <table class="ap-table">
-          <thead><tr><th>店別</th><th>狀態</th><th>操作</th></tr></thead>
+          <thead><tr><th>店別</th><th>啟用</th><th>操作</th></tr></thead>
           <tbody>${rows || '<tr><td colspan="3">尚無店別</td></tr>'}</tbody>
         </table>
       </div>
+      <p class="ap-hint">取消勾選＝停用該店：該店所有人員／主管立即被擋在計算機外（進不去），僅經理可改。</p>
       <div class="ap-form">
         <input type="text" id="st-code" placeholder="店別（英文）" autocomplete="off">
         <button class="ap-btn" id="st-add" type="button">新增店</button>
@@ -154,16 +154,21 @@ export async function showAdminPanel(identity) {
         } catch (e) { msg.style.color = '#c62828'; msg.textContent = '刪除失敗，請重試'; }
       });
     });
-    container.querySelectorAll('button[data-toggle]').forEach((b) => {
-      b.addEventListener('click', async () => {
+    container.querySelectorAll('input.st-active').forEach((cb) => {
+      cb.addEventListener('change', async () => {
         msg.textContent = '';
-        const id = parseInt(b.dataset.toggle, 10);
-        const next = b.dataset.active !== '1';   // 目前啟用→停用(false)；目前停用→啟用(true)
+        const id = parseInt(cb.dataset.id, 10);
+        const next = cb.checked;   // 打勾＝啟用，取消＝停用
         try {
           const { status, data } = await api.setStoreActive(id, next);
-          if (status === 200 && data.status === 'ok') { await refreshStores(); renderActiveTab(); }
-          else { msg.style.color = '#c62828'; msg.textContent = '切換失敗'; }
-        } catch (e) { msg.style.color = '#c62828'; msg.textContent = '切換失敗，請重試'; }
+          if (!(status === 200 && data.status === 'ok')) {
+            cb.checked = !next;   // 失敗還原勾選狀態
+            msg.style.color = '#c62828'; msg.textContent = '切換失敗';
+          }
+        } catch (e) {
+          cb.checked = !next;
+          msg.style.color = '#c62828'; msg.textContent = '切換失敗，請重試';
+        }
       });
     });
     container.querySelector('#st-add').addEventListener('click', async () => {

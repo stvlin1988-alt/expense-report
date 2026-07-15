@@ -254,3 +254,4 @@ tr.au-open-row td { font-weight: 600; }
 .ap-badge.closed { background: #e2e3e5; color: #6c757d; }
 .rc-period-section { margin-bottom: 24px; }
 .rc-period-section h3 { font-size: 16px; margin: 0 0 8px; color: #333; }
+.ap-hint { color:#888; font-size:12px; margin-top:8px; } .st-onoff { cursor:pointer; user-select:none; }

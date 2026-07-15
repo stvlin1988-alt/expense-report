@@ -58,6 +58,12 @@ def is_device_authorized(client_uid):
         return False
     if d.bound_user_id and d.bound_user and not d.bound_user.active:
         return False
+    # 店別停用：該店的（共用）裝置一律視為未授權 → 裝置閘 403 + 計算機拿不到暗號，
+    # 該店所有人員/主管直接卡在最外層計算機。但綁定經理(super_admin)的裝置不擋，
+    # 以免經理把自己鎖在外面、無法進後台重新啟用該店。
+    if d.store_id and d.store and not d.store.active:
+        if not (d.bound_user and d.bound_user.role == "super_admin"):
+            return False
     return True
 
 
