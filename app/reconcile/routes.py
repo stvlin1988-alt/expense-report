@@ -334,3 +334,41 @@ def manual():
     record_reconcile(e, actor.id)
     db.session.commit()
     return jsonify(status="ok", id=e.id)
+
+
+@reconcile_bp.get("/period/<int:pid>/close-preview")
+@role_required("accountant")
+def close_preview(pid):
+    """提前封月二次確認視窗用：回該期還有幾筆 submitted（沒打勾）單，供會計確認。"""
+    from app.models import AccountingPeriod
+    p = db.session.get(AccountingPeriod, pid)
+    if p is None:
+        return jsonify(status="error", message="not found"), 404
+    n = Expense.query.filter(Expense.period_id == pid,
+                             Expense.status == "submitted").count()
+    return jsonify(status="ok", unaudited_count=n, label=p.label)
+
+
+@reconcile_bp.post("/period/<int:pid>/close")
+@role_required("accountant")
+def close_period(pid):
+    """會計提前手動封月：限期間已結束（寬限期 closing）才可封。
+    open（進行中）→ 409 period_not_ended（先調 end_date 讓它進寬限期，見 Task 15）；
+    closed（已封）→ 409 already_closed。"""
+    from app.periods.service import close_period_now, effective_status
+    from app.models import AccountingPeriod
+    p = db.session.get(AccountingPeriod, pid)
+    if p is None:
+        return jsonify(status="error", message="not found"), 404
+    now = datetime.now(timezone.utc)
+    st = effective_status(p, now)
+    if st == "closed":
+        return jsonify(status="error", message="already_closed"), 409
+    if st != "closing":
+        # open：期間還在進行中，不可提前封（先調 end_date 讓它進寬限期）
+        return jsonify(status="error", message="period_not_ended"), 409
+    if not close_period_now(p, now, current_user().id):
+        db.session.rollback()
+        return jsonify(status="error", message="already_closed"), 409
+    db.session.commit()
+    return jsonify(status="ok")
