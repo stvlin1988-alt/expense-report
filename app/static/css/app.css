@@ -233,3 +233,11 @@ tr.au-open-row td { font-weight: 600; }
   background: #ede7f6; color: #4527a0; border: 1px solid #7e57c2;
   font-size: .78rem; font-weight: 700; white-space: nowrap;
 }
+
+/* ---- 月報表交叉表（會計/經理共用，Task 14）---- */
+.mr-toggle {
+  background: none; border: none; cursor: pointer; font-size: 12px;
+  color: #007aff; padding: 0 2px; width: 18px;
+}
+.mr-child-name { padding-left: 28px; color: #555; }
+.mr-total-row td { font-weight: 700; border-top: 2px solid #ddd; }
