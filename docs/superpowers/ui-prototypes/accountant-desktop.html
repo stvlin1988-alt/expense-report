@@ -1,0 +1,1026 @@
+<title>會計核銷工作台</title>
+<style>
+/* ============================================================
+   DESIGN TOKENS — 「雜支核銷」會計桌機工作台
+   概念：精緻淡色系統感。冷白底 + 藍偏中性灰 + 單一系統藍 accent，
+   語意色（綠/黃/紅）獨立於 accent，只用於燈號與狀態。
+   色票：
+     accent   #2E6BE6  系統藍（按鈕/選中/焦點）
+     ground   #F4F6FA  頁面底（帶藍的冷白）
+     surface  #FFFFFF  卡片/表格面
+     ink      #1C2733  主文字（藍偏近黑）
+     muted    #5C6B80  次要文字（藍偏灰）
+     ok/warn/bad  #1E9E5A / #C7860A / #D6455A
+   字級 scale：12 / 13 / 14(基準) / 17 / 21；金額 tabular-nums。
+   版面：208px 固定側欄 + 滿版主區；sticky 工具列（期間+篩選+合計）；
+   表格吃滿寬、依營業日分組，寬內容包在 overflow-x:auto 容器。
+   ============================================================ */
+:root{
+  --accent:#2E6BE6;
+  --accent-ink:#1E4FB8;
+  --accent-soft:#E8EFFC;
+  --ground:#F4F6FA;
+  --surface:#FFFFFF;
+  --surface-2:#F8FAFD;
+  --ink:#1C2733;
+  --muted:#5C6B80;
+  --faint:#8896A8;
+  --line:#DDE4EE;
+  --line-soft:#E8EDF5;
+  --ok:#1E9E5A;      --ok-soft:#E3F5EB;   --ok-ink:#14713F;
+  --warn:#C7860A;    --warn-soft:#FCF2DC; --warn-ink:#8F5E03;
+  --bad:#D6455A;     --bad-soft:#FCE9EC;  --bad-ink:#AF2B40;
+  --neutral-soft:#EDF1F7;
+  --shadow:0 1px 2px rgba(28,39,51,.05),0 4px 16px rgba(28,39,51,.06);
+  --shadow-pop:0 8px 32px rgba(28,39,51,.18);
+  --radius:10px;
+  --radius-sm:7px;
+  --sidebar-w:208px;
+  --toolbar-bg:rgba(244,246,250,.92);
+  --sticky-shadow:-1px 0 0 0 var(--line),-9px 0 12px -8px rgba(20,28,40,.14);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --accent:#5B8DF0;
+    --accent-ink:#8FB2F5;
+    --accent-soft:#1D2C4A;
+    --ground:#12161D;
+    --surface:#1A2029;
+    --surface-2:#1F2631;
+    --ink:#E4EAF2;
+    --muted:#96A3B5;
+    --faint:#6B7889;
+    --line:#2C3542;
+    --line-soft:#252D39;
+    --ok:#3DBE7B;   --ok-soft:#15301F;   --ok-ink:#6FD8A0;
+    --warn:#E0A63C; --warn-soft:#33290F; --warn-ink:#EFC170;
+    --bad:#E56B7D;  --bad-soft:#3A1B21;  --bad-ink:#F09AA7;
+    --neutral-soft:#252D39;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.3);
+    --shadow-pop:0 8px 32px rgba(0,0,0,.55);
+    --toolbar-bg:rgba(18,22,29,.92);
+    --sticky-shadow:-1px 0 0 0 var(--line),-9px 0 14px -8px rgba(0,0,0,.55);
+  }
+}
+:root[data-theme="dark"]{
+  --accent:#5B8DF0; --accent-ink:#8FB2F5; --accent-soft:#1D2C4A;
+  --ground:#12161D; --surface:#1A2029; --surface-2:#1F2631;
+  --ink:#E4EAF2; --muted:#96A3B5; --faint:#6B7889;
+  --line:#2C3542; --line-soft:#252D39;
+  --ok:#3DBE7B; --ok-soft:#15301F; --ok-ink:#6FD8A0;
+  --warn:#E0A63C; --warn-soft:#33290F; --warn-ink:#EFC170;
+  --bad:#E56B7D; --bad-soft:#3A1B21; --bad-ink:#F09AA7;
+  --neutral-soft:#252D39;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.3);
+  --shadow-pop:0 8px 32px rgba(0,0,0,.55);
+  --toolbar-bg:rgba(18,22,29,.92);
+  --sticky-shadow:-1px 0 0 0 var(--line),-9px 0 14px -8px rgba(0,0,0,.55);
+}
+:root[data-theme="light"]{
+  --accent:#2E6BE6; --accent-ink:#1E4FB8; --accent-soft:#E8EFFC;
+  --ground:#F4F6FA; --surface:#FFFFFF; --surface-2:#F8FAFD;
+  --ink:#1C2733; --muted:#5C6B80; --faint:#8896A8;
+  --line:#DDE4EE; --line-soft:#E8EDF5;
+  --ok:#1E9E5A; --ok-soft:#E3F5EB; --ok-ink:#14713F;
+  --warn:#C7860A; --warn-soft:#FCF2DC; --warn-ink:#8F5E03;
+  --bad:#D6455A; --bad-soft:#FCE9EC; --bad-ink:#AF2B40;
+  --neutral-soft:#EDF1F7;
+  --shadow:0 1px 2px rgba(28,39,51,.05),0 4px 16px rgba(28,39,51,.06);
+  --shadow-pop:0 8px 32px rgba(28,39,51,.18);
+  --toolbar-bg:rgba(244,246,250,.92);
+  --sticky-shadow:-1px 0 0 0 var(--line),-9px 0 12px -8px rgba(20,28,40,.14);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--ground)}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Segoe UI","Microsoft JhengHei",sans-serif;
+  font-size:14px;line-height:1.55;color:var(--ink);
+  overflow-x:hidden;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition:none !important;animation:none !important}
+}
+
+/* ---------- 左側欄 ---------- */
+.sidebar{
+  position:fixed;inset:0 auto 0 0;width:var(--sidebar-w);
+  background:var(--surface);border-right:1px solid var(--line-soft);
+  display:flex;flex-direction:column;z-index:40;
+}
+.brand{padding:22px 18px 18px;border-bottom:1px solid var(--line-soft)}
+.brand-name{font-size:17px;font-weight:700;letter-spacing:.02em}
+.brand-sub{font-size:12px;color:var(--faint);margin-top:2px;letter-spacing:.08em}
+.nav{padding:12px 10px;display:flex;flex-direction:column;gap:2px;flex:1}
+.nav-item{
+  display:flex;align-items:center;gap:10px;width:100%;
+  padding:9px 12px;border:0;background:none;border-radius:var(--radius-sm);
+  color:var(--muted);font-size:14px;text-align:left;
+  transition:background .12s,color .12s;
+}
+.nav-item:hover{background:var(--surface-2);color:var(--ink)}
+.nav-item[aria-current="page"]{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.nav-ico{width:18px;height:18px;flex:none;display:inline-block}
+.nav-ico svg{display:block;width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.side-foot{padding:14px 16px;border-top:1px solid var(--line-soft)}
+.side-user{display:flex;align-items:center;gap:10px}
+.avatar{
+  width:32px;height:32px;border-radius:50%;flex:none;
+  background:var(--accent-soft);color:var(--accent-ink);
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
+}
+.side-user-name{font-size:13px;font-weight:600;line-height:1.3}
+.side-user-role{font-size:12px;color:var(--faint)}
+.logout-btn{
+  margin-top:10px;width:100%;padding:6px 0;font-size:13px;color:var(--muted);
+  background:none;border:1px solid var(--line);border-radius:var(--radius-sm);
+  transition:border-color .12s,color .12s;
+}
+.logout-btn:hover{color:var(--bad-ink);border-color:var(--bad)}
+
+/* ---------- 主區 ---------- */
+.main{margin-left:var(--sidebar-w);min-height:100vh;display:flex;flex-direction:column}
+.view{display:none;flex:1;flex-direction:column}
+.view.active{display:flex}
+.page-body{padding:20px 28px 48px;display:flex;flex-direction:column;gap:18px}
+
+/* ---------- sticky 工具列 ---------- */
+.toolbar{
+  position:sticky;top:0;z-index:30;
+  background:var(--toolbar-bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line-soft);
+  padding:14px 28px 12px;display:flex;flex-direction:column;gap:10px;
+}
+.toolbar-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.period-title{font-size:17px;font-weight:700;letter-spacing:.01em}
+.period-range{font-size:13px;color:var(--muted)}
+.period-switch{display:flex;align-items:center;gap:6px;margin-left:auto}
+.period-switch label{font-size:12px;color:var(--faint)}
+.spacer{flex:1}
+
+/* ---------- 徽章 / pill ---------- */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.6;
+  white-space:nowrap;
+}
+.badge-open{background:var(--ok-soft);color:var(--ok-ink)}
+.badge-pending{background:var(--warn-soft);color:var(--warn-ink)}
+.badge-done{background:var(--ok-soft);color:var(--ok-ink)}
+.badge-rejected{background:var(--bad-soft);color:var(--bad-ink)}
+.badge-neutral{background:var(--neutral-soft);color:var(--muted)}
+.badge-resub{background:var(--accent-soft);color:var(--accent-ink)}
+.badge-locked{background:var(--neutral-soft);color:var(--muted)}
+
+/* ---------- 表單控件 ---------- */
+.input,.select{
+  height:32px;padding:0 10px;font-size:13px;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);
+  color:var(--ink);transition:border-color .12s,box-shadow .12s;
+}
+.select{padding-right:26px;appearance:none;
+  background-image:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238896A8' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;}
+.input:hover,.select:hover{border-color:var(--faint)}
+.input:focus,.select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);outline:none}
+.input-sm{height:28px;font-size:12px}
+.filter-label{font-size:12px;color:var(--faint);margin-right:-4px}
+
+.btn{
+  height:32px;padding:0 14px;font-size:13px;font-weight:600;
+  border-radius:var(--radius-sm);border:1px solid transparent;
+  display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+  transition:background .12s,border-color .12s,color .12s,box-shadow .12s;
+}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{filter:brightness(1.08)}
+.btn-secondary{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.btn-secondary:hover{border-color:var(--faint)}
+.btn-ghost{background:none;color:var(--accent-ink);border-color:transparent}
+.btn-ghost:hover{background:var(--accent-soft)}
+.btn-danger-ghost{background:none;color:var(--bad-ink);border-color:transparent}
+.btn-danger-ghost:hover{background:var(--bad-soft)}
+.btn-warn{background:var(--surface);color:var(--warn-ink);border-color:var(--warn)}
+.btn-warn:hover{background:var(--warn-soft)}
+.btn-sm{height:26px;padding:0 8px;font-size:12px;font-weight:500}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ---------- 合計 stat ---------- */
+.stats{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.stat{
+  display:flex;align-items:baseline;gap:7px;
+  background:var(--surface);border:1px solid var(--line-soft);
+  border-radius:999px;padding:4px 14px;box-shadow:var(--shadow);
+}
+.stat-label{font-size:12px;color:var(--muted)}
+.stat-num{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.stat-num.pend{color:var(--warn-ink)}
+.stat-num.done{color:var(--ok-ink)}
+
+/* ---------- 批次列 ---------- */
+.batch-bar{display:flex;align-items:center;gap:12px}
+.batch-hint{font-size:13px;color:var(--muted);min-height:1.5em}
+.batch-hint.show-ok{color:var(--ok-ink)}
+
+/* ---------- 卡片 ---------- */
+.card{
+  background:var(--surface);border:1px solid var(--line-soft);
+  border-radius:var(--radius);box-shadow:var(--shadow);
+}
+.card-head{
+  padding:14px 18px;border-bottom:1px solid var(--line-soft);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.card-title{font-size:14px;font-weight:700}
+.card-body{padding:16px 18px}
+
+/* ---------- 核銷表格 ---------- */
+.table-wrap{overflow-x:auto;border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;min-width:1080px}
+/* 整表收斂到約 680px，一般桌機一頁看完、免橫捲；separate + border-spacing:0，邊框只靠 border-bottom */
+.tx-table{min-width:680px;border-collapse:separate;border-spacing:0}
+.tx-table th{
+  text-align:left;font-size:12px;font-weight:600;color:var(--faint);
+  padding:9px 10px;border-bottom:1px solid var(--line);
+  background:var(--surface);white-space:nowrap;letter-spacing:.04em;
+}
+.tx-table td{
+  padding:9px 10px;border-bottom:1px solid var(--line-soft);
+  font-size:13px;vertical-align:middle;background:var(--surface);
+}
+.tx-table tbody tr:hover td{background:var(--surface-2)}
+.tx-table tr.day-head td{
+  background:var(--ground);color:var(--muted);font-size:12px;font-weight:700;
+  letter-spacing:.05em;padding:8px 12px;border-bottom:1px solid var(--line-soft);
+}
+.tx-table tr.day-head:hover td{background:var(--ground)}
+.tx-table tr.day-sub td{
+  background:var(--surface-2);font-size:12px;color:var(--muted);
+  padding:7px 12px;font-variant-numeric:tabular-nums;
+}
+.tx-table tr.day-sub td strong{color:var(--ink);font-variant-numeric:tabular-nums}
+.tx-table tr.day-sub:hover td{background:var(--surface-2)}
+.num{font-variant-numeric:tabular-nums;text-align:right;font-weight:600;white-space:nowrap}
+.num.neg{color:var(--bad)}
+th.num-h{text-align:right}
+.doc-id{font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted);white-space:nowrap}
+.thumb{
+  width:44px;height:34px;border-radius:5px;flex:none;
+  background:linear-gradient(135deg,var(--neutral-soft) 0%,var(--line-soft) 100%);
+  border:1px solid var(--line-soft);position:relative;overflow:hidden;
+}
+.thumb::after{
+  content:"";position:absolute;inset:auto 6px 5px 6px;height:3px;border-radius:2px;
+  background:var(--line);
+}
+.thumb::before{
+  content:"";position:absolute;top:6px;left:6px;width:14px;height:10px;border-radius:2px;
+  background:var(--line);
+}
+.store-tag{
+  display:inline-block;font-size:12px;font-weight:700;letter-spacing:.05em;
+  font-variant-numeric:tabular-nums;color:var(--accent-ink);
+  background:var(--accent-soft);border-radius:5px;padding:1px 7px;
+}
+/* 併欄：縮圖 + 摘要 + 單號/建立者/時間 */
+.doc-cell{display:flex;align-items:flex-start;gap:9px;min-width:188px;max-width:300px}
+.doc-meta{min-width:0}
+.doc-summary{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-sub{
+  display:block;font-size:11px;color:var(--faint);
+  font-variant-numeric:tabular-nums;margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.doc-sub .doc-id{font-size:11px;color:var(--muted)}
+.reject-reason{display:block;font-size:12px;color:var(--bad-ink);margin-top:3px;white-space:normal}
+.cat-select{height:28px;font-size:12px;min-width:88px;max-width:112px}
+/* 併欄：燈號 + 狀態 */
+.status-cell{display:flex;flex-direction:column;gap:4px;align-items:flex-start;white-space:nowrap}
+.lamp{display:inline-flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.dot-g{background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
+.dot-y{background:var(--warn);box-shadow:0 0 0 3px var(--warn-soft)}
+.dot-r{background:var(--bad);box-shadow:0 0 0 3px var(--bad-soft)}
+.row-actions{display:flex;gap:3px;white-space:nowrap}
+/* 操作欄不再固定；整表寬度已收斂到一頁看得完，隨表格正常排。
+   width:1% 讓操作欄只佔內容寬，多餘空間留給「單據」欄 */
+.tx-table td.col-actions,.tx-table th.col-actions{width:1%;white-space:nowrap}
+/* 退回鍵：淡紅底 + 紅框，一眼可辨 */
+.btn-reject{background:var(--bad-soft);color:var(--bad-ink);border-color:var(--bad)}
+.btn-reject:hover{background:var(--bad);color:#fff;border-color:var(--bad)}
+.amount-edit{
+  width:82px;height:28px;text-align:right;font-variant-numeric:tabular-nums;
+  font-size:13px;font-weight:600;padding:0 8px;
+  border:1px solid var(--accent);border-radius:var(--radius-sm);
+  background:var(--surface);box-shadow:0 0 0 3px var(--accent-soft);
+}
+.amount-edit-wrap{display:flex;align-items:center;justify-content:flex-end;gap:6px}
+.edit-hint{font-size:11px;color:var(--accent-ink);white-space:nowrap}
+input[type="checkbox"]{
+  width:16px;height:16px;accent-color:var(--accent);cursor:pointer;
+}
+.creator{white-space:nowrap;color:var(--muted)}
+.time-sub{display:block;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+
+/* ---------- 月結管理 ---------- */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+@media (max-width:1100px){.grid-2{grid-template-columns:1fr}}
+.kv{display:flex;flex-direction:column;gap:2px}
+.kv-label{font-size:12px;color:var(--faint)}
+.kv-value{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.close-panel-row{display:flex;gap:28px;flex-wrap:wrap;align-items:center}
+.mini-table th{
+  text-align:left;font-size:12px;color:var(--faint);font-weight:600;
+  padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;
+}
+.mini-table td{padding:9px 10px;border-bottom:1px solid var(--line-soft);font-size:13px}
+.mini-table{min-width:0}
+.settings-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line-soft);flex-wrap:wrap}
+.settings-row:last-child{border-bottom:0}
+.settings-label{font-size:13px;font-weight:600;min-width:120px}
+.settings-help{font-size:12px;color:var(--faint);flex-basis:100%;margin-top:-4px}
+
+/* ---------- 月報表 ---------- */
+.report-table th{
+  text-align:right;font-size:12px;font-weight:600;color:var(--faint);
+  padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap;
+  background:var(--surface);letter-spacing:.04em;
+}
+.report-table th:first-child{text-align:left}
+.report-table td{
+  padding:9px 14px;border-bottom:1px solid var(--line-soft);font-size:13px;
+  text-align:right;font-variant-numeric:tabular-nums;background:var(--surface);
+}
+.report-table td:first-child{text-align:left}
+.report-table tbody tr:hover td{background:var(--surface-2)}
+.report-table{min-width:720px}
+.cat-toggle{
+  background:none;border:0;padding:0;display:inline-flex;align-items:center;gap:7px;
+  font-size:13px;font-weight:600;color:var(--ink);
+}
+.cat-toggle .tri{
+  width:0;height:0;border-left:5px solid var(--faint);
+  border-top:4px solid transparent;border-bottom:4px solid transparent;
+  transition:transform .12s;flex:none;
+}
+.cat-toggle[aria-expanded="true"] .tri{transform:rotate(90deg)}
+tr.sub-row td{background:var(--surface-2);color:var(--muted);font-size:12px}
+tr.sub-row td:first-child{padding-left:36px}
+tr.sub-row{display:none}
+tr.sub-row.open{display:table-row}
+tr.total-row td{
+  font-weight:700;border-top:2px solid var(--line);border-bottom:0;
+  background:var(--surface);font-size:13px;
+}
+.col-total{font-weight:700}
+.report-note{font-size:12px;color:var(--faint);padding:10px 18px 14px}
+
+/* ---------- 我的密碼 ---------- */
+.pw-card{max-width:420px}
+.pw-field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.pw-field label{font-size:13px;font-weight:600}
+.pw-field .help{font-size:12px;color:var(--faint)}
+.pw-input{width:160px;letter-spacing:.4em;font-variant-numeric:tabular-nums;text-align:center}
+
+/* ---------- Modal ---------- */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(20,28,40,.45);z-index:60;
+  display:none;align-items:center;justify-content:center;padding:24px;
+}
+.modal-backdrop.open{display:flex}
+.modal{
+  background:var(--surface);border-radius:14px;box-shadow:var(--shadow-pop);
+  width:100%;max-width:440px;border:1px solid var(--line-soft);
+}
+.modal-head{padding:18px 20px 0;display:flex;align-items:flex-start;gap:10px}
+.modal-title{font-size:15px;font-weight:700;flex:1}
+.modal-x{
+  background:none;border:0;color:var(--faint);font-size:18px;line-height:1;
+  padding:2px 6px;border-radius:5px;
+}
+.modal-x:hover{background:var(--neutral-soft);color:var(--ink)}
+.modal-body{padding:12px 20px 4px;font-size:13px;color:var(--muted)}
+.modal-body .doc-ref{
+  font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink);
+}
+.modal-body textarea{
+  width:100%;min-height:84px;margin-top:10px;padding:9px 11px;resize:vertical;
+  border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);
+  font-size:13px;
+}
+.modal-body textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);outline:none}
+.modal-foot{padding:16px 20px 18px;display:flex;justify-content:flex-end;gap:8px}
+.warn-callout{
+  margin-top:10px;background:var(--warn-soft);color:var(--warn-ink);
+  border-radius:var(--radius-sm);padding:10px 12px;font-size:12.5px;line-height:1.6;
+}
+
+/* ---------- 窄視窗防爆版 ---------- */
+@media (max-width:900px){
+  .sidebar{position:static;width:auto;flex-direction:row;align-items:center;border-right:0;border-bottom:1px solid var(--line-soft)}
+  .brand{border-bottom:0;padding:12px 16px}
+  .nav{flex-direction:row;padding:8px;overflow-x:auto}
+  .side-foot{border-top:0;margin-left:auto}
+  .logout-btn{display:none}
+  .main{margin-left:0}
+  .page-body,.toolbar{padding-left:16px;padding-right:16px}
+}
+</style>
+
+<div class="sidebar">
+  <div class="brand">
+    <div class="brand-name">雜支核銷</div>
+    <div class="brand-sub">會計工作台</div>
+  </div>
+  <nav class="nav" aria-label="主導覽">
+    <button class="nav-item" data-view="settle" aria-current="page">
+      <span class="nav-ico"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>核銷
+    </button>
+    <button class="nav-item" data-view="closing">
+      <span class="nav-ico"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></span>月結管理
+    </button>
+    <button class="nav-item" data-view="report">
+      <span class="nav-ico"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg></span>月報表
+    </button>
+    <button class="nav-item" data-view="password">
+      <span class="nav-ico"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>我的密碼
+    </button>
+  </nav>
+  <div class="side-foot">
+    <div class="side-user">
+      <div class="avatar">王</div>
+      <div>
+        <div class="side-user-name">王會計</div>
+        <div class="side-user-role">會計</div>
+      </div>
+    </div>
+    <button class="logout-btn">登出</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ================= 核銷 ================= -->
+  <section class="view active" id="view-settle" aria-label="核銷">
+    <div class="toolbar">
+      <div class="toolbar-row">
+        <span class="period-title">2026 年 6 月</span>
+        <span class="period-range">06/01 – 06/30</span>
+        <span class="badge badge-open">進行中</span>
+        <div class="period-switch">
+          <label for="period-id">期間</label>
+          <input class="input input-sm" id="period-id" value="2026-06" size="8" aria-label="期間 ID">
+          <button class="btn btn-secondary btn-sm">切換</button>
+        </div>
+      </div>
+      <div class="toolbar-row">
+        <span class="filter-label">狀態</span>
+        <select class="select" aria-label="狀態篩選">
+          <option>全部</option><option selected>待核銷</option><option>已核銷</option><option>已退回</option>
+        </select>
+        <span class="filter-label">店別</span>
+        <select class="select" aria-label="店別篩選">
+          <option selected>全部店別</option><option>TP</option><option>TC</option><option>KH</option>
+        </select>
+        <span class="filter-label">分類</span>
+        <select class="select" aria-label="分類篩選">
+          <option selected>全部分類</option><option>清潔用品</option><option>文具耗材</option><option>水電瓦斯</option><option>修繕維護</option><option>交通運費</option><option>其他</option>
+        </select>
+        <span class="filter-label">日期</span>
+        <input type="date" class="input" value="2026-06-01" aria-label="日期起">
+        <span style="color:var(--faint)">–</span>
+        <input type="date" class="input" value="2026-06-30" aria-label="日期迄">
+        <button class="btn btn-primary">套用</button>
+        <button class="btn btn-secondary">重整</button>
+        <span class="spacer"></span>
+        <button class="btn btn-secondary">＋ 新增單據</button>
+      </div>
+      <div class="toolbar-row stats">
+        <div class="stat"><span class="stat-label">待核銷</span><span class="stat-num pend">NT$ 651</span></div>
+        <div class="stat"><span class="stat-label">已核銷</span><span class="stat-num done">NT$ 3,112</span></div>
+        <div class="stat"><span class="stat-label">筆數</span><span class="stat-num">共 7 筆</span></div>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div class="batch-bar">
+        <button class="btn btn-primary" id="batch-approve">一鍵核銷勾選</button>
+        <span class="batch-hint" id="batch-hint">勾選多筆待核銷單據後可一次核可。</span>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table class="tx-table">
+            <thead>
+              <tr>
+                <th style="width:36px"><input type="checkbox" id="check-all" aria-label="全選"></th>
+                <th>單據</th>
+                <th>店別</th>
+                <th>分類</th>
+                <th class="num-h">金額</th>
+                <th>燈號 / 狀態</th>
+                <th class="col-actions">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- ===== 營業日 06/29 (一) ===== -->
+              <tr class="day-head"><td colspan="7">營業日　2026/06/29（一）</td></tr>
+              <tr>
+                <td><input type="checkbox" class="row-check" aria-label="勾選 E-20260629-011"></td>
+                <td>
+                  <div class="doc-cell">
+                    <div class="thumb" role="img" aria-label="單據縮圖"></div>
+                    <div class="doc-meta">
+                      <span class="doc-summary">清潔用品（拖把、漂白水）</span>
+                      <span class="doc-sub"><span class="doc-id">E-20260629-011</span> · 林小美 · 09:42</span>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="store-tag">TP</span></td>
+                <td><select class="select cat-select" aria-label="分類"><option selected>清潔用品</option><option>文具耗材</option><option>水電瓦斯</option><option>修繕維護</option><option>交通運費</option><option>其他</option></select></td>
+                <td class="num">486</td>
+                <td><div class="status-cell"><span class="lamp"><span class="dot dot-g"></span>可核</span><span class="badge badge-pending">待核銷</span></div></td>
+                <td class="col-actions"><div class="row-actions">
+                  <button class="btn btn-ghost btn-sm">核銷</button>
+                  <button class="btn btn-reject btn-sm reject-btn" data-doc="E-20260629-011">退回</button>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--muted)">挪下期</button>
+                </div></td>
+              </tr>
+              <tr><!-- 金額行內編輯示範 -->
+                <td><input type="checkbox" class="row-check" aria-label="勾選 E-20260629-012"></td>
+                <td>
+                  <div class="doc-cell">
+                    <div class="thumb" role="img" aria-label="單據縮圖"></div>
+                    <div class="doc-meta">
+                      <span class="doc-summary">影印紙 A4 ×5 包</span>
+                      <span class="doc-sub"><span class="doc-id">E-20260629-012</span> · 陳志豪 · 11:07</span>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="store-tag">TP</span></td>
+                <td><select class="select cat-select" aria-label="分類"><option>清潔用品</option><option selected>文具耗材</option><option>水電瓦斯</option><option>修繕維護</option><option>交通運費</option><option>其他</option></select></td>
+                <td class="num">
+                  <div class="amount-edit-wrap">
+                    <span class="edit-hint">編輯中</span>
+                    <input class="amount-edit" value="625" aria-label="編輯金額" inputmode="numeric">
+                  </div>
+                </td>
+                <td><div class="status-cell"><span class="lamp"><span class="dot dot-g"></span>可核</span><span class="badge badge-pending">待核銷</span></div></td>
+                <td class="col-actions"><div class="row-actions">
+                  <button class="btn btn-primary btn-sm">存並核銷</button>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--muted)">取消</button>
+                </div></td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" class="row-check" aria-label="勾選 E-20260629-013"></td>
+                <td>
+                  <div class="doc-cell">
+                    <div class="thumb" role="img" aria-label="單據縮圖"></div>
+                    <div class="doc-meta">
+                      <span class="doc-summary">瓦斯桶押金退回 <span class="badge badge-resub">主管已重送</span></span>
+                      <span class="doc-sub"><span class="doc-id">E-20260629-013</span> · 張雅婷 · 14:23</span>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="store-tag">TC</span></td>
+                <td><select class="select cat-select" aria-label="分類"><option>清潔用品</option><option>文具耗材</option><option selected>水電瓦斯</option><option>修繕維護</option><option>交通運費</option><option>其他</option></select></td>
+                <td class="num neg">−1,000</td>
+                <td><div class="status-cell"><span class="lamp"><span class="dot dot-y"></span>需確認</span><span class="badge badge-pending">待核銷</span></div></td>
+                <td class="col-actions"><div class="row-actions">
+                  <button class="btn btn-ghost btn-sm">核銷</button>
+                  <button class="btn btn-reject btn-sm reject-btn" data-doc="E-20260629-013">退回</button>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--muted)">挪下期</button>
+                </div></td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" class="row-check" disabled aria-label="已核銷不可勾選"></td>
+                <td>
+                  <div class="doc-cell">
+                    <div class="thumb" role="img" aria-label="單據縮圖"></div>
+                    <div class="doc-meta">
+                      <span class="doc-summary">招牌燈維修工資</span>
+                      <span class="doc-sub"><span class="doc-id">E-20260629-014</span> · 王大明 · 16:55</span>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="store-tag">TC</span></td>
+                <td><select class="select cat-select" disabled aria-label="分類"><option selected>修繕維護</option></select></td>
+                <td class="num">2,800</td>
+                <td><div class="status-cell"><span class="lamp"><span class="dot dot-g"></span>可核</span><span class="badge badge-done">已核銷</span></div></td>
+                <td class="col-actions"><div class="row-actions">
+                  <button class="btn btn-ghost btn-sm" style="color:var(--muted)">取消核銷</button>
+                </div></td>
+              </tr>
+              <tr class="day-sub">
+                <td colspan="4">06/29 小計　4 筆</td>
+                <td class="num"><strong>NT$ 2,911</strong></td>
+                <td></td>
+                <td class="col-actions"></td>
+              </tr>
+
+              <!-- ===== 營業日 06/28 (日) ===== -->
+              <tr class="day-head"><td colspan="7">營業日　2026/06/28（日）</td></tr>
+              <tr>
+                <td><input type="checkbox" class="row-check" disabled aria-label="已核銷不可勾選"></td>
+                <td>
+                  <div class="doc-cell">
+                    <div class="thumb" role="img" aria-label="單據縮圖"></div>
+                    <div class="doc-meta">
+                      <span class="doc-summary">垃圾袋、菜瓜布</span>
+                      <span class="doc-sub"><span class="doc-id">E-20260628-007</span> · 林小美 · 10:18</span>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="store-tag">TP</span></td>
+                <td><select class="select cat-select" disabled aria-label="分類"><option selected>清潔用品</option></select></td>
+                <td class="num">312</td>
+                <td><div class="status-cell"><span class="lamp"><span class="dot dot-g"></span>可核</span><span class="badge badge-done">已核銷</span></div></td>
+                <td class="col-actions"><div class="row-actions">
+                  <button class="btn btn-ghost btn-sm" style="color:var(--muted)">取消核銷</button>
+                </div></td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" class="row-check" disabled aria-label="已退回不可勾選"></td>
+                <td>
+                  <div class="doc-cell">
+                    <div class="thumb" role="img" aria-label="單據縮圖"></div>
+                    <div class="doc-meta">
+                      <span class="doc-summary">計程車資（送修 POS 主機）</span>
+                      <span class="doc-sub"><span class="doc-id">E-20260628-008</span> · 張雅婷 · 13:02</span>
+                      <span class="reject-reason">退回原因：單據影像模糊，請重新拍攝上傳</span>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="store-tag">TC</span></td>
+                <td><select class="select cat-select" disabled aria-label="分類"><option selected>交通運費</option></select></td>
+                <td class="num">380</td>
+                <td><div class="status-cell"><span class="lamp"><span class="dot dot-r"></span>異常</span><span class="badge badge-rejected">已退回</span></div></td>
+                <td class="col-actions"><div class="row-actions">
+                  <button class="btn btn-ghost btn-sm" style="color:var(--muted)">撤銷退回</button>
+                </div></td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" class="row-check" aria-label="勾選 E-20260628-009"></td>
+                <td>
+                  <div class="doc-cell">
+                    <div class="thumb" role="img" aria-label="單據縮圖"></div>
+                    <div class="doc-meta">
+                      <span class="doc-summary">員工誤餐便當 ×6</span>
+                      <span class="doc-sub"><span class="doc-id">E-20260628-009</span> · 陳志豪 · 19:41</span>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="store-tag">TP</span></td>
+                <td><select class="select cat-select" aria-label="分類"><option>清潔用品</option><option>文具耗材</option><option>水電瓦斯</option><option>修繕維護</option><option>交通運費</option><option selected>其他</option></select></td>
+                <td class="num">540</td>
+                <td><div class="status-cell"><span class="lamp"><span class="dot dot-y"></span>需確認</span><span class="badge badge-pending">待核銷</span></div></td>
+                <td class="col-actions"><div class="row-actions">
+                  <button class="btn btn-ghost btn-sm">核銷</button>
+                  <button class="btn btn-reject btn-sm reject-btn" data-doc="E-20260628-009">退回</button>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--muted)">挪下期</button>
+                </div></td>
+              </tr>
+              <tr class="day-sub">
+                <td colspan="4">06/28 小計　3 筆</td>
+                <td class="num"><strong>NT$ 1,232</strong></td>
+                <td></td>
+                <td class="col-actions"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 月結管理 ================= -->
+  <section class="view" id="view-closing" aria-label="月結管理">
+    <div class="toolbar">
+      <div class="toolbar-row">
+        <span class="period-title">月結管理</span>
+        <span class="period-range">目前期間　2026 年 6 月（06/01 – 06/30）</span>
+        <span class="badge badge-open">進行中</span>
+        <span class="spacer"></span>
+        <button class="btn btn-secondary">調整結束日</button>
+        <button class="btn btn-warn" id="close-month-btn">提前封月</button>
+      </div>
+    </div>
+    <div class="page-body">
+      <div class="card">
+        <div class="card-body close-panel-row">
+          <div class="kv"><span class="kv-label">期間 ID</span><span class="kv-value">2026-06</span></div>
+          <div class="kv"><span class="kv-label">預計封月時間</span><span class="kv-value">2026/07/01 08:00（台灣時間）</span></div>
+          <div class="kv"><span class="kv-label">封月後鎖定</span><span class="kv-value">07/03 08:00 起不可異動</span></div>
+          <div class="kv"><span class="kv-label">本期待核銷</span><span class="kv-value" style="color:var(--warn-ink)">3 筆 / NT$ 651</span></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">上期未處理單</span>
+            <span class="badge badge-neutral">2026 年 5 月 · 已封月</span>
+          </div>
+          <div class="table-wrap">
+            <table class="mini-table" style="min-width:520px">
+              <thead>
+                <tr><th>單號</th><th>店別</th><th>摘要</th><th class="num-h" style="text-align:right">金額</th><th>操作</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="doc-id">E-20260531-004</td>
+                  <td><span class="store-tag">TP</span></td>
+                  <td>燈管更換（倉庫）</td>
+                  <td class="num">760</td>
+                  <td><div class="row-actions">
+                    <button class="btn btn-ghost btn-sm">挪入本期</button>
+                    <button class="btn btn-danger-ghost btn-sm reject-btn" data-doc="E-20260531-004">退回</button>
+                  </div></td>
+                </tr>
+                <tr>
+                  <td class="doc-id">E-20260530-011</td>
+                  <td><span class="store-tag">KH</span></td>
+                  <td>五金零件（水槽接頭）</td>
+                  <td class="num">215</td>
+                  <td><div class="row-actions">
+                    <button class="btn btn-ghost btn-sm">挪入本期</button>
+                    <button class="btn btn-danger-ghost btn-sm reject-btn" data-doc="E-20260530-011">退回</button>
+                  </div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><span class="card-title">月結設定</span></div>
+          <div class="card-body">
+            <div class="settings-row">
+              <span class="settings-label">月結日</span>
+              <select class="select" aria-label="月結日">
+                <option selected>每月 1 日</option><option>每月 5 日</option><option>每月 10 日</option>
+                <option>每月 15 日</option><option>每月 20 日</option><option>每月 25 日</option><option>每月 28 日</option>
+              </select>
+              <span class="settings-help">可選 1 – 28 日；期間結束於前一日營業日 08:00 分界。</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">鎖定偏移</span>
+              <select class="select" aria-label="鎖定偏移小時">
+                <option>封月後 24 小時</option><option selected>封月後 48 小時</option><option>封月後 72 小時</option>
+              </select>
+              <span class="settings-help">封月後的緩衝時間內仍可補核銷，逾時整期鎖定。</span>
+            </div>
+            <div class="settings-row" style="justify-content:flex-end">
+              <button class="btn btn-primary">儲存設定</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 月報表 ================= -->
+  <section class="view" id="view-report" aria-label="月報表">
+    <div class="toolbar">
+      <div class="toolbar-row">
+        <span class="period-title">月報表</span>
+        <span class="period-range">2026 年 6 月（06/01 – 06/30）</span>
+        <span class="badge badge-open">進行中</span>
+        <span class="spacer"></span>
+        <span class="filter-label">範圍</span>
+        <select class="select" aria-label="門市範圍">
+          <option selected>全部門市</option><option>TP</option><option>TC</option><option>KH</option>
+        </select>
+        <button class="btn btn-secondary">匯出 CSV</button>
+      </div>
+    </div>
+    <div class="page-body">
+      <div class="card">
+        <div class="table-wrap">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>科目大類</th>
+                <th>TP</th>
+                <th>TC</th>
+                <th>KH</th>
+                <th class="col-total">總計</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><button class="cat-toggle" data-cat="clean" aria-expanded="true"><span class="tri"></span>清潔用品</button></td>
+                <td>3,486</td><td>2,914</td><td>1,872</td><td class="col-total">8,272</td>
+              </tr>
+              <tr class="sub-row open" data-parent="clean">
+                <td>日常耗材</td><td>2,650</td><td>2,114</td><td>1,452</td><td>6,216</td>
+              </tr>
+              <tr class="sub-row open" data-parent="clean">
+                <td>清潔設備</td><td>836</td><td>800</td><td>420</td><td>2,056</td>
+              </tr>
+              <tr>
+                <td><button class="cat-toggle" data-cat="stationery" aria-expanded="false"><span class="tri"></span>文具耗材</button></td>
+                <td>1,925</td><td>1,388</td><td>960</td><td class="col-total">4,273</td>
+              </tr>
+              <tr class="sub-row" data-parent="stationery">
+                <td>紙類</td><td>1,250</td><td>625</td><td>625</td><td>2,500</td>
+              </tr>
+              <tr class="sub-row" data-parent="stationery">
+                <td>事務用品</td><td>675</td><td>763</td><td>335</td><td>1,773</td>
+              </tr>
+              <tr>
+                <td><button class="cat-toggle" data-cat="utility" aria-expanded="false"><span class="tri"></span>水電瓦斯</button></td>
+                <td>6,420</td><td>5,180</td><td>4,860</td><td class="col-total">16,460</td>
+              </tr>
+              <tr class="sub-row" data-parent="utility">
+                <td>瓦斯</td><td>3,600</td><td>2,880</td><td>2,880</td><td>9,360</td>
+              </tr>
+              <tr class="sub-row" data-parent="utility">
+                <td>水電雜項</td><td>2,820</td><td>2,300</td><td>1,980</td><td>7,100</td>
+              </tr>
+              <tr>
+                <td><button class="cat-toggle" data-cat="repair" aria-expanded="false"><span class="tri"></span>修繕維護</button></td>
+                <td>4,300</td><td>7,850</td><td>0</td><td class="col-total">12,150</td>
+              </tr>
+              <tr class="sub-row" data-parent="repair">
+                <td>設備維修</td><td>4,300</td><td>6,200</td><td>0</td><td>10,500</td>
+              </tr>
+              <tr class="sub-row" data-parent="repair">
+                <td>裝修零件</td><td>0</td><td>1,650</td><td>0</td><td>1,650</td>
+              </tr>
+              <tr>
+                <td style="padding-left:26px">交通運費</td>
+                <td>980</td><td>1,240</td><td>660</td><td class="col-total">2,880</td>
+              </tr>
+              <tr>
+                <td style="padding-left:26px">其他</td>
+                <td>1,140</td><td>720</td><td>540</td><td class="col-total">2,400</td>
+              </tr>
+              <tr class="total-row">
+                <td>總計</td>
+                <td>18,251</td><td>19,292</td><td>8,892</td><td>46,435</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="report-note">金額單位：新台幣（NT$）。僅計入「已核銷」單據；退回與挪期不列入。點分類名稱可展開子分類。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 我的密碼 ================= -->
+  <section class="view" id="view-password" aria-label="我的密碼">
+    <div class="toolbar">
+      <div class="toolbar-row">
+        <span class="period-title">我的密碼</span>
+        <span class="period-range">變更登入用 4 位數密碼</span>
+      </div>
+    </div>
+    <div class="page-body">
+      <div class="card pw-card">
+        <div class="card-body">
+          <div class="pw-field">
+            <label for="pw-old">舊密碼</label>
+            <input class="input pw-input" id="pw-old" type="password" maxlength="4" inputmode="numeric" autocomplete="current-password" placeholder="••••">
+          </div>
+          <div class="pw-field">
+            <label for="pw-new">新密碼</label>
+            <input class="input pw-input" id="pw-new" type="password" maxlength="4" inputmode="numeric" autocomplete="new-password" placeholder="••••">
+            <span class="help">4 位數字，變更後其他裝置需重新登入。</span>
+          </div>
+          <button class="btn btn-primary">變更密碼</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ================= Modal：退回原因 ================= -->
+<div class="modal-backdrop" id="modal-reject" role="dialog" aria-modal="true" aria-labelledby="reject-title">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="reject-title">退回單據</div>
+      <button class="modal-x" data-close="modal-reject" aria-label="關閉">×</button>
+    </div>
+    <div class="modal-body">
+      將把 <span class="doc-ref" id="reject-doc">E-20260629-013</span> 退回門市，店主管重新處理後可再送核。
+      <textarea id="reject-reason" placeholder="請填寫退回原因（門市端會看到），例如：影像模糊、金額與單據不符…"></textarea>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" data-close="modal-reject">取消</button>
+      <button class="btn btn-primary" style="background:var(--bad);border-color:var(--bad)" data-close="modal-reject">確認退回</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= Modal：提前封月 ================= -->
+<div class="modal-backdrop" id="modal-close-month" role="dialog" aria-modal="true" aria-labelledby="close-title">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="close-title">提前封月　2026 年 6 月</div>
+      <button class="modal-x" data-close="modal-close-month" aria-label="關閉">×</button>
+    </div>
+    <div class="modal-body">
+      封月後門市無法再新增本期單據，48 小時緩衝後整期鎖定。
+      <div class="warn-callout">
+        本期尚有 <strong>3 筆待核銷（NT$ 651）</strong>。封月不會自動核銷，未處理單將列入「上期未處理單」。
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" data-close="modal-close-month">取消</button>
+      <button class="btn btn-warn" data-close="modal-close-month">確認封月</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  /* ---- 側邊欄切換分頁 ---- */
+  var navItems = document.querySelectorAll(".nav-item");
+  navItems.forEach(function(item){
+    item.addEventListener("click", function(){
+      navItems.forEach(function(n){ n.removeAttribute("aria-current"); });
+      item.setAttribute("aria-current","page");
+      document.querySelectorAll(".view").forEach(function(v){ v.classList.remove("active"); });
+      var target = document.getElementById("view-" + item.dataset.view);
+      if (target) target.classList.add("active");
+      window.scrollTo(0,0);
+    });
+  });
+
+  /* ---- Modal 開關 ---- */
+  function openModal(id){
+    var m = document.getElementById(id);
+    if (m){ m.classList.add("open"); var f = m.querySelector("textarea, button"); if (f) f.focus(); }
+  }
+  function closeModal(id){
+    var m = document.getElementById(id);
+    if (m) m.classList.remove("open");
+  }
+  document.querySelectorAll("[data-close]").forEach(function(btn){
+    btn.addEventListener("click", function(){ closeModal(btn.dataset.close); });
+  });
+  document.querySelectorAll(".modal-backdrop").forEach(function(bd){
+    bd.addEventListener("click", function(e){ if (e.target === bd) bd.classList.remove("open"); });
+  });
+  document.addEventListener("keydown", function(e){
+    if (e.key === "Escape"){
+      document.querySelectorAll(".modal-backdrop.open").forEach(function(bd){ bd.classList.remove("open"); });
+    }
+  });
+
+  /* 退回按鈕 → 帶單號開退回 modal */
+  document.querySelectorAll(".reject-btn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var ref = document.getElementById("reject-doc");
+      if (ref) ref.textContent = btn.dataset.doc || "";
+      var ta = document.getElementById("reject-reason");
+      if (ta) ta.value = "";
+      openModal("modal-reject");
+    });
+  });
+
+  /* 提前封月 → 確認 modal */
+  var closeBtn = document.getElementById("close-month-btn");
+  if (closeBtn) closeBtn.addEventListener("click", function(){ openModal("modal-close-month"); });
+
+  /* ---- 全選 / 批次核銷提示 ---- */
+  var checkAll = document.getElementById("check-all");
+  var rowChecks = Array.prototype.slice.call(document.querySelectorAll(".row-check:not(:disabled)"));
+  if (checkAll){
+    checkAll.addEventListener("change", function(){
+      rowChecks.forEach(function(c){ c.checked = checkAll.checked; });
+    });
+  }
+  var batchBtn = document.getElementById("batch-approve");
+  var batchHint = document.getElementById("batch-hint");
+  if (batchBtn && batchHint){
+    batchBtn.addEventListener("click", function(){
+      var n = rowChecks.filter(function(c){ return c.checked; }).length;
+      if (n === 0){
+        batchHint.textContent = "尚未勾選任何待核銷單據。";
+        batchHint.classList.remove("show-ok");
+      } else {
+        batchHint.textContent = "已核銷 " + n + " 筆勾選單據（原型示範，不會實際送出）。";
+        batchHint.classList.add("show-ok");
+      }
+    });
+  }
+
+  /* ---- 月報表 展開 / 收合子分類 ---- */
+  document.querySelectorAll(".cat-toggle").forEach(function(t){
+    t.addEventListener("click", function(){
+      var expanded = t.getAttribute("aria-expanded") === "true";
+      t.setAttribute("aria-expanded", expanded ? "false" : "true");
+      document.querySelectorAll('.sub-row[data-parent="' + t.dataset.cat + '"]').forEach(function(r){
+        r.classList.toggle("open", !expanded);
+      });
+    });
+  });
+})();
+</script>

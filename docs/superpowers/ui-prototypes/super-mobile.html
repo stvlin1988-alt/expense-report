@@ -1,0 +1,879 @@
+<title>經理管理 App</title>
+<style>
+/* ============================================================
+   DESIGN TOKENS（沿用會計桌機／員工／主管定案版，勿改值）
+   accent      #2E6BE6 (dark #5B8DF0) / soft #E8EFFC / ink #1E4FB0
+   ground      #F4F6FA   surface #FFFFFF   surface-2 #F8FAFD
+   ink #1C2733  muted #5C6B80  faint #8896A8  line #DDE4EE
+   語意色（獨立於 accent，只作狀態）：
+   ok   #1E9E5A / soft #E3F5EB / ink #14713F
+   warn #C7860A / soft #FCF2DC / ink #8F5E03
+   bad  #D6455A / soft #FCE9EC / ink #AF2B40
+   dark: ground #12161D  surface #1A2029  ink #E4EAF2
+         muted #96A3B5  line #2C3542
+         ok #3DBE7B  warn #E0A63C  bad #E56B7D
+   radius 10 / sm 7 ・ 系統字 ・ 金額 tabular-nums ・ 觸控 ≥44px
+   ============================================================ */
+:root{
+  --accent:#2E6BE6; --accent-soft:#E8EFFC; --accent-ink:#1E4FB0;
+  --ground:#F4F6FA; --surface:#FFFFFF; --surface-2:#F8FAFD;
+  --ink:#1C2733; --muted:#5C6B80; --faint:#8896A8; --line:#DDE4EE;
+  --ok:#1E9E5A; --ok-soft:#E3F5EB; --ok-ink:#14713F;
+  --warn:#C7860A; --warn-soft:#FCF2DC; --warn-ink:#8F5E03;
+  --bad:#D6455A; --bad-soft:#FCE9EC; --bad-ink:#AF2B40;
+  --stage:#E4E8EF; --shadow:0 10px 34px rgba(28,39,51,.14);
+  --r:10px; --r-sm:7px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --accent:#5B8DF0; --accent-soft:#22304A; --accent-ink:#9DBCF7;
+    --ground:#12161D; --surface:#1A2029; --surface-2:#1F2732;
+    --ink:#E4EAF2; --muted:#96A3B5; --faint:#6E7B8E; --line:#2C3542;
+    --ok:#3DBE7B; --ok-soft:#1B3227; --ok-ink:#7CD9A9;
+    --warn:#E0A63C; --warn-soft:#38301B; --warn-ink:#EDC77F;
+    --bad:#E56B7D; --bad-soft:#3B222A; --bad-ink:#F0A0AC;
+    --stage:#0C0F14; --shadow:0 10px 34px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="light"]{
+  --accent:#2E6BE6; --accent-soft:#E8EFFC; --accent-ink:#1E4FB0;
+  --ground:#F4F6FA; --surface:#FFFFFF; --surface-2:#F8FAFD;
+  --ink:#1C2733; --muted:#5C6B80; --faint:#8896A8; --line:#DDE4EE;
+  --ok:#1E9E5A; --ok-soft:#E3F5EB; --ok-ink:#14713F;
+  --warn:#C7860A; --warn-soft:#FCF2DC; --warn-ink:#8F5E03;
+  --bad:#D6455A; --bad-soft:#FCE9EC; --bad-ink:#AF2B40;
+  --stage:#E4E8EF; --shadow:0 10px 34px rgba(28,39,51,.14);
+}
+:root[data-theme="dark"]{
+  --accent:#5B8DF0; --accent-soft:#22304A; --accent-ink:#9DBCF7;
+  --ground:#12161D; --surface:#1A2029; --surface-2:#1F2732;
+  --ink:#E4EAF2; --muted:#96A3B5; --faint:#6E7B8E; --line:#2C3542;
+  --ok:#3DBE7B; --ok-soft:#1B3227; --ok-ink:#7CD9A9;
+  --warn:#E0A63C; --warn-soft:#38301B; --warn-ink:#EDC77F;
+  --bad:#E56B7D; --bad-soft:#3B222A; --bad-ink:#F0A0AC;
+  --stage:#0C0F14; --shadow:0 10px 34px rgba(0,0,0,.5);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--stage); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  min-height:100vh; overflow-x:hidden;
+  display:flex; justify-content:center; align-items:flex-start;
+  padding:28px 12px 48px;
+}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}
+}
+
+/* ---------- 手機外框 ---------- */
+.phone{
+  width:100%; max-width:400px; background:var(--ground);
+  border-radius:30px; border:1px solid var(--line);
+  box-shadow:var(--shadow); overflow:hidden; position:relative;
+  min-height:780px; display:flex; flex-direction:column;
+}
+
+/* ---------- 抬頭 ---------- */
+.appbar{
+  background:var(--surface); border-bottom:1px solid var(--line);
+  padding:14px 14px 10px; position:sticky; top:0; z-index:5;
+}
+.appbar-row{display:flex; align-items:center; gap:10px}
+.who{min-width:0; flex:1}
+.who .nm{font-size:15px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.who .rl{font-size:11px; color:var(--muted); margin-top:1px}
+.store-sel{
+  appearance:none; -webkit-appearance:none;
+  min-height:44px; padding:0 30px 0 12px;
+  border:1.5px solid var(--accent); border-radius:var(--r);
+  background:var(--accent-soft); color:var(--accent-ink);
+  font-weight:700; font-size:14px; cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 46%,currentColor 46%,currentColor 54%,transparent 54%),
+                   linear-gradient(-45deg,transparent 46%,currentColor 46%,currentColor 54%,transparent 54%);
+  background-position:right 16px center,right 10px center;
+  background-size:6px 6px; background-repeat:no-repeat;
+}
+.icon-btn{
+  width:44px; height:44px; flex:0 0 44px; border-radius:var(--r);
+  border:1px solid var(--line); background:var(--surface-2);
+  display:inline-flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--muted);
+}
+.icon-btn:active{background:var(--accent-soft)}
+.icon-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- 分頁列 ---------- */
+.tabs{
+  display:flex; gap:4px; overflow-x:auto; margin-top:10px; padding-bottom:2px;
+  scrollbar-width:none; -ms-overflow-style:none;
+}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  flex:0 0 auto; min-height:44px; padding:0 14px;
+  border:none; background:none; border-radius:var(--r);
+  color:var(--muted); font-size:14px; font-weight:600; cursor:pointer;
+  border-bottom:3px solid transparent; border-radius:8px 8px 0 0;
+}
+.tab[aria-selected="true"]{color:var(--accent-ink); border-bottom-color:var(--accent); background:var(--accent-soft)}
+
+/* ---------- 內容 ---------- */
+.content{flex:1; overflow-y:auto; padding:14px 14px 90px}
+.screen{display:none}
+.screen.on{display:block}
+.h-row{display:flex; align-items:center; gap:8px; margin:2px 0 12px}
+.h-row h2{font-size:17px; margin:0; font-weight:800}
+.badge{
+  font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px;
+}
+.badge.ok{background:var(--ok-soft); color:var(--ok-ink)}
+.badge.warn{background:var(--warn-soft); color:var(--warn-ink)}
+.badge.bad{background:var(--bad-soft); color:var(--bad-ink)}
+.badge.mut{background:var(--surface-2); color:var(--muted); border:1px solid var(--line)}
+
+.card{
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--r); padding:14px; margin-bottom:12px;
+}
+.card h3{margin:0 0 8px; font-size:13px; color:var(--muted); font-weight:700; letter-spacing:.02em}
+.hint{font-size:12px; color:var(--faint); line-height:1.7}
+
+/* 月結設定唯讀卡 */
+.ro-card{background:var(--surface-2)}
+.ro-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px}
+.ro-lock{font-size:11px; color:var(--faint); display:inline-flex; align-items:center; gap:4px}
+.kv{display:flex; justify-content:space-between; padding:7px 0; font-size:14px; border-bottom:1px dashed var(--line)}
+.kv:last-child{border-bottom:none}
+.kv .k{color:var(--muted)} .kv .v{font-weight:700}
+
+/* segmented */
+.seg{display:flex; background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r); padding:3px; gap:3px; margin-bottom:12px}
+.seg button{
+  flex:1; min-height:38px; border:none; border-radius:var(--r-sm);
+  background:none; color:var(--muted); font-size:13px; font-weight:700; cursor:pointer;
+}
+.seg button[aria-pressed="true"]{background:var(--accent); color:#fff}
+
+/* 金額 */
+.amt{font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; font-weight:700}
+.neg{color:var(--bad)}
+
+/* 單店清單 */
+.mrow{display:flex; align-items:center; gap:8px; min-height:46px; padding:4px 2px; border-bottom:1px solid var(--line); font-size:14px}
+.mrow:last-child{border-bottom:none}
+.mrow .nm{flex:1}
+.mrow.expandable{cursor:pointer}
+.mrow .chev{width:16px; color:var(--faint); font-size:11px; transition:transform .15s}
+.mrow.open .chev{transform:rotate(90deg)}
+.mrow.sub{padding-left:26px; color:var(--muted); font-size:13px; min-height:40px; background:var(--surface-2)}
+.mrow.sub .amt{font-weight:500}
+.mrow.total{border-top:2px solid var(--ink); border-bottom:none; font-weight:800; font-size:15px}
+.mrow.total .amt{font-weight:800}
+
+/* 交叉表 */
+.xwrap{overflow-x:auto; border:1px solid var(--line); border-radius:var(--r); background:var(--surface)}
+/* border-collapse:collapse 會讓 sticky 欄失效（瀏覽器已知問題）→ 用 separate + border-spacing:0，邊框只靠 border-bottom/right 不會雙框 */
+table.xt{border-collapse:separate; border-spacing:0; width:100%; min-width:430px; font-size:13px}
+.xt th,.xt td{padding:10px 10px; text-align:right; border-bottom:1px solid var(--line); white-space:nowrap}
+.xt th:first-child,.xt td:first-child{
+  text-align:left; position:sticky; left:0; background:var(--surface); z-index:1;
+  border-right:1px solid var(--line); max-width:120px;
+}
+.xt thead th{font-size:12px; color:var(--muted); background:var(--surface-2); position:sticky; top:0}
+.xt thead th:first-child{background:var(--surface-2)}
+.xt td{font-variant-numeric:tabular-nums}
+.xt .tot-col{background:var(--accent-soft); font-weight:800; color:var(--accent-ink)}
+.xt tr.tot-row td{border-top:2px solid var(--ink); border-bottom:none; font-weight:800; font-size:14px}
+.xt tr:last-child td{border-bottom:none}
+
+/* 店別卡 */
+.store-card{display:flex; flex-direction:column; gap:10px}
+.sc-top{display:flex; align-items:center; gap:10px}
+.sc-code{
+  font-size:18px; font-weight:800; letter-spacing:.04em;
+  background:var(--accent-soft); color:var(--accent-ink);
+  border-radius:var(--r-sm); padding:6px 12px;
+}
+.sc-status{margin-left:auto}
+.sc-ctrls{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.chk{
+  display:inline-flex; align-items:center; gap:8px; min-height:44px;
+  padding:0 12px 0 8px; border:1px solid var(--line); border-radius:var(--r);
+  background:var(--surface-2); cursor:pointer; font-size:13px; font-weight:600;
+}
+.chk input{width:20px; height:20px; accent-color:var(--accent); cursor:pointer; margin:0}
+.btn{
+  min-height:44px; padding:0 14px; border-radius:var(--r); cursor:pointer;
+  font-size:13px; font-weight:700; border:1px solid var(--line); background:var(--surface-2); color:var(--ink);
+}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+.btn.danger-soft{background:var(--bad-soft); border-color:transparent; color:var(--bad-ink)}
+.btn.ok-soft{background:var(--ok-soft); border-color:transparent; color:var(--ok-ink)}
+.btn.ghost-danger{background:none; border:1px solid var(--line); color:var(--bad)}
+.btn:disabled{opacity:.5; cursor:not-allowed}
+.add-row{display:flex; gap:8px}
+.add-row input{
+  flex:1; min-height:44px; min-width:0; padding:0 12px;
+  border:1px solid var(--line); border-radius:var(--r);
+  background:var(--surface); text-transform:uppercase; letter-spacing:.08em; font-weight:700;
+}
+.add-row input::placeholder{text-transform:none; letter-spacing:0; font-weight:400; color:var(--faint)}
+
+/* 稽核卡 */
+.audit-card{display:flex; gap:12px}
+.audit-body{flex:1; min-width:0}
+.a-top{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap}
+.a-no{font-size:12px; color:var(--faint); font-variant-numeric:tabular-nums}
+.a-by{font-size:12px; color:var(--muted)}
+.a-sum{font-size:14px; font-weight:700; margin:4px 0 2px}
+.a-meta{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:4px}
+.chip{font-size:11px; padding:2px 8px; border-radius:999px; background:var(--surface-2); border:1px solid var(--line); color:var(--muted)}
+.a-note{font-size:12px; color:var(--faint); margin-top:4px}
+.lamp{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700}
+.lamp i{width:9px; height:9px; border-radius:50%; display:inline-block}
+.lamp.warn{color:var(--warn-ink)} .lamp.warn i{background:var(--warn)}
+.lamp.ok{color:var(--ok-ink)} .lamp.ok i{background:var(--ok)}
+.empty-tip{
+  text-align:center; padding:44px 18px; color:var(--muted); font-size:14px;
+  background:var(--surface); border:1px dashed var(--line); border-radius:var(--r);
+}
+.empty-tip b{color:var(--accent-ink)}
+
+/* 收據縮圖（純 CSS） */
+.rcp{
+  width:66px; height:88px; flex:0 0 66px; background:#fff;
+  border-radius:5px; position:relative; overflow:hidden; cursor:zoom-in;
+  border:1px solid var(--line); box-shadow:0 2px 6px rgba(28,39,51,.12); padding:0;
+}
+.rcp .rh{position:absolute; top:0; left:0; right:0; height:16px; background:#2B3646}
+.rcp .rl{position:absolute; left:8px; height:3px; border-radius:2px; background:#C9D2DE}
+.rcp .rl.l1{top:24px; width:42px} .rcp .rl.l2{top:32px; width:30px}
+.rcp .rl.l3{top:40px; width:46px} .rcp .rl.l4{top:48px; width:24px}
+.rcp .rl.l5{top:56px; width:38px}
+.rcp .rt{position:absolute; left:8px; right:8px; top:66px; border-top:1.5px dashed #8A96A6}
+.rcp .rt2{position:absolute; right:8px; top:72px; width:26px; height:4px; background:#5B6675; border-radius:2px}
+.rcp .mag{
+  position:absolute; right:4px; bottom:4px; width:13px; height:13px;
+  border:2px solid #5B6675; border-radius:50%;
+}
+.rcp .mag::after{
+  content:""; position:absolute; width:6px; height:2px; background:#5B6675;
+  right:-5px; bottom:-2px; transform:rotate(45deg); border-radius:1px;
+}
+
+/* 佔位清單 */
+.li{display:flex; align-items:center; gap:10px; min-height:52px; padding:6px 2px; border-bottom:1px solid var(--line); font-size:14px}
+.li:last-child{border-bottom:none}
+.li .grow{flex:1; min-width:0}
+.li .sub{font-size:12px; color:var(--faint); margin-top:2px}
+.avatar{
+  width:36px; height:36px; border-radius:50%; flex:0 0 36px;
+  background:var(--accent-soft); color:var(--accent-ink);
+  display:inline-flex; align-items:center; justify-content:center; font-size:13px; font-weight:800;
+}
+.log-line{font-size:13px; padding:9px 2px; border-bottom:1px dashed var(--line); color:var(--muted); line-height:1.5}
+.log-line:last-child{border-bottom:none}
+.log-line time{color:var(--faint); font-variant-numeric:tabular-nums; margin-right:8px; font-size:12px}
+
+/* 表單 */
+.f-field{margin-bottom:12px}
+.f-field label{display:block; font-size:12px; color:var(--muted); font-weight:700; margin-bottom:6px}
+.f-field input{
+  width:100%; min-height:44px; padding:0 12px;
+  border:1px solid var(--line); border-radius:var(--r); background:var(--surface);
+}
+
+/* Modal */
+.overlay{
+  position:absolute; inset:0; z-index:40; display:none;
+  background:rgba(12,17,24,.55); align-items:center; justify-content:center; padding:24px;
+}
+.overlay.on{display:flex}
+.modal{
+  background:var(--surface); border-radius:var(--r); padding:18px;
+  width:100%; max-width:320px; box-shadow:var(--shadow);
+}
+.modal h4{margin:0 0 8px; font-size:16px}
+.modal p{margin:0 0 16px; font-size:13px; color:var(--muted); line-height:1.6}
+.modal .acts{display:flex; gap:8px}
+.modal .acts .btn{flex:1}
+.btn.danger{background:var(--bad); border-color:var(--bad); color:#fff}
+
+/* 燈箱 */
+.lb{
+  position:absolute; inset:0; z-index:60; display:none;
+  background:rgba(8,12,18,.9); overflow:hidden; touch-action:none;
+}
+.lb.on{display:block}
+.lb-close{
+  position:absolute; top:10px; right:10px; z-index:2;
+  width:44px; height:44px; border-radius:50%; border:none; cursor:pointer;
+  background:rgba(255,255,255,.16); color:#fff; font-size:20px; line-height:1;
+}
+.lb-hint{
+  position:absolute; bottom:12px; left:0; right:0; text-align:center;
+  color:rgba(255,255,255,.65); font-size:11px; pointer-events:none;
+}
+.lb-stage{position:absolute; inset:0; display:flex; align-items:center; justify-content:center}
+.rcp-big{
+  width:230px; height:320px; background:#fff; border-radius:8px; position:relative;
+  box-shadow:0 18px 60px rgba(0,0,0,.5); will-change:transform; cursor:grab; user-select:none;
+}
+.rcp-big:active{cursor:grabbing}
+.rcp-big .bh{position:absolute; top:0; left:0; right:0; height:52px; background:#2B3646; border-radius:8px 8px 0 0}
+.rcp-big .bh::after{
+  content:"RECEIPT"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  color:#B9C4D2; font-size:13px; letter-spacing:.35em; font-weight:700;
+}
+.rcp-big .bl{position:absolute; left:26px; height:8px; border-radius:4px; background:#CCD5E0}
+.rcp-big .b1{top:76px; width:130px} .rcp-big .b2{top:98px; width:92px}
+.rcp-big .b3{top:120px; width:150px} .rcp-big .b4{top:142px; width:70px}
+.rcp-big .b5{top:164px; width:118px} .rcp-big .b6{top:186px; width:100px}
+.rcp-big .bt{position:absolute; left:26px; right:26px; top:224px; border-top:2px dashed #8A96A6}
+.rcp-big .bsum{
+  position:absolute; left:26px; right:26px; top:242px;
+  display:flex; justify-content:space-between; align-items:center;
+  color:#39434F; font-weight:800; font-size:15px; font-variant-numeric:tabular-nums;
+}
+.rcp-big .bfoot{position:absolute; left:26px; right:26px; top:282px; height:6px;
+  background:repeating-linear-gradient(90deg,#DEE4EC 0 8px,transparent 8px 14px); border-radius:3px}
+
+/* Toast */
+.toast{
+  position:absolute; left:50%; bottom:22px; transform:translateX(-50%) translateY(8px);
+  background:var(--ink); color:var(--ground); font-size:13px; font-weight:600;
+  padding:9px 16px; border-radius:999px; opacity:0; pointer-events:none;
+  transition:opacity .2s, transform .2s; z-index:70; white-space:nowrap; max-width:88%;
+  overflow:hidden; text-overflow:ellipsis;
+}
+.toast.on{opacity:1; transform:translateX(-50%) translateY(0)}
+</style>
+
+<div class="phone" id="phone">
+  <!-- 抬頭 -->
+  <header class="appbar">
+    <div class="appbar-row">
+      <div class="who">
+        <div class="nm">總經理・王經理</div>
+        <div class="rl">跨店管理</div>
+      </div>
+      <label style="position:absolute;left:-9999px" for="storeSel">選擇門市</label>
+      <select class="store-sel" id="storeSel" aria-label="選擇門市（同時決定稽核與月報表）"></select>
+      <button class="icon-btn" id="btnPwd" aria-label="我的密碼" title="我的密碼">
+        <svg viewBox="0 0 24 24"><circle cx="8" cy="14" r="4"/><path d="M11 11 20 2M16 6l3 3M13 9l2.5 2.5"/></svg>
+      </button>
+      <button class="icon-btn" id="btnLogout" aria-label="登出" title="登出">
+        <svg viewBox="0 0 24 24"><path d="M14 4h-8v16h8M10 12h11M18 8.5 21.5 12 18 15.5"/></svg>
+      </button>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="功能分頁">
+      <button class="tab" role="tab" data-t="audit"  aria-selected="false">稽核</button>
+      <button class="tab" role="tab" data-t="month"  aria-selected="true">月結</button>
+      <button class="tab" role="tab" data-t="stores" aria-selected="false">店別</button>
+      <button class="tab" role="tab" data-t="acct"   aria-selected="false">帳號</button>
+      <button class="tab" role="tab" data-t="dev"    aria-selected="false">裝置</button>
+      <button class="tab" role="tab" data-t="log"    aria-selected="false">操作記錄</button>
+      <button class="tab" role="tab" data-t="pwd"    aria-selected="false">我的密碼</button>
+    </nav>
+  </header>
+
+  <main class="content">
+
+    <!-- ===== 月結 ===== -->
+    <section class="screen on" id="scr-month" role="tabpanel" aria-label="月結">
+      <div class="h-row">
+        <h2>2026 年 6 月</h2>
+        <span class="badge warn">進行中</span>
+        <span class="badge mut" id="monthStoreBadge" style="margin-left:auto"></span>
+      </div>
+
+      <div class="card ro-card">
+        <div class="ro-head">
+          <h3 style="margin:0">月結設定</h3>
+          <span class="ro-lock" title="唯讀">🔒 唯讀（僅會計可改）</span>
+        </div>
+        <div class="kv"><span class="k">月結日</span><span class="v">5 號</span></div>
+        <div class="kv"><span class="k">鎖定偏移</span><span class="v">24 小時</span></div>
+      </div>
+
+      <div class="seg" id="monthSeg" role="group" aria-label="月報表範圍"></div>
+
+      <!-- 全部門市：交叉表 -->
+      <div id="monthAll">
+        <div class="card" style="padding:0;border:none;background:none;margin-bottom:6px">
+          <div class="xwrap" id="xwrap"></div>
+        </div>
+        <p class="hint">左右滑動可看各店欄位；點上方選店或切換鈕可只看單店。</p>
+      </div>
+
+      <!-- 單店：清單 -->
+      <div id="monthOne" hidden>
+        <div class="card" id="oneList" style="padding:6px 14px"></div>
+        <p class="hint">點有「▸」的科目可展開子分類。</p>
+      </div>
+    </section>
+
+    <!-- ===== 稽核 ===== -->
+    <section class="screen" id="scr-audit" role="tabpanel" aria-label="稽核">
+      <div class="h-row">
+        <h2>交接班稽核</h2>
+        <span class="badge mut" id="auditStoreBadge" style="margin-left:auto"></span>
+      </div>
+      <div id="auditList"></div>
+      <p class="hint" id="auditHint" hidden>經理端為唯讀檢視；打勾稽核由各店主管於交接班執行。</p>
+    </section>
+
+    <!-- ===== 店別 ===== -->
+    <section class="screen" id="scr-stores" role="tabpanel" aria-label="店別">
+      <div class="h-row"><h2>店別管理</h2></div>
+      <div id="storeCards"></div>
+      <div class="card" style="background:var(--surface-2)">
+        <p class="hint" style="color:var(--muted)">
+          「<b>檢視</b>」打勾＝這家店會出現在選店選單／月報表（取消只是隱藏，不影響營運）。<br>
+          「<b>對外連結</b>」關閉＝該店所有人員／主管立即被擋在計算機外（真正停用該店）。<br>
+          兩者互不影響，僅經理可改。
+        </p>
+      </div>
+      <div class="card">
+        <h3>新增店</h3>
+        <div class="add-row">
+          <input id="newStoreCode" maxlength="2" placeholder="店別英文代號（≤2 字母，如 TN）"
+                 autocomplete="off" aria-label="店別英文代號">
+          <button class="btn primary" id="btnAddStore">新增</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 帳號（佔位） ===== -->
+    <section class="screen" id="scr-acct" role="tabpanel" aria-label="帳號">
+      <div class="h-row"><h2>帳號管理</h2><span class="badge mut" style="margin-left:auto">佔位示意</span></div>
+      <div class="card" style="padding:6px 14px">
+        <div class="li"><span class="avatar">陳</span><div class="grow"><div>陳小美</div><div class="sub">員工・TP</div></div><span class="badge ok">啟用</span></div>
+        <div class="li"><span class="avatar">林</span><div class="grow"><div>林大同</div><div class="sub">店主管・TP</div></div><span class="badge ok">啟用</span></div>
+        <div class="li"><span class="avatar">張</span><div class="grow"><div>張雅婷</div><div class="sub">店主管・TC</div></div><span class="badge ok">啟用</span></div>
+        <div class="li"><span class="avatar">吳</span><div class="grow"><div>吳志明</div><div class="sub">員工・KH</div></div><span class="badge mut">停用</span></div>
+      </div>
+    </section>
+
+    <!-- ===== 裝置（佔位） ===== -->
+    <section class="screen" id="scr-dev" role="tabpanel" aria-label="裝置">
+      <div class="h-row"><h2>裝置管理</h2><span class="badge mut" style="margin-left:auto">佔位示意</span></div>
+      <div class="card" style="padding:6px 14px">
+        <div class="li"><div class="grow"><div>櫃台公用機</div><div class="sub">TP・最後上線 07/16 13:58</div></div><span class="badge ok">已綁定</span></div>
+        <div class="li"><div class="grow"><div>外場平板</div><div class="sub">TC・最後上線 07/16 12:41</div></div><span class="badge ok">已綁定</span></div>
+        <div class="li"><div class="grow"><div>倉庫舊手機</div><div class="sub">KH・最後上線 07/02 09:15</div></div><span class="badge bad">已撤銷</span></div>
+      </div>
+    </section>
+
+    <!-- ===== 操作記錄（佔位） ===== -->
+    <section class="screen" id="scr-log" role="tabpanel" aria-label="操作記錄">
+      <div class="h-row"><h2>操作記錄</h2><span class="badge mut" style="margin-left:auto">台灣時間</span></div>
+      <div class="card" style="padding:8px 14px">
+        <div class="log-line"><time>07/16 14:02</time>王經理 關閉 KH 對外連結</div>
+        <div class="log-line"><time>07/16 11:47</time>會計 完成 TP 6 月部分核銷（32 筆）</div>
+        <div class="log-line"><time>07/15 21:10</time>林大同（TP）交接班稽核 12 筆</div>
+        <div class="log-line"><time>07/15 18:33</time>王經理 新增帳號「吳志明」（KH）</div>
+        <div class="log-line"><time>07/14 09:05</time>王經理 核發 TC 外場平板綁定碼</div>
+      </div>
+    </section>
+
+    <!-- ===== 我的密碼（佔位） ===== -->
+    <section class="screen" id="scr-pwd" role="tabpanel" aria-label="我的密碼">
+      <div class="h-row"><h2>我的密碼</h2></div>
+      <div class="card">
+        <div class="f-field"><label for="pw0">舊密碼</label><input id="pw0" type="password" autocomplete="current-password"></div>
+        <div class="f-field"><label for="pw1">新密碼</label><input id="pw1" type="password" autocomplete="new-password"></div>
+        <div class="f-field"><label for="pw2">確認新密碼</label><input id="pw2" type="password" autocomplete="new-password"></div>
+        <button class="btn primary" style="width:100%" id="btnPwSave">更新密碼</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 確認 Modal -->
+  <div class="overlay" id="confirmOv" role="dialog" aria-modal="true" aria-labelledby="cfTitle">
+    <div class="modal">
+      <h4 id="cfTitle"></h4>
+      <p id="cfDesc"></p>
+      <div class="acts">
+        <button class="btn" id="cfCancel">取消</button>
+        <button class="btn danger" id="cfOk"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 燈箱 -->
+  <div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="收據放大檢視">
+    <button class="lb-close" id="lbClose" aria-label="關閉">✕</button>
+    <div class="lb-stage" id="lbStage">
+      <div class="rcp-big" id="lbImg">
+        <i class="bh"></i>
+        <i class="bl b1"></i><i class="bl b2"></i><i class="bl b3"></i>
+        <i class="bl b4"></i><i class="bl b5"></i><i class="bl b6"></i>
+        <i class="bt"></i>
+        <div class="bsum"><span>TOTAL</span><span id="lbAmt"></span></div>
+        <i class="bfoot"></i>
+      </div>
+    </div>
+    <div class="lb-hint">滾輪／兩指縮放・拖曳平移・雙擊切換 1x↔2.5x</div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+var $ = function(s){ return document.querySelector(s); };
+
+/* ---------- 資料 ---------- */
+var stores = [
+  { code:"TP", visible:true,  online:true  },
+  { code:"TC", visible:true,  online:true  },
+  { code:"KH", visible:true,  online:false }
+];
+var CATS = [
+  { name:"食材耗用", subs:[
+      { name:"生鮮蔬果", v:{TP:48210,TC:36540,KH:28150} },
+      { name:"冷凍肉品", v:{TP:27860,TC:21300,KH:16780} } ] },
+  { name:"清潔用品", subs:[
+      { name:"清潔洗劑", v:{TP:4320,TC:3640,KH:2980} },
+      { name:"紙巾耗材", v:{TP:3180,TC:2210,KH:1760} } ] },
+  { name:"文具事務", v:{TP:1240,TC:860,KH:590} },
+  { name:"修繕維護", v:{TP:6800,TC:0,KH:12400} },
+  { name:"水電瓦斯", v:{TP:18320,TC:15660,KH:13240} },
+  { name:"雜項調整", v:{TP:-1500,TC:320,KH:0} }
+];
+var AUDITS = {
+  TP:[ {no:"TP-0616-012", by:"陳小美", sum:"拖把補充包 ×2", cat:"清潔用品", amt:420,  note:"倉庫備品", st:"pending"},
+       {no:"TP-0615-007", by:"林大同", sum:"A4 影印紙 ×5 包", cat:"文具事務", amt:625,  note:"", st:"ok"} ],
+  TC:[ {no:"TC-0616-004", by:"張雅婷", sum:"燈管更換工資", cat:"修繕維護", amt:1800, note:"外場天花板", st:"pending"},
+       {no:"TC-0614-009", by:"張雅婷", sum:"垃圾袋 ×3 捲", cat:"清潔用品", amt:255,  note:"", st:"ok"} ],
+  KH:[ {no:"KH-0613-002", by:"吳志明", sum:"保鮮膜 ×4", cat:"食材耗用", amt:380,  note:"", st:"pending"},
+       {no:"KH-0612-011", by:"吳志明", sum:"原子筆 ×1 盒", cat:"文具事務", amt:120,  note:"櫃台用", st:"ok"} ]
+};
+var state = { store:"ALL", tab:"month", expanded:{} };
+
+/* ---------- 工具 ---------- */
+function visStores(){ return stores.filter(function(s){ return s.visible; }); }
+function catVal(c, code){
+  if (c.subs) return c.subs.reduce(function(a,s){ return a + s.v[code]; }, 0);
+  return c.v[code];
+}
+function fmt(n){
+  var s = Math.abs(n).toLocaleString("en-US");
+  return (n < 0 ? "-" : "") + s;
+}
+function amtHtml(n, extra){
+  return '<span class="amt' + (n < 0 ? " neg" : "") + (extra ? " " + extra : "") + '">' + fmt(n) + "</span>";
+}
+function esc(t){ return String(t).replace(/[&<>"]/g, function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+var toastTimer = null;
+function toast(msg){
+  var t = $("#toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove("on"); }, 2200);
+}
+
+/* ---------- 分頁 ---------- */
+var tabs = document.querySelectorAll(".tab");
+function setTab(t){
+  state.tab = t;
+  tabs.forEach(function(b){ b.setAttribute("aria-selected", String(b.dataset.t === t)); });
+  document.querySelectorAll(".screen").forEach(function(s){ s.classList.remove("on"); });
+  $("#scr-" + t).classList.add("on");
+  var active = document.querySelector('.tab[data-t="' + t + '"]');
+  if (active && active.scrollIntoView) active.scrollIntoView({block:"nearest", inline:"center"});
+}
+tabs.forEach(function(b){ b.addEventListener("click", function(){ setTab(b.dataset.t); }); });
+$("#btnPwd").addEventListener("click", function(){ setTab("pwd"); });
+$("#btnLogout").addEventListener("click", function(){ toast("示範原型：登出"); });
+$("#btnPwSave").addEventListener("click", function(){ toast("示範原型：密碼已更新"); });
+
+/* ---------- 選店（抬頭 select ＋ 月結 segmented 連動） ---------- */
+function renderStoreSel(){
+  var sel = $("#storeSel");
+  var opts = '<option value="ALL">全部門市</option>' + visStores().map(function(s){
+    return '<option value="' + s.code + '">' + s.code + "</option>";
+  }).join("");
+  sel.innerHTML = opts;
+  sel.value = state.store;
+}
+function renderSeg(){
+  var seg = $("#monthSeg");
+  var items = [{v:"ALL", t:"全部門市"}].concat(visStores().map(function(s){ return {v:s.code, t:s.code}; }));
+  seg.innerHTML = items.map(function(i){
+    return '<button type="button" data-v="' + i.v + '" aria-pressed="' + String(i.v === state.store) + '">' + i.t + "</button>";
+  }).join("");
+  seg.querySelectorAll("button").forEach(function(b){
+    b.addEventListener("click", function(){ setStore(b.dataset.v); });
+  });
+}
+function setStore(code){
+  if (code !== "ALL" && !visStores().some(function(s){ return s.code === code; })) code = "ALL";
+  state.store = code;
+  renderStoreSel(); renderSeg(); renderMonth(); renderAudit();
+}
+$("#storeSel").addEventListener("change", function(e){ setStore(e.target.value); });
+
+/* ---------- 月結 ---------- */
+function renderMonth(){
+  var all = state.store === "ALL";
+  $("#monthAll").hidden = !all;
+  $("#monthOne").hidden = all;
+  $("#monthStoreBadge").textContent = all ? "全部門市" : "門市 " + state.store;
+  if (all) renderCross(); else renderOneStore(state.store);
+}
+function renderCross(){
+  var vs = visStores();
+  var head = "<tr><th>科目</th>" + vs.map(function(s){ return "<th>" + s.code + "</th>"; }).join("") +
+             '<th class="tot-col">總計</th></tr>';
+  var rows = CATS.map(function(c){
+    var rowTot = 0;
+    var tds = vs.map(function(s){
+      var v = catVal(c, s.code); rowTot += v;
+      return "<td>" + amtHtml(v) + "</td>";
+    }).join("");
+    return "<tr><td>" + esc(c.name) + "</td>" + tds + '<td class="tot-col">' + amtHtml(rowTot) + "</td></tr>";
+  }).join("");
+  var grand = 0;
+  var totTds = vs.map(function(s){
+    var t = CATS.reduce(function(a,c){ return a + catVal(c, s.code); }, 0);
+    grand += t;
+    return "<td>" + amtHtml(t) + "</td>";
+  }).join("");
+  var totRow = '<tr class="tot-row"><td>總計</td>' + totTds + '<td class="tot-col">' + amtHtml(grand) + "</td></tr>";
+  $("#xwrap").innerHTML = '<table class="xt" aria-label="全部門市月報表交叉表"><thead>' + head + "</thead><tbody>" + rows + totRow + "</tbody></table>";
+}
+function renderOneStore(code){
+  var html = "", total = 0;
+  CATS.forEach(function(c, i){
+    var v = catVal(c, code); total += v;
+    if (c.subs){
+      var open = !!state.expanded[i];
+      html += '<div class="mrow expandable' + (open ? " open" : "") + '" data-i="' + i + '" role="button" tabindex="0" aria-expanded="' + open + '">' +
+              '<span class="chev">▸</span><span class="nm">' + esc(c.name) + "</span>" + amtHtml(v) + "</div>";
+      if (open){
+        c.subs.forEach(function(s){
+          html += '<div class="mrow sub"><span class="nm">' + esc(s.name) + "</span>" + amtHtml(s.v[code]) + "</div>";
+        });
+      }
+    } else {
+      html += '<div class="mrow"><span class="chev" aria-hidden="true"></span><span class="nm">' + esc(c.name) + "</span>" + amtHtml(v) + "</div>";
+    }
+  });
+  html += '<div class="mrow total"><span class="chev" aria-hidden="true"></span><span class="nm">總計</span>' + amtHtml(total) + "</div>";
+  var box = $("#oneList");
+  box.innerHTML = html;
+  box.querySelectorAll(".expandable").forEach(function(r){
+    function tgl(){ var i = r.dataset.i; state.expanded[i] = !state.expanded[i]; renderOneStore(code); }
+    r.addEventListener("click", tgl);
+    r.addEventListener("keydown", function(e){ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); tgl(); } });
+  });
+}
+
+/* ---------- 稽核 ---------- */
+function renderAudit(){
+  var box = $("#auditList"), hint = $("#auditHint");
+  $("#auditStoreBadge").textContent = state.store === "ALL" ? "全部門市" : "門市 " + state.store;
+  if (state.store === "ALL"){
+    box.innerHTML = '<div class="empty-tip">請先在上方選擇一家店<br><span style="font-size:12px;color:var(--faint)">抬頭的「<b>選店</b>」同時決定稽核與月報表看哪家</span></div>';
+    hint.hidden = true;
+    return;
+  }
+  hint.hidden = false;
+  var list = AUDITS[state.store] || [];
+  box.innerHTML = list.map(function(a, idx){
+    var lamp = a.st === "ok"
+      ? '<span class="lamp ok"><i></i>已稽核</span>'
+      : '<span class="lamp warn"><i></i>待稽核</span>';
+    return '<div class="card audit-card">' +
+      '<button class="rcp" data-amt="' + a.amt + '" aria-label="放大收據 ' + esc(a.no) + '">' +
+        '<i class="rh"></i><i class="rl l1"></i><i class="rl l2"></i><i class="rl l3"></i><i class="rl l4"></i><i class="rl l5"></i>' +
+        '<i class="rt"></i><i class="rt2"></i><i class="mag"></i></button>' +
+      '<div class="audit-body">' +
+        '<div class="a-top"><span class="a-no">' + esc(a.no) + '</span><span class="a-by">' + esc(a.by) + "</span></div>" +
+        '<div class="a-sum">' + esc(a.sum) + "</div>" +
+        '<div class="a-meta"><span class="chip">' + esc(a.cat) + "</span>" + amtHtml(a.amt) + lamp + "</div>" +
+        (a.note ? '<div class="a-note">備註：' + esc(a.note) + "</div>" : "") +
+      "</div></div>";
+  }).join("");
+  box.querySelectorAll(".rcp").forEach(function(b){
+    b.addEventListener("click", function(){ openLb(Number(b.dataset.amt)); });
+  });
+}
+
+/* ---------- 店別 ---------- */
+var pendingConfirm = null;
+function askConfirm(title, desc, okLabel, cb){
+  $("#cfTitle").textContent = title;
+  $("#cfDesc").textContent = desc;
+  $("#cfOk").textContent = okLabel;
+  pendingConfirm = cb;
+  $("#confirmOv").classList.add("on");
+  $("#cfOk").focus();
+}
+function closeConfirm(){ $("#confirmOv").classList.remove("on"); pendingConfirm = null; }
+$("#cfCancel").addEventListener("click", closeConfirm);
+$("#cfOk").addEventListener("click", function(){ var cb = pendingConfirm; closeConfirm(); if (cb) cb(); });
+$("#confirmOv").addEventListener("click", function(e){ if (e.target === e.currentTarget) closeConfirm(); });
+
+function renderStores(){
+  var box = $("#storeCards");
+  box.innerHTML = stores.map(function(s, i){
+    var st = s.online
+      ? '<span class="badge ok sc-status">連線中</span>'
+      : '<span class="badge bad sc-status">已關閉</span>';
+    var linkBtn = s.online
+      ? '<button class="btn danger-soft" data-a="link" data-i="' + i + '">關閉對外連結</button>'
+      : '<button class="btn ok-soft" data-a="link" data-i="' + i + '">開啟對外連結</button>';
+    return '<div class="card store-card">' +
+      '<div class="sc-top"><span class="sc-code">' + esc(s.code) + "</span>" + st + "</div>" +
+      '<div class="sc-ctrls">' +
+        '<label class="chk"><input type="checkbox" data-a="vis" data-i="' + i + '"' + (s.visible ? " checked" : "") + ">顯示（檢視）</label>" +
+        linkBtn +
+        '<button class="btn ghost-danger" data-a="del" data-i="' + i + '" style="margin-left:auto">刪除</button>' +
+      "</div></div>";
+  }).join("");
+
+  box.querySelectorAll("[data-a=vis]").forEach(function(c){
+    c.addEventListener("change", function(){
+      var s = stores[Number(c.dataset.i)];
+      s.visible = c.checked;
+      if (!s.visible && state.store === s.code) state.store = "ALL";
+      renderStoreSel(); renderSeg(); renderMonth(); renderAudit();
+      toast(s.code + (s.visible ? " 已顯示於選單/月報表" : " 已自選單/月報表隱藏"));
+    });
+  });
+  box.querySelectorAll("[data-a=link]").forEach(function(b){
+    b.addEventListener("click", function(){
+      var s = stores[Number(b.dataset.i)];
+      if (s.online){
+        askConfirm("關閉 " + s.code + " 對外連結？",
+          "關閉後，" + s.code + " 所有人員／主管會立即被擋在計算機外（真正停用該店）。確定要關閉嗎？",
+          "確定關閉",
+          function(){ s.online = false; renderStores(); toast(s.code + " 對外連結已關閉"); });
+      } else {
+        s.online = true; renderStores(); toast(s.code + " 對外連結已開啟");
+      }
+    });
+  });
+  box.querySelectorAll("[data-a=del]").forEach(function(b){
+    b.addEventListener("click", function(){
+      var i = Number(b.dataset.i), s = stores[i];
+      askConfirm("刪除店別 " + s.code + "？",
+        "刪除後該店將自系統移除（歷史報表資料保留）。此動作無法復原。",
+        "確定刪除",
+        function(){
+          stores.splice(i, 1);
+          if (state.store === s.code) state.store = "ALL";
+          renderStores(); renderStoreSel(); renderSeg(); renderMonth(); renderAudit();
+          toast("已刪除店別 " + s.code);
+        });
+    });
+  });
+}
+$("#btnAddStore").addEventListener("click", function(){
+  var inp = $("#newStoreCode");
+  var code = inp.value.trim().toUpperCase();
+  if (!/^[A-Z]{1,2}$/.test(code)){ toast("店別代號需為 1–2 個英文字母"); inp.focus(); return; }
+  if (stores.some(function(s){ return s.code === code; })){ toast(code + " 已存在"); inp.focus(); return; }
+  stores.push({ code:code, visible:true, online:true });
+  inp.value = "";
+  renderStores(); renderStoreSel(); renderSeg();
+  toast("已新增店別 " + code);
+});
+
+/* ---------- 燈箱（縮放＋平移） ---------- */
+var lb = $("#lb"), lbImg = $("#lbImg"), lbStage = $("#lbStage");
+var Z = { s:1, tx:0, ty:0, min:1, max:4 };
+function applyZ(){
+  var lim = 160 * Z.s;
+  Z.tx = Math.max(-lim, Math.min(lim, Z.tx));
+  Z.ty = Math.max(-lim, Math.min(lim, Z.ty));
+  lbImg.style.transform = "translate(" + Z.tx + "px," + Z.ty + "px) scale(" + Z.s + ")";
+}
+function openLb(amt){
+  $("#lbAmt").textContent = "NT$ " + fmt(amt);
+  Z.s = 1; Z.tx = 0; Z.ty = 0; applyZ();
+  lb.classList.add("on");
+  $("#lbClose").focus();
+}
+function closeLb(){ lb.classList.remove("on"); }
+$("#lbClose").addEventListener("click", closeLb);
+lb.addEventListener("click", function(e){ if (e.target === lb || e.target === lbStage) closeLb(); });
+document.addEventListener("keydown", function(e){
+  if (e.key !== "Escape") return;
+  if (lb.classList.contains("on")) closeLb();
+  else if ($("#confirmOv").classList.contains("on")) closeConfirm();
+});
+lb.addEventListener("wheel", function(e){
+  e.preventDefault();
+  var f = e.deltaY < 0 ? 1.15 : 1/1.15;
+  var ns = Math.max(Z.min, Math.min(Z.max, Z.s * f));
+  var r = lbStage.getBoundingClientRect();
+  var px = e.clientX - (r.left + r.width/2), py = e.clientY - (r.top + r.height/2);
+  Z.tx = px - (px - Z.tx) * (ns / Z.s);
+  Z.ty = py - (py - Z.ty) * (ns / Z.s);
+  Z.s = ns;
+  if (Z.s === 1){ Z.tx = 0; Z.ty = 0; }
+  applyZ();
+}, {passive:false});
+
+var ptrs = new Map(), pinchD = 0, lastTap = 0, moved = false;
+lb.addEventListener("pointerdown", function(e){
+  ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  moved = false;
+  if (ptrs.size === 2){
+    var a = Array.from(ptrs.values());
+    pinchD = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y);
+  }
+  lb.setPointerCapture(e.pointerId);
+});
+lb.addEventListener("pointermove", function(e){
+  if (!ptrs.has(e.pointerId)) return;
+  var p = ptrs.get(e.pointerId);
+  var dx = e.clientX - p.x, dy = e.clientY - p.y;
+  if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
+  ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if (ptrs.size === 1){
+    Z.tx += dx; Z.ty += dy; applyZ();
+  } else if (ptrs.size === 2){
+    var a = Array.from(ptrs.values());
+    var d = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y);
+    if (pinchD > 0){
+      Z.s = Math.max(Z.min, Math.min(Z.max, Z.s * (d / pinchD)));
+      if (Z.s === 1){ Z.tx = 0; Z.ty = 0; }
+      applyZ();
+    }
+    pinchD = d;
+  }
+});
+function ptrUp(e){
+  if (ptrs.has(e.pointerId)){
+    ptrs.delete(e.pointerId);
+    pinchD = 0;
+    if (!moved && e.pointerType === "touch"){
+      var now = Date.now();
+      if (now - lastTap < 320){ dblZoom(); lastTap = 0; }
+      else lastTap = now;
+    }
+  }
+}
+lb.addEventListener("pointerup", ptrUp);
+lb.addEventListener("pointercancel", ptrUp);
+function dblZoom(){
+  if (Z.s > 1){ Z.s = 1; Z.tx = 0; Z.ty = 0; } else { Z.s = 2.5; }
+  applyZ();
+}
+lbImg.addEventListener("dblclick", function(e){ e.preventDefault(); dblZoom(); });
+
+/* ---------- init ---------- */
+renderStoreSel(); renderSeg(); renderMonth(); renderAudit(); renderStores();
+setTab("month");
+})();
+</script>

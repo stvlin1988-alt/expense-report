@@ -1,0 +1,993 @@
+<title>主管稽核 App</title>
+<style>
+/* ============ design tokens（沿用已定案會計桌機／員工手機同一套）============
+   accent   #2E6BE6（深色 #5B8DF0）/ accent-soft #E8EFFC / accent-ink #1E4FB0
+   ground   #F4F6FA / surface #FFFFFF / surface-2 #F8FAFD
+   ink #1C2733 / muted #5C6B80 / faint #8896A8 / line #DDE4EE
+   語意色獨立於 accent，只作燈號/狀態：
+   ok  #1E9E5A（soft #E3F5EB / ink #14713F）
+   warn #C7860A（soft #FCF2DC / ink #8F5E03）
+   bad #D6455A（soft #FCE9EC / ink #AF2B40）
+   深色：ground #12161D / surface #1A2029 / ink #E4EAF2 / muted #96A3B5 / line #2C3542
+         ok #3DBE7B / warn #E0A63C / bad #E56B7D
+   radius 10 / sm 7；系統字；金額 tabular-nums；觸控 ≥44px；深淺雙主題
+================================================================== */
+:root{
+  --accent:#2E6BE6; --accent-soft:#E8EFFC; --accent-ink:#1E4FB0;
+  --ground:#F4F6FA; --surface:#FFFFFF; --surface2:#F8FAFD;
+  --ink:#1C2733; --muted:#5C6B80; --faint:#8896A8; --line:#DDE4EE;
+  --ok:#1E9E5A; --ok-soft:#E3F5EB; --ok-ink:#14713F;
+  --warn:#C7860A; --warn-soft:#FCF2DC; --warn-ink:#8F5E03;
+  --bad:#D6455A; --bad-soft:#FCE9EC; --bad-ink:#AF2B40;
+  --stage:#E8EBF1; --thumb:#E1E6EE; --thumb2:#CBD3DF;
+  --r:10px; --rs:7px;
+  --shadow:0 1px 2px rgba(28,39,51,.06), 0 4px 14px rgba(28,39,51,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --accent:#5B8DF0; --accent-soft:rgba(91,141,240,.16); --accent-ink:#A6C1F5;
+    --ground:#12161D; --surface:#1A2029; --surface2:#1F2732;
+    --ink:#E4EAF2; --muted:#96A3B5; --faint:#6E7C8F; --line:#2C3542;
+    --ok:#3DBE7B; --ok-soft:rgba(61,190,123,.15); --ok-ink:#7FD9A9;
+    --warn:#E0A63C; --warn-soft:rgba(224,166,60,.15); --warn-ink:#EFC377;
+    --bad:#E56B7D; --bad-soft:rgba(229,107,125,.15); --bad-ink:#F0A3AF;
+    --stage:#0B0F15; --thumb:#242D39; --thumb2:#33404F;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 4px 14px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --accent:#5B8DF0; --accent-soft:rgba(91,141,240,.16); --accent-ink:#A6C1F5;
+  --ground:#12161D; --surface:#1A2029; --surface2:#1F2732;
+  --ink:#E4EAF2; --muted:#96A3B5; --faint:#6E7C8F; --line:#2C3542;
+  --ok:#3DBE7B; --ok-soft:rgba(61,190,123,.15); --ok-ink:#7FD9A9;
+  --warn:#E0A63C; --warn-soft:rgba(224,166,60,.15); --warn-ink:#EFC377;
+  --bad:#E56B7D; --bad-soft:rgba(229,107,125,.15); --bad-ink:#F0A3AF;
+  --stage:#0B0F15; --thumb:#242D39; --thumb2:#33404F;
+  --shadow:0 1px 2px rgba(0,0,0,.35), 0 4px 14px rgba(0,0,0,.3);
+}
+:root[data-theme="light"]{
+  --accent:#2E6BE6; --accent-soft:#E8EFFC; --accent-ink:#1E4FB0;
+  --ground:#F4F6FA; --surface:#FFFFFF; --surface2:#F8FAFD;
+  --ink:#1C2733; --muted:#5C6B80; --faint:#8896A8; --line:#DDE4EE;
+  --ok:#1E9E5A; --ok-soft:#E3F5EB; --ok-ink:#14713F;
+  --warn:#C7860A; --warn-soft:#FCF2DC; --warn-ink:#8F5E03;
+  --bad:#D6455A; --bad-soft:#FCE9EC; --bad-ink:#AF2B40;
+  --stage:#E8EBF1; --thumb:#E1E6EE; --thumb2:#CBD3DF;
+  --shadow:0 1px 2px rgba(28,39,51,.06), 0 4px 14px rgba(28,39,51,.06);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--stage); color:var(--ink);
+  font-family:-apple-system,'PingFang TC','Segoe UI','Noto Sans TC',sans-serif;
+  font-size:15px; line-height:1.45; overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+.num{font-variant-numeric:tabular-nums; font-feature-settings:'tnum'}
+.neg{color:var(--bad)}
+
+/* ---------- 舞台 + 手機外框 ---------- */
+.stage{min-height:100dvh; display:flex; justify-content:center; align-items:flex-start; padding:24px 12px}
+.phone{
+  width:100%; max-width:400px; height:min(860px, calc(100dvh - 48px)); min-height:560px;
+  background:var(--ground); border:1px solid var(--line); border-radius:28px;
+  box-shadow:0 12px 40px rgba(20,30,45,.16);
+  display:flex; flex-direction:column; overflow:hidden; position:relative;
+}
+@media (min-width:768px){
+  .stage{padding:32px 20px}
+  .phone{max-width:760px; height:min(920px, calc(100dvh - 64px)); border-radius:24px}
+  /* 單欄滿版：一張單一整條橫幅，與員工端共同閱讀版面（不分兩欄） */
+  .cards{grid-template-columns:1fr}
+  .rcards{grid-template-columns:1fr}
+}
+
+/* ---------- 抬頭 ---------- */
+.apphead{
+  flex:none; display:flex; align-items:center; gap:10px;
+  padding:14px 14px 10px; background:var(--surface); border-bottom:1px solid var(--line);
+}
+.store-badge{
+  width:44px; height:44px; border-radius:12px; flex:none;
+  background:var(--accent-soft); color:var(--accent-ink);
+  display:flex; align-items:center; justify-content:center;
+  font-weight:800; font-size:17px; letter-spacing:.5px;
+}
+.who{flex:1; min-width:0}
+.who .name{font-weight:700; font-size:16px}
+.who .role{font-size:12px; color:var(--muted)}
+.icon-btn{
+  width:44px; height:44px; flex:none; border:1px solid var(--line); border-radius:var(--rs);
+  background:var(--surface); color:var(--muted); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.icon-btn:hover{background:var(--surface2); color:var(--ink)}
+.icon-btn svg{width:20px; height:20px}
+
+/* ---------- 主分頁列（可橫捲）---------- */
+.tabs{
+  flex:none; display:flex; gap:2px; padding:0 8px; background:var(--surface);
+  border-bottom:1px solid var(--line);
+  overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch;
+}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  flex:none; min-height:46px; padding:0 14px; border:0; background:none; cursor:pointer;
+  color:var(--muted); font-weight:600; font-size:14.5px; white-space:nowrap;
+  border-bottom:2.5px solid transparent; margin-bottom:-1px;
+}
+.tab[aria-selected="true"]{color:var(--accent-ink); border-bottom-color:var(--accent)}
+.tab:hover{color:var(--ink)}
+
+/* ---------- 主捲動區 ---------- */
+.content{flex:1; overflow-y:auto; overflow-x:hidden; padding:12px 12px 16px; scroll-behavior:smooth}
+.panel[hidden]{display:none}
+
+/* ---------- 子分頁（segmented）---------- */
+.subtabs{
+  display:flex; gap:4px; padding:4px; margin-bottom:12px;
+  background:var(--surface2); border:1px solid var(--line); border-radius:var(--r);
+}
+.subtab{
+  flex:1; min-height:40px; border:0; border-radius:var(--rs); background:none; cursor:pointer;
+  font-weight:600; font-size:14px; color:var(--muted);
+}
+.subtab[aria-selected="true"]{background:var(--surface); color:var(--accent-ink); box-shadow:var(--shadow)}
+
+/* ---------- 橫幅 ---------- */
+.banner{
+  display:flex; gap:10px; align-items:flex-start;
+  background:var(--warn-soft); border:1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  color:var(--warn-ink); border-radius:var(--r); padding:11px 13px; margin-bottom:14px;
+  font-size:13.5px; font-weight:600;
+}
+.banner .b-dot{width:9px; height:9px; border-radius:50%; background:var(--warn); flex:none; margin-top:5px}
+
+/* ---------- 營業日分組 ---------- */
+.day-head{
+  display:flex; justify-content:space-between; align-items:baseline;
+  padding:2px 4px 8px; margin-top:6px;
+}
+.day-head .d{font-weight:700; font-size:14px; color:var(--muted)}
+.day-head .sum{font-size:13px; color:var(--faint)}
+.day-head .sum b{color:var(--ink); font-weight:700}
+.cards{display:grid; grid-template-columns:1fr; gap:12px; margin-bottom:16px}
+.empty-note{
+  border:1px dashed var(--line); border-radius:var(--r); padding:14px;
+  text-align:center; color:var(--faint); font-size:13.5px;
+}
+
+/* ---------- 待稽核卡片 ---------- */
+.card{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  box-shadow:var(--shadow); padding:12px; display:flex; flex-direction:column; gap:10px;
+  transition:opacity .25s ease, transform .25s ease;
+}
+.card.checked{opacity:0; transform:translateX(24px) scale(.97)}
+.card-top{display:flex; gap:10px; align-items:flex-start}
+/* 縮圖：可點的「收據照片」按鈕 */
+.thumb{
+  width:56px; height:56px; flex:none; padding:0; border:0; cursor:zoom-in;
+  border-radius:var(--rs); position:relative; background:none;
+  container-type:size; display:block;
+}
+.thumb:hover .receipt{transform:scale(1.03)}
+.thumb .dot{
+  position:absolute; right:-4px; top:-4px; width:12px; height:12px; border-radius:50%;
+  border:2px solid var(--surface); z-index:2;
+}
+/* 放大鏡暗示 */
+.zoom{
+  position:absolute; right:-5px; bottom:-5px; width:19px; height:19px; z-index:2;
+  border-radius:50%; background:var(--accent); color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  border:2px solid var(--surface); box-shadow:var(--shadow);
+}
+.zoom svg{width:11px; height:11px}
+.rcard .zoom{width:17px; height:17px}
+.rcard .zoom svg{width:10px; height:10px}
+
+/* 純 CSS 收據畫法（可重用：縮圖 + 燈箱共用；用 container query 單位自動縮放）*/
+.receipt{
+  --paper:#FBFBF7; --paper2:#F1F1EA; --rhd:#37424F; --rline:#C7D0DC; --rtot:#8B98AA;
+  position:absolute; inset:0; overflow:hidden; border-radius:var(--rs);
+  background:linear-gradient(180deg, var(--paper), var(--paper2));
+  border:1px solid rgba(0,0,0,.10); box-shadow:inset 0 0 0 1px rgba(255,255,255,.5);
+  display:flex; flex-direction:column; align-items:stretch;
+  padding:9cqw 9cqw 11cqw; gap:6.5cqw; transition:transform .18s ease;
+}
+.receipt .r-hd{height:14cqw; border-radius:2cqw; background:var(--rhd); margin-bottom:2cqw}
+.receipt .r-ln{height:5cqw; border-radius:3cqw; background:var(--rline)}
+.receipt .r-tot{margin-top:auto; height:6.5cqw; border-radius:3cqw; background:var(--rtot);
+  border-top:2.5cqw solid transparent; background-clip:padding-box}
+.receipt .w50{width:50%} .receipt .w64{width:64%} .receipt .w72{width:72%}
+.receipt .w84{width:84%} .receipt .w92{width:92%} .receipt .w60{width:60%}
+
+/* 燈箱 */
+.lightbox{
+  position:absolute; inset:0; z-index:60; display:flex; align-items:center; justify-content:center;
+  padding:28px 24px;
+}
+.lightbox[hidden]{display:none}
+.lb-backdrop{
+  position:absolute; inset:0; border:0; cursor:zoom-out;
+  background:rgba(8,12,18,.66); backdrop-filter:blur(1.5px);
+  animation:lb-fade .18s ease;
+}
+.lb-panel{
+  position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:14px;
+  animation:lb-pop .2s ease;
+}
+.lb-figure{
+  position:relative; width:min(240px, 74vw); height:min(320px, 58dvh);
+  container-type:size; overflow:hidden; border-radius:12px; background:#0B0F15;
+  touch-action:none; cursor:grab; -webkit-user-select:none; user-select:none;
+  box-shadow:0 16px 34px rgba(0,0,0,.5);
+}
+.lb-figure.grabbing{cursor:grabbing}
+/* 縮放/平移目標：transform 由 JS 控制（translate + scale）*/
+.lb-zoom{position:absolute; inset:0; transform-origin:0 0; will-change:transform}
+.lb-figure .receipt{border-radius:0; border:0}
+.lb-cap{color:#EAF0F8; font-size:12px; font-weight:600; text-align:center;
+  text-shadow:0 1px 2px rgba(0,0,0,.5); max-width:min(240px,74vw); line-height:1.5}
+/* 右上角固定 X 關閉鈕 */
+.lb-close{
+  position:absolute; top:14px; right:14px; width:44px; height:44px; z-index:3;
+  border:0; border-radius:50%; cursor:pointer;
+  background:rgba(12,16,22,.62); color:#fff; -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+  box-shadow:0 4px 14px rgba(0,0,0,.45);
+  font-size:26px; line-height:1; display:flex; align-items:center; justify-content:center;
+}
+.lb-close:hover{background:rgba(12,16,22,.85)}
+@keyframes lb-fade{from{opacity:0}to{opacity:1}}
+@keyframes lb-pop{from{opacity:0; transform:scale(.92)}to{opacity:1; transform:scale(1)}}
+.dot-ok{background:var(--ok)} .dot-warn{background:var(--warn)} .dot-bad{background:var(--bad)}
+.card-meta{flex:1; min-width:0}
+.doc-no{font-weight:700; font-size:14.5px; letter-spacing:.2px}
+.byline{font-size:12px; color:var(--faint); margin-top:2px}
+.summary{font-size:14.5px; color:var(--ink)}
+.flag-bad{
+  display:flex; gap:8px; align-items:flex-start; font-size:13px; font-weight:600;
+  background:var(--bad-soft); color:var(--bad-ink);
+  border:1px solid color-mix(in srgb, var(--bad) 30%, transparent);
+  border-radius:var(--rs); padding:8px 10px;
+}
+.flag-bad .b-dot{width:8px; height:8px; border-radius:50%; background:var(--bad); flex:none; margin-top:5px}
+
+.fields{display:grid; grid-template-columns:1fr 116px; gap:8px}
+.field{display:flex; flex-direction:column; gap:4px; min-width:0}
+.field.full{grid-column:1 / -1}
+.field label{font-size:11.5px; color:var(--faint); display:flex; align-items:center; gap:6px}
+.field select,.field input{
+  min-height:44px; width:100%; border:1px solid var(--line); border-radius:var(--rs);
+  background:var(--surface2); padding:0 10px; font-size:14.5px; color:var(--ink);
+}
+.field input.amt{text-align:right; font-variant-numeric:tabular-nums; font-weight:700}
+.chip{
+  display:inline-flex; align-items:center; padding:1px 7px; border-radius:999px;
+  font-size:11px; font-weight:700; line-height:1.5;
+}
+.chip-warn{background:var(--warn-soft); color:var(--warn-ink)}
+.chip-ok{background:var(--ok-soft); color:var(--ok-ink)}
+.chip-bad{background:var(--bad-soft); color:var(--bad-ink)}
+.chip-line{background:var(--surface2); color:var(--muted); border:1px solid var(--line)}
+.edit-note{font-size:12px; color:var(--warn-ink)}
+
+.check-btn{
+  min-height:48px; border:0; border-radius:var(--rs); cursor:pointer;
+  background:var(--accent); color:#fff; font-weight:700; font-size:15.5px;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.check-btn:hover{filter:brightness(1.06)}
+.check-btn:active{transform:translateY(1px)}
+
+.hist-toggle{
+  align-self:flex-start; min-height:44px; padding:0 4px; border:0; background:none; cursor:pointer;
+  color:var(--accent-ink); font-size:13px; font-weight:600; display:flex; align-items:center; gap:5px;
+}
+.hist-toggle .chev{transition:transform .18s ease; font-size:11px}
+.hist-toggle[aria-expanded="true"] .chev{transform:rotate(90deg)}
+.hist{
+  border-top:1px dashed var(--line); padding-top:9px; margin-top:-2px;
+  display:flex; flex-direction:column; gap:6px;
+}
+.hist[hidden]{display:none}
+.hist li{list-style:none; font-size:12.5px; color:var(--muted); display:flex; gap:8px}
+.hist ul{margin:0; padding:0; display:flex; flex-direction:column; gap:6px}
+.hist .h-t{color:var(--faint); flex:none; font-variant-numeric:tabular-nums}
+
+/* ---------- 底部 action bar ---------- */
+.actionbar{
+  flex:none; background:var(--surface); border-top:1px solid var(--line);
+  padding:9px 12px calc(10px + env(safe-area-inset-bottom,0px));
+  box-shadow:0 -4px 16px rgba(20,30,45,.08);
+}
+.actionbar[hidden]{display:none}
+.ab-sub{
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-size:12.5px; color:var(--muted); padding:0 2px 8px;
+}
+.ab-sub b{font-size:15px; color:var(--ink); font-variant-numeric:tabular-nums}
+.ab-btns{display:flex; gap:8px}
+.ab-btn{
+  flex:1; min-height:46px; border-radius:var(--rs); cursor:pointer;
+  font-weight:700; font-size:14.5px; border:1px solid transparent;
+}
+.ab-primary{background:var(--accent); color:#fff; border-color:var(--accent)}
+.ab-primary:hover{filter:brightness(1.06)}
+.ab-secondary{background:var(--accent-soft); color:var(--accent-ink); border-color:color-mix(in srgb, var(--accent) 30%, transparent)}
+.ab-secondary:hover{filter:brightness(.98)}
+.ab-ghost{background:var(--surface); color:var(--muted); border-color:var(--line)}
+.ab-ghost:hover{color:var(--ink); background:var(--surface2)}
+
+/* ---------- 總表查詢（唯讀）---------- */
+.q-bar{display:flex; align-items:center; gap:10px; margin-bottom:14px}
+.q-bar label{font-size:13px; color:var(--muted); flex:none; font-weight:600}
+.q-bar input[type=date]{
+  flex:1; min-height:44px; border:1px solid var(--line); border-radius:var(--rs);
+  background:var(--surface); padding:0 10px; font-size:14.5px; color:var(--ink);
+}
+.shift-head{
+  display:flex; justify-content:space-between; align-items:baseline; gap:8px;
+  padding:2px 4px 8px; margin-top:8px; flex-wrap:wrap;
+}
+.shift-head .s{font-weight:700; font-size:14px; color:var(--muted)}
+.shift-head .sum{font-size:13px; color:var(--faint)}
+.shift-head .sum b{color:var(--ink); font-weight:700}
+.rcards{display:grid; grid-template-columns:1fr; gap:10px; margin-bottom:14px}
+.rcard{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  padding:11px 12px; display:flex; flex-direction:column; gap:8px;
+}
+.rcard .r-top{display:flex; gap:10px; align-items:flex-start}
+.rcard .thumb{width:44px; height:44px}
+.r-main{flex:1; min-width:0}
+.r-line1{display:flex; justify-content:space-between; gap:8px; align-items:baseline}
+.r-line1 .doc-no{font-size:13.5px}
+.r-amt{font-weight:700; font-variant-numeric:tabular-nums; font-size:15.5px; flex:none}
+.r-sum{font-size:13.5px; color:var(--ink); margin-top:1px}
+.r-tags{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:5px}
+.r-note{font-size:12.5px; color:var(--muted)}
+.r-audit{font-size:12px; color:var(--faint)}
+.day-total{
+  margin-top:4px; padding:13px 14px; border-radius:var(--r);
+  background:var(--surface); border:1px solid var(--line);
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-weight:700;
+}
+.day-total .l{font-size:13.5px; color:var(--muted)}
+.day-total .v{font-size:17px; font-variant-numeric:tabular-nums}
+
+/* ---------- 佔位分頁 ---------- */
+.ph-card{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  box-shadow:var(--shadow); padding:14px; margin-bottom:12px;
+}
+.ph-card h3{margin:0 0 10px; font-size:14.5px}
+.ph-row{
+  display:flex; justify-content:space-between; align-items:center; gap:10px;
+  padding:11px 2px; border-top:1px solid var(--line); font-size:14px; min-height:44px;
+}
+.ph-row:first-of-type{border-top:0}
+.ph-row .sub{font-size:12px; color:var(--faint)}
+.log-line{display:flex; gap:10px; padding:9px 2px; border-top:1px solid var(--line); font-size:13px; color:var(--muted)}
+.log-line:first-of-type{border-top:0}
+.log-line .t{flex:none; color:var(--faint); font-variant-numeric:tabular-nums}
+.form-field{display:flex; flex-direction:column; gap:5px; margin-bottom:12px}
+.form-field label{font-size:12.5px; color:var(--muted); font-weight:600}
+.form-field input{
+  min-height:44px; border:1px solid var(--line); border-radius:var(--rs);
+  background:var(--surface2); padding:0 12px; font-size:15px;
+}
+.pw-btn{
+  width:100%; min-height:46px; border:0; border-radius:var(--rs); cursor:pointer;
+  background:var(--accent); color:#fff; font-weight:700; font-size:15px;
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation:none !important; transition:none !important}
+  .content{scroll-behavior:auto}
+}
+</style>
+
+<div class="stage">
+  <div class="phone">
+
+    <!-- 抬頭 -->
+    <header class="apphead">
+      <div class="store-badge" aria-hidden="true">TP</div>
+      <div class="who">
+        <div class="name">陳店長</div>
+        <div class="role">本店稽核</div>
+      </div>
+      <button class="icon-btn" type="button" title="我的密碼" aria-label="我的密碼" onclick="switchTab('pw')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15" r="1.4" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <button class="icon-btn" type="button" title="登出" aria-label="登出">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M10 8l-4 4 4 4"/><path d="M6 12h9"/></svg>
+      </button>
+    </header>
+
+    <!-- 主分頁 -->
+    <nav class="tabs" role="tablist" aria-label="主功能">
+      <button class="tab" role="tab" id="tab-audit" aria-selected="true"  onclick="switchTab('audit')">稽核</button>
+      <button class="tab" role="tab" id="tab-log"   aria-selected="false" onclick="switchTab('log')">操作記錄</button>
+      <button class="tab" role="tab" id="tab-acct"  aria-selected="false" onclick="switchTab('acct')">帳號</button>
+      <button class="tab" role="tab" id="tab-dev"   aria-selected="false" onclick="switchTab('dev')">裝置</button>
+      <button class="tab" role="tab" id="tab-pw"    aria-selected="false" onclick="switchTab('pw')">我的密碼</button>
+    </nav>
+
+    <main class="content" id="content">
+
+      <!-- ================= 稽核 ================= -->
+      <section class="panel" id="panel-audit" role="tabpanel" aria-labelledby="tab-audit">
+
+        <div class="subtabs" role="tablist" aria-label="稽核子功能">
+          <button class="subtab" role="tab" id="sub-pending-t" aria-selected="true"  onclick="switchSub('pending')">待稽核</button>
+          <button class="subtab" role="tab" id="sub-summary-t" aria-selected="false" onclick="switchSub('summary')">總表查詢</button>
+        </div>
+
+        <!-- ---- 待稽核 ---- -->
+        <div id="sub-pending" role="tabpanel" aria-labelledby="sub-pending-t">
+
+          <div class="banner" role="status">
+            <span class="b-dot" aria-hidden="true"></span>
+            <span>有 3 筆 06/28 以前的單還沒打勾，請優先處理。</span>
+          </div>
+
+          <!-- 06/29 -->
+          <div class="day-head">
+            <span class="d">2026/06/29</span>
+            <span class="sum">日小計 <b class="num">$1,240</b>（3 筆）</span>
+          </div>
+          <div class="cards" data-day="0629">
+
+            <!-- 卡 1：正常 -->
+            <article class="card">
+              <div class="card-top">
+                <button class="thumb" type="button" aria-label="放大檢視收據" onclick="openLightbox(this)"><span class="receipt" aria-hidden="true"><span class="r-hd"></span><span class="r-ln w92"></span><span class="r-ln w64"></span><span class="r-ln w84"></span><span class="r-ln w50"></span><span class="r-ln w72"></span><span class="r-tot w60"></span></span><span class="zoom" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M20 20l-5-5"/></svg></span><span class="dot dot-warn" title="待稽核" aria-hidden="true"></span></button>
+                <div class="card-meta">
+                  <div class="doc-no num">E-20260629-011</div>
+                  <div class="byline">林小美 · 06/29 09:41 建立</div>
+                </div>
+              </div>
+              <div class="summary">清潔用品（拖把、抹布）</div>
+              <div class="fields">
+                <div class="field">
+                  <label for="c1-cat">分類</label>
+                  <select id="c1-cat">
+                    <option selected>清潔耗材</option><option>文具用品</option><option>食材補貨</option><option>維修費用</option><option>雜項</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="c1-amt">金額</label>
+                  <input id="c1-amt" class="amt num" type="text" inputmode="numeric" value="320">
+                </div>
+                <div class="field full">
+                  <label for="c1-note">備註</label>
+                  <input id="c1-note" type="text" value="早班補買" placeholder="備註">
+                </div>
+              </div>
+              <button class="check-btn" type="button" onclick="checkOff(this)">✓ 打勾</button>
+            </article>
+
+            <!-- 卡 2：會計退回 -->
+            <article class="card">
+              <div class="card-top">
+                <button class="thumb" type="button" aria-label="放大檢視收據" onclick="openLightbox(this)"><span class="receipt" aria-hidden="true"><span class="r-hd"></span><span class="r-ln w92"></span><span class="r-ln w64"></span><span class="r-ln w84"></span><span class="r-ln w50"></span><span class="r-ln w72"></span><span class="r-tot w60"></span></span><span class="zoom" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M20 20l-5-5"/></svg></span><span class="dot dot-bad" title="會計退回" aria-hidden="true"></span></button>
+                <div class="card-meta">
+                  <div class="doc-no num">E-20260629-012</div>
+                  <div class="byline">王大明 · 06/29 10:05 建立</div>
+                </div>
+              </div>
+              <div class="flag-bad"><span class="b-dot" aria-hidden="true"></span><span>會計退回：單據影像模糊，請重新確認金額後再打勾。</span></div>
+              <div class="summary">影印紙 2 包</div>
+              <div class="fields">
+                <div class="field">
+                  <label for="c2-cat">分類</label>
+                  <select id="c2-cat">
+                    <option>清潔耗材</option><option selected>文具用品</option><option>食材補貨</option><option>維修費用</option><option>雜項</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="c2-amt">金額</label>
+                  <input id="c2-amt" class="amt num" type="text" inputmode="numeric" value="180">
+                </div>
+                <div class="field full">
+                  <label for="c2-note">備註</label>
+                  <input id="c2-note" type="text" value="" placeholder="備註">
+                </div>
+              </div>
+              <button class="check-btn" type="button" onclick="checkOff(this)">✓ 打勾</button>
+            </article>
+
+            <!-- 卡 3：主管改金額 -->
+            <article class="card">
+              <div class="card-top">
+                <button class="thumb" type="button" aria-label="放大檢視收據" onclick="openLightbox(this)"><span class="receipt" aria-hidden="true"><span class="r-hd"></span><span class="r-ln w92"></span><span class="r-ln w64"></span><span class="r-ln w84"></span><span class="r-ln w50"></span><span class="r-ln w72"></span><span class="r-tot w60"></span></span><span class="zoom" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M20 20l-5-5"/></svg></span><span class="dot dot-warn" title="待稽核" aria-hidden="true"></span></button>
+                <div class="card-meta">
+                  <div class="doc-no num">E-20260629-014</div>
+                  <div class="byline">王大明 · 06/29 10:10 建立</div>
+                </div>
+              </div>
+              <div class="summary">瓦斯行補瓦斯</div>
+              <div class="fields">
+                <div class="field">
+                  <label for="c3-cat">分類</label>
+                  <select id="c3-cat">
+                    <option>清潔耗材</option><option>文具用品</option><option>食材補貨</option><option>維修費用</option><option selected>雜項</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="c3-amt">金額 <span class="chip chip-warn">主管改</span></label>
+                  <input id="c3-amt" class="amt num" type="text" inputmode="numeric" value="740">
+                </div>
+                <div class="field full">
+                  <label for="c3-note">備註</label>
+                  <input id="c3-note" type="text" value="AI 誤判 704，已更正" placeholder="備註">
+                </div>
+              </div>
+              <div class="edit-note">改：陳店長（06/29 10:12）</div>
+              <button class="check-btn" type="button" onclick="checkOff(this)">✓ 打勾</button>
+            </article>
+          </div>
+
+          <!-- 06/28（逾期） -->
+          <div class="day-head">
+            <span class="d">2026/06/28</span>
+            <span class="sum">日小計 <b class="num">$95</b>（1 筆）</span>
+          </div>
+          <div class="cards" data-day="0628">
+
+            <!-- 卡 4：可展開歷程 -->
+            <article class="card">
+              <div class="card-top">
+                <button class="thumb" type="button" aria-label="放大檢視收據" onclick="openLightbox(this)"><span class="receipt" aria-hidden="true"><span class="r-hd"></span><span class="r-ln w92"></span><span class="r-ln w64"></span><span class="r-ln w84"></span><span class="r-ln w50"></span><span class="r-ln w72"></span><span class="r-tot w60"></span></span><span class="zoom" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M20 20l-5-5"/></svg></span><span class="dot dot-warn" title="待稽核" aria-hidden="true"></span></button>
+                <div class="card-meta">
+                  <div class="doc-no num">E-20260628-007</div>
+                  <div class="byline">張阿姨 · 06/28 20:15 建立</div>
+                </div>
+              </div>
+              <div class="summary">垃圾袋（大）1 綑</div>
+              <div class="fields">
+                <div class="field">
+                  <label for="c4-cat">分類</label>
+                  <select id="c4-cat">
+                    <option selected>清潔耗材</option><option>文具用品</option><option>食材補貨</option><option>維修費用</option><option>雜項</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="c4-amt">金額</label>
+                  <input id="c4-amt" class="amt num" type="text" inputmode="numeric" value="95">
+                </div>
+                <div class="field full">
+                  <label for="c4-note">備註</label>
+                  <input id="c4-note" type="text" value="" placeholder="備註">
+                </div>
+              </div>
+              <button class="hist-toggle" type="button" aria-expanded="false" onclick="toggleHist(this)">
+                <span class="chev" aria-hidden="true">▶</span> 歷程
+              </button>
+              <div class="hist" hidden>
+                <ul>
+                  <li><span class="h-t">06/28 20:15</span><span>張阿姨 · 建立單據（AI 辨識金額 95）</span></li>
+                  <li><span class="h-t">06/28 21:40</span><span>陳店長 · 修改分類（雜項 → 清潔耗材）</span></li>
+                  <li><span class="h-t">06/29 08:02</span><span>系統 · 跨營業日轉入待稽核（逾期提醒）</span></li>
+                </ul>
+              </div>
+              <button class="check-btn" type="button" onclick="checkOff(this)">✓ 打勾</button>
+            </article>
+          </div>
+        </div>
+
+        <!-- ---- 總表查詢 ---- -->
+        <div id="sub-summary" role="tabpanel" aria-labelledby="sub-summary-t" hidden>
+
+          <div class="q-bar">
+            <label for="q-date">營業日</label>
+            <input type="date" id="q-date" value="2026-06-29">
+          </div>
+
+          <div class="shift-head">
+            <span class="s">第 1 班（交班 06/29 15:30）</span>
+            <span class="sum">小計 <b class="num">$980</b>（4 筆）</span>
+          </div>
+          <div class="rcards">
+
+            <article class="rcard">
+              <div class="r-top">
+                <button class="thumb" type="button" aria-label="放大檢視收據" onclick="openLightbox(this)"><span class="receipt" aria-hidden="true"><span class="r-hd"></span><span class="r-ln w92"></span><span class="r-ln w64"></span><span class="r-ln w84"></span><span class="r-ln w50"></span><span class="r-ln w72"></span><span class="r-tot w60"></span></span><span class="zoom" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M20 20l-5-5"/></svg></span><span class="dot dot-ok" title="已核銷" aria-hidden="true"></span></button>
+                <div class="r-main">
+                  <div class="r-line1"><span class="doc-no num">E-20260629-003</span><span class="r-amt num">$260</span></div>
+                  <div class="r-sum">咖啡豆試喝耗材</div>
+                  <div class="r-tags">
+                    <span class="chip chip-line">食材補貨</span>
+                    <span class="chip chip-ok">已核銷</span>
+                  </div>
+                  <div class="r-note">備註：新品試賣用</div>
+                  <div class="r-audit">稽核：陳店長 · 06/29 15:28</div>
+                </div>
+              </div>
+              <button class="hist-toggle" type="button" aria-expanded="false" onclick="toggleHist(this)">
+                <span class="chev" aria-hidden="true">▶</span> 歷程
+              </button>
+              <div class="hist" hidden>
+                <ul>
+                  <li><span class="h-t">06/29 09:02</span><span>林小美 · 建立單據</span></li>
+                  <li><span class="h-t">06/29 15:28</span><span>陳店長 · 打勾稽核</span></li>
+                  <li><span class="h-t">06/29 15:30</span><span>陳店長 · 交班（第 1 班）</span></li>
+                  <li><span class="h-t">06/29 16:44</span><span>會計 · 核銷通過</span></li>
+                </ul>
+              </div>
+            </article>
+
+            <article class="rcard">
+              <div class="r-top">
+                <button class="thumb" type="button" aria-label="放大檢視收據" onclick="openLightbox(this)"><span class="receipt" aria-hidden="true"><span class="r-hd"></span><span class="r-ln w92"></span><span class="r-ln w64"></span><span class="r-ln w84"></span><span class="r-ln w50"></span><span class="r-ln w72"></span><span class="r-tot w60"></span></span><span class="zoom" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M20 20l-5-5"/></svg></span><span class="dot dot-warn" title="待核銷" aria-hidden="true"></span></button>
+                <div class="r-main">
+                  <div class="r-line1"><span class="doc-no num">E-20260629-005</span><span class="r-amt num">$450</span></div>
+                  <div class="r-sum">冷氣濾網更換工資</div>
+                  <div class="r-tags">
+                    <span class="chip chip-line">維修費用</span>
+                    <span class="chip chip-warn">待核銷</span>
+                  </div>
+                  <div class="r-note">備註：—</div>
+                  <div class="r-audit">稽核：陳店長 · 06/29 15:29</div>
+                </div>
+              </div>
+              <button class="hist-toggle" type="button" aria-expanded="false" onclick="toggleHist(this)">
+                <span class="chev" aria-hidden="true">▶</span> 歷程
+              </button>
+              <div class="hist" hidden>
+                <ul>
+                  <li><span class="h-t">06/29 11:20</span><span>王大明 · 建立單據</span></li>
+                  <li><span class="h-t">06/29 15:29</span><span>陳店長 · 打勾稽核</span></li>
+                  <li><span class="h-t">06/29 15:30</span><span>陳店長 · 交班（第 1 班）</span></li>
+                </ul>
+              </div>
+            </article>
+
+            <article class="rcard">
+              <div class="r-top">
+                <button class="thumb" type="button" aria-label="放大檢視收據" onclick="openLightbox(this)"><span class="receipt" aria-hidden="true"><span class="r-hd"></span><span class="r-ln w92"></span><span class="r-ln w64"></span><span class="r-ln w84"></span><span class="r-ln w50"></span><span class="r-ln w72"></span><span class="r-tot w60"></span></span><span class="zoom" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M20 20l-5-5"/></svg></span><span class="dot dot-ok" title="已核銷" aria-hidden="true"></span></button>
+                <div class="r-main">
+                  <div class="r-line1"><span class="doc-no num">E-20260629-006</span><span class="r-amt num">$270</span></div>
+                  <div class="r-sum">收銀紙捲 6 入</div>
+                  <div class="r-tags">
+                    <span class="chip chip-line">文具用品</span>
+                    <span class="chip chip-ok">已核銷</span>
+                  </div>
+                  <div class="r-note">備註：櫃台備品</div>
+                  <div class="r-audit">稽核：陳店長 · 06/29 15:29</div>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <div class="shift-head">
+            <span class="s">第 2 班（結班 06/29 22:10）</span>
+            <span class="sum">小計 <b class="num">$260</b>（3 筆）</span>
+          </div>
+          <div class="rcards">
+
+            <article class="rcard">
+              <div class="r-top">
+                <button class="thumb" type="button" aria-label="放大檢視收據" onclick="openLightbox(this)"><span class="receipt" aria-hidden="true"><span class="r-hd"></span><span class="r-ln w92"></span><span class="r-ln w64"></span><span class="r-ln w84"></span><span class="r-ln w50"></span><span class="r-ln w72"></span><span class="r-tot w60"></span></span><span class="zoom" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M20 20l-5-5"/></svg></span><span class="dot dot-warn" title="待核銷" aria-hidden="true"></span></button>
+                <div class="r-main">
+                  <div class="r-line1"><span class="doc-no num">E-20260629-016</span><span class="r-amt num">$180</span></div>
+                  <div class="r-sum">洗手乳補充包</div>
+                  <div class="r-tags">
+                    <span class="chip chip-line">清潔耗材</span>
+                    <span class="chip chip-warn">待核銷</span>
+                  </div>
+                  <div class="r-note">備註：—</div>
+                  <div class="r-audit">稽核：陳店長 · 06/29 22:08</div>
+                </div>
+              </div>
+            </article>
+
+            <article class="rcard">
+              <div class="r-top">
+                <button class="thumb" type="button" aria-label="放大檢視收據" onclick="openLightbox(this)"><span class="receipt" aria-hidden="true"><span class="r-hd"></span><span class="r-ln w92"></span><span class="r-ln w64"></span><span class="r-ln w84"></span><span class="r-ln w50"></span><span class="r-ln w72"></span><span class="r-tot w60"></span></span><span class="zoom" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M20 20l-5-5"/></svg></span><span class="dot dot-bad" title="會計退回" aria-hidden="true"></span></button>
+                <div class="r-main">
+                  <div class="r-line1"><span class="doc-no num">E-20260629-018</span><span class="r-amt num neg">-$40</span></div>
+                  <div class="r-sum">退貨沖銷（飲料）</div>
+                  <div class="r-tags">
+                    <span class="chip chip-line">雜項</span>
+                    <span class="chip chip-bad">會計退回</span>
+                  </div>
+                  <div class="r-note">備註：折讓單沖銷</div>
+                  <div class="r-audit">稽核：陳店長 · 06/29 22:09</div>
+                </div>
+              </div>
+              <button class="hist-toggle" type="button" aria-expanded="false" onclick="toggleHist(this)">
+                <span class="chev" aria-hidden="true">▶</span> 歷程
+              </button>
+              <div class="hist" hidden>
+                <ul>
+                  <li><span class="h-t">06/29 19:45</span><span>張阿姨 · 建立單據</span></li>
+                  <li><span class="h-t">06/29 22:09</span><span>陳店長 · 打勾稽核</span></li>
+                  <li><span class="h-t">06/29 22:10</span><span>陳店長 · 結班（第 2 班）</span></li>
+                  <li><span class="h-t">06/30 09:12</span><span>會計 · 退回（需附折讓單影像）</span></li>
+                </ul>
+              </div>
+            </article>
+
+            <article class="rcard">
+              <div class="r-top">
+                <button class="thumb" type="button" aria-label="放大檢視收據" onclick="openLightbox(this)"><span class="receipt" aria-hidden="true"><span class="r-hd"></span><span class="r-ln w92"></span><span class="r-ln w64"></span><span class="r-ln w84"></span><span class="r-ln w50"></span><span class="r-ln w72"></span><span class="r-tot w60"></span></span><span class="zoom" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M20 20l-5-5"/></svg></span><span class="dot dot-warn" title="待核銷" aria-hidden="true"></span></button>
+                <div class="r-main">
+                  <div class="r-line1"><span class="doc-no num">E-20260629-019</span><span class="r-amt num">$120</span></div>
+                  <div class="r-sum">吸管、杯蓋補貨</div>
+                  <div class="r-tags">
+                    <span class="chip chip-line">食材補貨</span>
+                    <span class="chip chip-warn">待核銷</span>
+                  </div>
+                  <div class="r-note">備註：—</div>
+                  <div class="r-audit">稽核：陳店長 · 06/29 22:09</div>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <div class="day-total">
+            <span class="l">當日總額</span>
+            <span class="v num">$1,240（7 筆）</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 操作記錄（佔位）================= -->
+      <section class="panel" id="panel-log" role="tabpanel" aria-labelledby="tab-log" hidden>
+        <div class="ph-card">
+          <h3>近期操作記錄</h3>
+          <div class="log-line"><span class="t">06/29 22:10</span><span>陳店長 · 結班（第 2 班，3 筆 $260）</span></div>
+          <div class="log-line"><span class="t">06/29 15:30</span><span>陳店長 · 交班（第 1 班，4 筆 $980）</span></div>
+          <div class="log-line"><span class="t">06/29 10:12</span><span>陳店長 · 修改金額 E-20260629-014（704 → 740）</span></div>
+          <div class="log-line"><span class="t">06/28 21:40</span><span>陳店長 · 修改分類 E-20260628-007（雜項 → 清潔耗材）</span></div>
+          <div class="log-line"><span class="t">06/28 15:02</span><span>陳店長 · 取消上一次交班（誤按）</span></div>
+        </div>
+      </section>
+
+      <!-- ================= 帳號（佔位）================= -->
+      <section class="panel" id="panel-acct" role="tabpanel" aria-labelledby="tab-acct" hidden>
+        <div class="ph-card">
+          <h3>本店人員</h3>
+          <div class="ph-row"><span>王大明<div class="sub">員工 · 2026/03 加入</div></span><span class="chip chip-ok">啟用</span></div>
+          <div class="ph-row"><span>林小美<div class="sub">員工 · 2026/04 加入</div></span><span class="chip chip-ok">啟用</span></div>
+          <div class="ph-row"><span>張阿姨<div class="sub">員工 · 2025/12 加入</div></span><span class="chip chip-ok">啟用</span></div>
+          <div class="ph-row"><span>李小華<div class="sub">員工 · 已離職</div></span><span class="chip chip-line">停用</span></div>
+        </div>
+      </section>
+
+      <!-- ================= 裝置（佔位）================= -->
+      <section class="panel" id="panel-dev" role="tabpanel" aria-labelledby="tab-dev" hidden>
+        <div class="ph-card">
+          <h3>本店綁定裝置</h3>
+          <div class="ph-row"><span>櫃台公用平板<div class="sub">綁定 2026/05/02 · 最後使用 06/29 22:11</div></span><span class="chip chip-ok">正常</span></div>
+          <div class="ph-row"><span>王大明的手機<div class="sub">綁定 2026/06/11 · 最後使用 06/29 19:47</div></span><span class="chip chip-ok">正常</span></div>
+          <div class="ph-row"><span>舊公用手機<div class="sub">綁定 2026/01/15 · 已汰換</div></span><span class="chip chip-line">停用</span></div>
+        </div>
+      </section>
+
+      <!-- ================= 我的密碼（佔位）================= -->
+      <section class="panel" id="panel-pw" role="tabpanel" aria-labelledby="tab-pw" hidden>
+        <div class="ph-card">
+          <h3>變更我的密碼</h3>
+          <div class="form-field">
+            <label for="pw-old">舊密碼</label>
+            <input type="password" id="pw-old" autocomplete="current-password">
+          </div>
+          <div class="form-field">
+            <label for="pw-new">新密碼</label>
+            <input type="password" id="pw-new" autocomplete="new-password">
+          </div>
+          <div class="form-field">
+            <label for="pw-new2">確認新密碼</label>
+            <input type="password" id="pw-new2" autocomplete="new-password">
+          </div>
+          <button class="pw-btn" type="button">更新密碼</button>
+        </div>
+      </section>
+    </main>
+
+    <!-- 常駐底部 action bar（僅稽核分頁顯示）-->
+    <div class="actionbar" id="actionbar">
+      <div class="ab-sub">
+        <span>當前班即時小計</span>
+        <span><b id="ab-total" class="num">$860</b>（<span id="ab-count" class="num">3</span> 筆）</span>
+      </div>
+      <div class="ab-btns">
+        <button class="ab-btn ab-primary" type="button">交班</button>
+        <button class="ab-btn ab-secondary" type="button">結班</button>
+        <button class="ab-btn ab-ghost" type="button">取消上一次</button>
+      </div>
+    </div>
+
+    <!-- 收據放大燈箱（所有縮圖共用；可縮放 + 平移）-->
+    <div class="lightbox" id="lightbox" hidden>
+      <button class="lb-backdrop" type="button" aria-label="關閉放大" onclick="closeLightbox()"></button>
+      <button class="lb-close" type="button" aria-label="關閉放大" onclick="closeLightbox()">&times;</button>
+      <div class="lb-panel" role="dialog" aria-modal="true" aria-label="收據放大檢視">
+        <div class="lb-figure" id="lb-figure">
+          <div class="lb-zoom" id="lb-zoom">
+            <span class="receipt" aria-hidden="true">
+              <span class="r-hd"></span>
+              <span class="r-ln w92"></span><span class="r-ln w64"></span><span class="r-ln w84"></span>
+              <span class="r-ln w50"></span><span class="r-ln w72"></span>
+              <span class="r-tot w60"></span>
+            </span>
+          </div>
+        </div>
+        <div class="lb-cap" id="lb-cap">收據放大預覽 · 滾輪／雙指縮放，拖曳平移，雙擊還原</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  var TABS = ['audit','log','acct','dev','pw'];
+  var curTotal = 860, curCount = 3; // demo: 當前班已打勾累計
+
+  window.switchTab = function(id){
+    TABS.forEach(function(t){
+      document.getElementById('panel-'+t).hidden = (t !== id);
+      document.getElementById('tab-'+t).setAttribute('aria-selected', String(t === id));
+    });
+    document.getElementById('actionbar').hidden = (id !== 'audit');
+    document.getElementById('content').scrollTop = 0;
+  };
+
+  window.switchSub = function(id){
+    ['pending','summary'].forEach(function(s){
+      document.getElementById('sub-'+s).hidden = (s !== id);
+      document.getElementById('sub-'+s+'-t').setAttribute('aria-selected', String(s === id));
+    });
+  };
+
+  window.toggleHist = function(btn){
+    var open = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', String(!open));
+    var hist = btn.nextElementSibling;
+    if (hist) hist.hidden = open;
+  };
+
+  function fmt(n){
+    var sign = n < 0 ? '-' : '';
+    return sign + '$' + Math.abs(n).toLocaleString('en-US');
+  }
+
+  // ---- 收據放大燈箱（縮放 + 平移）----
+  var lastFocus = null;
+
+  // 縮放/平移引擎：transform = translate(tx,ty) scale(scale)，origin 0 0
+  var LBZ = (function(){
+    var fig, zoom, scale = 1, tx = 0, ty = 0;
+    var MIN = 1, MAX = 4;
+    var pts = new Map();          // pointerId -> {x,y}（相對 figure）
+    var mode = null;             // 'pan' | 'pinch'
+    var last = {x:0, y:0};
+    var pinch = {dist:0, scale:1};
+    var lastTap = 0, suppressPan = false;
+
+    function grab(){ if(!fig){ fig = document.getElementById('lb-figure'); zoom = document.getElementById('lb-zoom'); } }
+    function apply(){ zoom.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')'; }
+    function rel(e){ var r = fig.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; }
+    function dist(a,b){ var dx=a.x-b.x, dy=a.y-b.y; return Math.hypot(dx,dy); }
+    function clamp(){
+      var w = fig.clientWidth, h = fig.clientHeight;
+      if (scale <= 1){ scale = 1; tx = 0; ty = 0; return; }
+      var minX = w - w*scale, minY = h - h*scale;
+      tx = Math.min(0, Math.max(minX, tx));
+      ty = Math.min(0, Math.max(minY, ty));
+    }
+    function zoomAt(cx, cy, ns){
+      ns = Math.max(MIN, Math.min(MAX, ns));
+      var wx = (cx - tx) / scale, wy = (cy - ty) / scale;  // 游標對應的內容座標
+      scale = ns;
+      tx = cx - wx*scale; ty = cy - wy*scale;
+      clamp(); apply();
+    }
+    function toggle(p){ if (scale > 1.05) reset(); else zoomAt(p.x, p.y, 2.6); }
+    function reset(){ scale = 1; tx = 0; ty = 0; grab(); if (zoom) apply(); }
+
+    function onWheel(e){ e.preventDefault(); var p = rel(e); zoomAt(p.x, p.y, scale * Math.exp(-e.deltaY * 0.0016)); }
+    function onDown(e){
+      grab(); fig.setPointerCapture(e.pointerId);
+      var p = rel(e); pts.set(e.pointerId, p);
+      if (pts.size === 1){
+        // 觸控 double-tap 偵測（滑鼠走 dblclick）
+        if (e.pointerType === 'touch'){
+          var now = Date.now();
+          if (now - lastTap < 300){ toggle(p); suppressPan = true; }
+          lastTap = now;
+        }
+        mode = 'pan'; last = p; fig.classList.add('grabbing');
+      } else if (pts.size === 2){
+        mode = 'pinch'; suppressPan = false;
+        var a = Array.from(pts.values());
+        pinch.dist = dist(a[0], a[1]) || 1; pinch.scale = scale;
+      }
+    }
+    function onMove(e){
+      if (!pts.has(e.pointerId)) return;
+      var p = rel(e); pts.set(e.pointerId, p);
+      if (mode === 'pinch' && pts.size >= 2){
+        var a = Array.from(pts.values());
+        var cx = (a[0].x + a[1].x)/2, cy = (a[0].y + a[1].y)/2;
+        zoomAt(cx, cy, pinch.scale * (dist(a[0], a[1]) / pinch.dist));
+      } else if (mode === 'pan' && !suppressPan && scale > 1){
+        tx += p.x - last.x; ty += p.y - last.y; last = p; clamp(); apply();
+      } else { last = p; }
+    }
+    function onUp(e){
+      try { fig.releasePointerCapture(e.pointerId); } catch(_){}
+      pts.delete(e.pointerId);
+      if (pts.size === 0){ mode = null; suppressPan = false; fig.classList.remove('grabbing'); }
+      else if (pts.size === 1){ mode = 'pan'; last = Array.from(pts.values())[0]; }
+    }
+    function onDbl(e){ e.preventDefault(); toggle(rel(e)); }
+
+    function init(){
+      grab(); if (!fig) return;
+      fig.addEventListener('wheel', onWheel, {passive:false});
+      fig.addEventListener('pointerdown', onDown);
+      fig.addEventListener('pointermove', onMove);
+      fig.addEventListener('pointerup', onUp);
+      fig.addEventListener('pointercancel', onUp);
+      fig.addEventListener('dblclick', onDbl);
+    }
+    return { init:init, reset:reset };
+  })();
+  LBZ.init();
+
+  window.openLightbox = function(thumb){
+    var lb = document.getElementById('lightbox');
+    var srcDot = thumb.querySelector('.dot');
+    var cap = document.getElementById('lb-cap');
+    var status = srcDot ? (srcDot.getAttribute('title') || '') : '';
+    cap.textContent = '收據放大' + (status ? ' · ' + status : '') + ' · 滾輪／雙指縮放，拖曳平移，雙擊還原';
+    lastFocus = thumb;
+    LBZ.reset();                 // 每次開啟重置成 1x、置中
+    lb.hidden = false;
+    lb.querySelector('.lb-close').focus();
+    document.addEventListener('keydown', onLbKey);
+  };
+  window.closeLightbox = function(){
+    var lb = document.getElementById('lightbox');
+    lb.hidden = true;
+    LBZ.reset();                 // 關閉時重置縮放/位移
+    document.removeEventListener('keydown', onLbKey);
+    if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
+  };
+  function onLbKey(e){ if (e.key === 'Escape') window.closeLightbox(); }
+
+  window.checkOff = function(btn){
+    var card = btn.closest('.card');
+    if (!card || card.classList.contains('checked')) return;
+    var amtInput = card.querySelector('input.amt');
+    var amt = parseInt(String(amtInput ? amtInput.value : '0').replace(/[^0-9-]/g,''), 10) || 0;
+    curTotal += amt; curCount += 1;
+    document.getElementById('ab-total').textContent = fmt(curTotal);
+    document.getElementById('ab-count').textContent = String(curCount);
+
+    var group = card.closest('.cards');
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var remove = function(){
+      card.remove();
+      if (group && !group.querySelector('.card')){
+        var note = document.createElement('div');
+        note.className = 'empty-note';
+        note.textContent = '此營業日單據已全部打勾';
+        group.appendChild(note);
+      }
+    };
+    if (reduce){ remove(); }
+    else { card.classList.add('checked'); setTimeout(remove, 260); }
+  };
+})();
+</script>

@@ -1,0 +1,945 @@
+<title>員工拍單 App</title>
+<style>
+/* ============================================================
+   DESIGN TOKENS — 沿用會計桌機版定案（同一套語言）
+   accent      系統藍 #2E6BE6（深色 #5B8DF0）／accent-soft #E8EFFC
+   ground      冷白 #F4F6FA ／ surface #FFFFFF ／ surface-2 #F8FAFD
+   ink #1C2733 ／ muted #5C6B80 ／ faint #8896A8 ／ line #DDE4EE
+   語意色（獨立於 accent，只用在燈號/狀態）：
+     ok  #1E9E5A  soft #E3F5EB  ink #14713F
+     warn #C7860A soft #FCF2DC  ink #8F5E03
+     bad #D6455A  soft #FCE9EC  ink #AF2B40
+   深色：ground #12161D / surface #1A2029 / ink #E4EAF2
+         muted #96A3B5 / line #2C3542
+         ok #3DBE7B / warn #E0A63C / bad #E56B7D
+   radius 10 / sm 7 ／ 系統字 ／ 金額 tabular-nums
+   規則：店別代號 ≤2 英文字母；時間＝台灣時間；負數紅字。
+   ============================================================ */
+:root{
+  --accent:#2E6BE6; --accent-soft:#E8EFFC; --accent-ink:#1E4FB0;
+  --ground:#F4F6FA; --surface:#FFFFFF; --surface-2:#F8FAFD;
+  --ink:#1C2733; --muted:#5C6B80; --faint:#8896A8; --line:#DDE4EE;
+  --ok:#1E9E5A; --ok-soft:#E3F5EB; --ok-ink:#14713F;
+  --warn:#C7860A; --warn-soft:#FCF2DC; --warn-ink:#8F5E03;
+  --bad:#D6455A; --bad-soft:#FCE9EC; --bad-ink:#AF2B40;
+  --stage:#E3E8F0;            /* 手機框外背景 */
+  --cam:#232B36; --cam-2:#2C3542;  /* 相機取景深色 */
+  --thumb-a:#E1E7F0; --thumb-b:#CFD8E5;  /* 縮圖佔位 */
+  --shadow:0 18px 44px rgba(28,39,51,.18);
+  --r:10px; --r-sm:7px;
+  --font:-apple-system,'PingFang TC','Segoe UI','Noto Sans TC',sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --accent:#5B8DF0; --accent-soft:#233350; --accent-ink:#9DBCF7;
+    --ground:#12161D; --surface:#1A2029; --surface-2:#202834;
+    --ink:#E4EAF2; --muted:#96A3B5; --faint:#6C7A8E; --line:#2C3542;
+    --ok:#3DBE7B; --ok-soft:#1B3227; --ok-ink:#7BDCA9;
+    --warn:#E0A63C; --warn-soft:#3A2F16; --warn-ink:#F0C778;
+    --bad:#E56B7D; --bad-soft:#3D2129; --bad-ink:#F2A0AC;
+    --stage:#0C0F14; --cam:#0E1319; --cam-2:#1A222D;
+    --thumb-a:#252E3B; --thumb-b:#1E2632;
+    --shadow:0 18px 44px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="light"]{
+  --accent:#2E6BE6; --accent-soft:#E8EFFC; --accent-ink:#1E4FB0;
+  --ground:#F4F6FA; --surface:#FFFFFF; --surface-2:#F8FAFD;
+  --ink:#1C2733; --muted:#5C6B80; --faint:#8896A8; --line:#DDE4EE;
+  --ok:#1E9E5A; --ok-soft:#E3F5EB; --ok-ink:#14713F;
+  --warn:#C7860A; --warn-soft:#FCF2DC; --warn-ink:#8F5E03;
+  --bad:#D6455A; --bad-soft:#FCE9EC; --bad-ink:#AF2B40;
+  --stage:#E3E8F0; --cam:#232B36; --cam-2:#2C3542;
+  --thumb-a:#E1E7F0; --thumb-b:#CFD8E5;
+  --shadow:0 18px 44px rgba(28,39,51,.18);
+}
+:root[data-theme="dark"]{
+  --accent:#5B8DF0; --accent-soft:#233350; --accent-ink:#9DBCF7;
+  --ground:#12161D; --surface:#1A2029; --surface-2:#202834;
+  --ink:#E4EAF2; --muted:#96A3B5; --faint:#6C7A8E; --line:#2C3542;
+  --ok:#3DBE7B; --ok-soft:#1B3227; --ok-ink:#7BDCA9;
+  --warn:#E0A63C; --warn-soft:#3A2F16; --warn-ink:#F0C778;
+  --bad:#E56B7D; --bad-soft:#3D2129; --bad-ink:#F2A0AC;
+  --stage:#0C0F14; --cam:#0E1319; --cam-2:#1A222D;
+  --thumb-a:#252E3B; --thumb-b:#1E2632;
+  --shadow:0 18px 44px rgba(0,0,0,.5);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:var(--font);background:var(--stage);color:var(--ink);
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.amt,.num{font-variant-numeric:tabular-nums}
+.amt.neg{color:var(--bad)} /* 規則一致：負數紅字（員工端多為正數） */
+
+/* ---------- 舞台 + 手機外框 ---------- */
+.stage{min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:28px 12px;flex-direction:column;gap:14px}
+.stage-note{font-size:12px;color:var(--faint);letter-spacing:.08em}
+.phone{width:min(400px,100%);height:clamp(620px,90vh,844px);
+  background:var(--ground);border-radius:36px;box-shadow:var(--shadow);
+  border:6px solid #1B222C;overflow:hidden;display:flex;flex-direction:column;
+  position:relative}
+:root[data-theme="dark"] .phone{border-color:#2C3542}
+@media (prefers-color-scheme: dark){ .phone{border-color:#2C3542} }
+:root[data-theme="light"] .phone{border-color:#1B222C}
+
+/* ---------- 頂部抬頭 ---------- */
+.appbar{flex:none;display:flex;align-items:center;justify-content:space-between;
+  gap:8px;padding:12px 14px 10px;background:var(--surface);
+  border-bottom:1px solid var(--line)}
+.who{display:flex;align-items:center;gap:9px;min-width:0}
+.store-badge{flex:none;display:inline-flex;align-items:center;justify-content:center;
+  width:32px;height:32px;border-radius:9px;background:var(--accent-soft);
+  color:var(--accent-ink);font-weight:700;font-size:13px;letter-spacing:.05em}
+.who .name{font-weight:600;font-size:15px}
+.who .shift{font-size:11px;color:var(--faint);display:block;margin-top:1px}
+.appbar-actions{display:flex;gap:6px}
+.icon-btn{width:44px;height:44px;border:1px solid var(--line);background:var(--surface-2);
+  border-radius:var(--r-sm);display:inline-flex;align-items:center;justify-content:center;
+  color:var(--muted)}
+.icon-btn:hover{color:var(--ink);border-color:var(--faint)}
+.icon-btn svg{width:19px;height:19px}
+
+/* ---------- 內容區 ---------- */
+.content{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;
+  overscroll-behavior:contain}
+.pane{display:none;padding:14px 14px 20px}
+.pane.active{display:block}
+#pane-shoot{padding:0;height:100%}
+#pane-shoot.active{display:flex;flex-direction:column}
+
+.pane-title{font-size:16px;font-weight:700;margin:2px 2px 4px}
+.pane-sub{font-size:12px;color:var(--muted);margin:0 2px 12px}
+
+/* ---------- 拍單 ---------- */
+.viewfinder{flex:1;position:relative;background:
+  radial-gradient(120% 90% at 50% 30%, var(--cam-2), var(--cam) 70%);
+  display:flex;align-items:center;justify-content:center;min-height:220px}
+.vf-frame{width:68%;aspect-ratio:3/4;max-height:64%;position:relative}
+.vf-frame::before,.vf-frame::after,
+.vf-frame b::before,.vf-frame b::after{content:"";position:absolute;width:26px;height:26px;
+  border:3px solid rgba(255,255,255,.85)}
+.vf-frame::before{top:0;left:0;border-right:0;border-bottom:0;border-radius:6px 0 0 0}
+.vf-frame::after{top:0;right:0;border-left:0;border-bottom:0;border-radius:0 6px 0 0}
+.vf-frame b::before{bottom:0;left:0;border-right:0;border-top:0;border-radius:0 0 0 6px}
+.vf-frame b::after{bottom:0;right:0;border-left:0;border-top:0;border-radius:0 0 6px 0}
+.vf-hint{position:absolute;left:0;right:0;bottom:14px;text-align:center;
+  color:rgba(255,255,255,.75);font-size:12.5px;letter-spacing:.04em}
+.vf-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.vf-flash.on{animation:flash .28s ease-out}
+@keyframes flash{0%{opacity:.85}100%{opacity:0}}
+.shot-count{position:absolute;top:12px;left:12px;background:rgba(0,0,0,.55);
+  color:#fff;font-size:12.5px;padding:6px 11px;border-radius:999px;
+  font-variant-numeric:tabular-nums}
+.cam-dock{flex:none;background:var(--surface);border-top:1px solid var(--line);
+  padding:14px 18px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.shutter{width:74px;height:74px;border-radius:50%;border:none;flex:none;
+  background:var(--accent);position:relative;box-shadow:0 6px 18px rgba(46,107,230,.35)}
+.shutter::after{content:"";position:absolute;inset:5px;border-radius:50%;
+  border:3px solid var(--surface);background:var(--accent)}
+.shutter:active{transform:scale(.94)}
+.cam-side{flex:1;display:flex;flex-direction:column;gap:8px}
+.cam-side .btn{width:100%}
+.upload-panel{flex:none;background:var(--surface);border-top:1px solid var(--line);
+  padding:18px 16px 22px;display:none;flex-direction:column;gap:12px;text-align:center}
+.upload-panel.show{display:flex}
+.upl-line{font-size:14px;color:var(--muted)}
+.upl-bar{height:6px;border-radius:999px;background:var(--surface-2);
+  border:1px solid var(--line);overflow:hidden}
+.upl-bar i{display:block;height:100%;width:0;background:var(--accent);
+  border-radius:999px;transition:width .5s ease}
+.upl-done{display:none;flex-direction:column;gap:12px;align-items:center}
+.upl-done.show{display:flex}
+.upl-done .big{font-size:15px;font-weight:600}
+.upl-done .ok-chip{display:inline-flex;align-items:center;gap:6px;background:var(--ok-soft);
+  color:var(--ok-ink);border-radius:999px;padding:7px 14px;font-size:13px}
+
+/* ---------- 按鈕 ---------- */
+.btn{min-height:44px;padding:0 16px;border-radius:var(--r-sm);border:1px solid var(--line);
+  background:var(--surface);font-size:14.5px;font-weight:600;color:var(--ink);
+  display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn:hover{border-color:var(--faint)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{filter:brightness(1.06);border-color:var(--accent)}
+.btn-danger{color:var(--bad-ink);border-color:var(--line);background:var(--surface)}
+.btn-danger:hover{background:var(--bad-soft);border-color:var(--bad)}
+.btn-ghost{background:var(--surface-2);color:var(--muted);font-weight:500}
+.btn-sm{min-height:44px;font-size:13.5px;padding:0 13px}
+
+/* ---------- 確認區 ---------- */
+.toolbar{display:flex;gap:8px;margin-bottom:12px}
+.toolbar .btn{flex:1}
+.toolbar .btn.refresh{flex:0 0 auto;width:52px;padding:0;font-size:17px;color:var(--muted)}
+
+.cardlist{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  padding:12px;display:flex;flex-direction:column;gap:10px}
+.card-head{display:flex;gap:10px;align-items:flex-start}
+/* 收據縮圖（可點放大）＋ 佔位縮圖 */
+.thumb{flex:none;width:52px;height:64px;border-radius:var(--r-sm);position:relative;
+  padding:0;border:1px solid var(--line);overflow:hidden;background:#FBFBF8;
+  display:block;cursor:zoom-in}
+.thumb:hover{border-color:var(--faint)}
+.thumb.placeholder{cursor:default;background:linear-gradient(160deg,var(--thumb-a),var(--thumb-b));
+  display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:17px}
+.zoom-badge{position:absolute;right:2px;bottom:2px;width:16px;height:16px;border-radius:5px;
+  background:rgba(20,28,38,.72);color:#fff;display:flex;align-items:center;justify-content:center}
+.zoom-badge svg{width:10px;height:10px}
+
+/* 純 CSS 迷你收據，縮圖與燈箱共用同一畫法（em 尺寸，換 font-size 放大） */
+.receipt{position:relative;display:flex;flex-direction:column;gap:.55em;
+  background:#FBFBF8;border-radius:.5em;padding:.9em .8em;overflow:hidden;font-size:4.4px}
+.thumb .receipt{width:100%;height:100%;border:none;border-radius:0}
+.receipt .r-head{height:1.5em;border-radius:.25em;background:#313C49}
+.receipt .r-row{display:flex;justify-content:space-between;gap:.6em;align-items:center}
+.receipt .r-row i{height:.62em;border-radius:.4em;background:#C7D2E0;display:block}
+.receipt .r-row .w-p{width:20%;flex:0 0 auto;background:#AEB9C8}
+.receipt .r-div{height:.14em;background:#D9DFE8;margin-top:auto}
+.receipt .r-row.total i{height:.9em;background:#8290A2}
+.receipt .r-row.total .w-l{width:42%}
+
+/* ---------- 燈箱（點縮圖放大，共用一個容器） ---------- */
+.lightbox{position:absolute;inset:0;z-index:30;display:none;
+  align-items:center;justify-content:center}
+.lightbox.open{display:flex}
+.lb-backdrop{position:absolute;inset:0;background:rgba(6,10,16,.74)}
+.lb-close{position:absolute;top:12px;right:12px;z-index:2;width:44px;height:44px;
+  border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(0,0,0,.5);
+  color:#fff;font-size:26px;line-height:1;display:flex;align-items:center;justify-content:center}
+.lb-close:hover{background:rgba(0,0,0,.7)}
+.lb-stage{position:relative;z-index:1;display:flex;flex-direction:column;
+  align-items:center;gap:14px;max-width:88%}
+.receipt-lg{width:min(74vw,262px);max-width:262px;font-size:15px;
+  box-shadow:0 24px 60px rgba(0,0,0,.5);
+  touch-action:none;cursor:grab;transform-origin:center;will-change:transform;
+  user-select:none;-webkit-user-select:none}
+.receipt-lg.grabbing{cursor:grabbing}
+.lb-cap{margin:0;color:rgba(255,255,255,.85);font-size:13.5px;text-align:center;max-width:88%}
+.lb-hint{margin:0;color:rgba(255,255,255,.5);font-size:11.5px;letter-spacing:.02em}
+@media (prefers-reduced-motion: no-preference){
+  .lightbox.open .lb-backdrop{animation:lbFade .2s ease}
+  .lightbox.open .lb-stage{animation:lbPop .22s cubic-bezier(.2,.7,.3,1)}
+  .receipt-lg{transition:transform .16s ease}
+  .receipt-lg.no-anim{transition:none}
+  @keyframes lbFade{from{opacity:0}to{opacity:1}}
+  @keyframes lbPop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+}
+.dot{position:absolute;top:-4px;right:-4px;width:12px;height:12px;border-radius:50%;
+  border:2px solid var(--surface)}
+.dot-ok{background:var(--ok)} .dot-warn{background:var(--warn)} .dot-bad{background:var(--bad)}
+.thumb-wrap{position:relative;flex:none}
+.card-meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.card-time{font-size:11.5px;color:var(--faint)}
+.card-id{font-size:11.5px;color:var(--faint);letter-spacing:.03em}
+
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;color:var(--faint);letter-spacing:.08em}
+.field input,.field select{min-height:44px;border:1px solid var(--line);
+  border-radius:var(--r-sm);background:var(--surface-2);padding:0 11px;font-size:14.5px;
+  width:100%;color:var(--ink)}
+.field input::placeholder{color:var(--faint)}
+.field input:focus,.field select:focus{outline:2px solid var(--accent);outline-offset:0;
+  border-color:var(--accent)}
+.field-row{display:flex;gap:8px}
+.field-row .field{flex:1;min-width:0}
+.field-row .field.f-amt{flex:0 0 118px}
+.f-amt input{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.card-actions{display:flex;gap:8px;margin-top:2px}
+.card-actions .btn{flex:1}
+
+.status-strip{display:flex;align-items:center;gap:8px;border-radius:var(--r-sm);
+  padding:10px 12px;font-size:13.5px}
+.status-strip.pending{background:var(--surface-2);color:var(--muted);border:1px dashed var(--line)}
+.status-strip.fail{background:var(--warn-soft);color:var(--warn-ink)}
+.skeleton{display:flex;flex-direction:column;gap:8px;margin-top:2px}
+.skeleton i{display:block;height:12px;border-radius:6px;background:var(--surface-2);
+  border:1px solid var(--line)}
+.skeleton i:nth-child(1){width:62%} .skeleton i:nth-child(2){width:40%}
+@media (prefers-reduced-motion: no-preference){
+  .dot-warn.pulse{animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.35}}
+}
+.card.sent{opacity:.72}
+.sent-chip{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;
+  background:var(--ok-soft);color:var(--ok-ink);border-radius:999px;
+  padding:7px 13px;font-size:13px;font-weight:600}
+
+/* 無單據建帳表單卡 */
+#manualCard{display:none;border-color:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-soft)}
+#manualCard.show{display:flex}
+#manualCard h3{margin:0;font-size:14.5px}
+
+.empty-state{display:none;text-align:center;color:var(--faint);font-size:14px;
+  padding:52px 12px;border:1px dashed var(--line);border-radius:var(--r)}
+/* 空狀態：確認區除了「無單據建帳」表單卡以外沒有任何卡片時顯示 */
+#confirmList:not(:has(.card:not(#manualCard))) + .empty-state{display:block}
+
+/* ---------- 複查 ---------- */
+.ro-card{gap:8px}
+.ro-line{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.ro-line .k{font-size:12px;color:var(--faint)}
+.ro-line .v{font-size:13.5px;color:var(--ink);text-align:right;min-width:0}
+.ro-summary{font-size:14.5px;font-weight:600;line-height:1.35}
+.chip{display:inline-flex;align-items:center;border-radius:999px;padding:3px 10px;
+  font-size:11.5px;background:var(--accent-soft);color:var(--accent-ink)}
+.ro-amt{font-size:17px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.total-bar{position:sticky;bottom:0;margin-top:12px;background:var(--surface);
+  border:1px solid var(--line);border-radius:var(--r);padding:13px 14px;
+  display:flex;justify-content:space-between;align-items:center;
+  box-shadow:0 -8px 18px rgba(28,39,51,.06)}
+.total-bar .lbl{font-size:13.5px;color:var(--muted)}
+.total-bar .sum{font-size:19px;font-weight:800;color:var(--ok-ink);
+  font-variant-numeric:tabular-nums}
+
+/* ---------- 底部 tab bar ---------- */
+.tabbar{flex:none;display:flex;background:var(--surface);
+  border-top:1px solid var(--line);padding:6px 8px calc(8px + env(safe-area-inset-bottom,6px))}
+.tab{flex:1;min-height:52px;border:none;background:none;border-radius:var(--r-sm);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  color:var(--faint);font-size:11.5px;font-weight:600;position:relative}
+.tab svg{width:23px;height:23px}
+.tab.active{color:var(--accent);background:var(--accent-soft)}
+.tab .badge{position:absolute;top:4px;left:calc(50% + 8px);min-width:18px;height:18px;
+  padding:0 5px;border-radius:999px;background:var(--bad);color:#fff;font-size:11px;
+  display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+.tab .badge.zero{display:none}
+
+/* ---------- toast ---------- */
+.toast{position:absolute;left:50%;bottom:86px;transform:translateX(-50%) translateY(8px);
+  background:var(--ink);color:var(--ground);font-size:13px;padding:9px 16px;
+  border-radius:999px;opacity:0;pointer-events:none;white-space:nowrap;
+  transition:opacity .25s,transform .25s;max-width:88%;overflow:hidden;text-overflow:ellipsis}
+.toast.show{opacity:.96;transform:translateX(-50%) translateY(0)}
+
+/* ---------- 直式／橫式切換鈕（放抬頭列，全分頁都搆得到） ---------- */
+.orient-toggle{flex:none;display:flex;background:var(--surface-2);
+  border:1px solid var(--line);border-radius:999px;padding:2px;gap:2px}
+.orient-toggle button{min-height:40px;padding:0 11px;border:none;border-radius:999px;
+  background:none;color:var(--muted);font-size:12.5px;font-weight:600}
+.orient-toggle button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.orient-toggle button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.appbar .who .shift{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ============================================================
+   橫式模式：手機外框轉橫。導覽改成「左側直向 rail」（三個 tab
+   全高常駐，左手切分頁），內容區在 rail 右邊。
+   ============================================================ */
+.phone{transition:width .3s ease,height .3s ease}
+.phone.land{width:min(760px,100%);height:clamp(360px,86vh,416px)}
+
+/* tab bar → 左側直向 rail（全高、常駐、看得到也點得到） */
+.phone.land .tabbar{position:absolute;left:0;top:0;bottom:0;width:76px;
+  flex-direction:column;justify-content:flex-start;gap:6px;
+  border-top:none;border-right:1px solid var(--line);
+  padding:10px 7px calc(10px + env(safe-area-inset-bottom,0px));z-index:5}
+.phone.land .tab{flex:0 0 auto;min-height:60px;font-size:11px}
+/* 抬頭與內容讓開左側 rail 寬度 */
+.phone.land .appbar{margin-left:76px}
+.phone.land .content{margin-left:76px}
+
+/* --- 拍單（橫式）：相機填滿 rail 右側，快門在最右垂直置中 --- */
+.phone.land #pane-shoot{padding:0;position:relative}
+.phone.land .viewfinder{position:absolute;inset:0}
+.phone.land .vf-frame{width:auto;height:70%;aspect-ratio:4/3;max-height:none}
+.phone.land .vf-hint{bottom:16px;left:16px;right:auto;text-align:left;max-width:56%}
+.phone.land .cam-dock{position:absolute;right:18px;top:0;bottom:0;left:auto;
+  width:auto;background:none;border:none;padding:0;
+  flex-direction:column;justify-content:center;gap:14px;z-index:2}
+.phone.land .cam-side{width:112px;flex:0 0 auto}
+.phone.land .cam-side .btn{width:100%;
+  background:rgba(0,0,0,.5);border-color:rgba(255,255,255,.28);color:#fff;
+  backdrop-filter:blur(4px)}
+.phone.land .cam-side .btn-primary{background:var(--accent);border-color:var(--accent)}
+.phone.land .shot-count{top:14px;left:14px}
+.phone.land .upload-panel.show{position:absolute;inset:0;left:auto;margin:auto;
+  height:max-content;max-width:340px;border:1px solid var(--line);
+  border-radius:var(--r);box-shadow:var(--shadow);z-index:4}
+
+/* --- 確認區 / 複查（橫式）：內容區用 2 欄 grid，可上下捲 --- */
+.phone.land .cardlist{display:flex;flex-direction:column;gap:12px}
+.phone.land #manualCard{grid-column:1 / -1}
+
+/* ---------- 平板（寬視窗）：框放寬、卡片 2 欄 ---------- */
+@media (min-width:1024px){
+  .phone{width:min(760px,100%)}
+  .cardlist{display:flex;flex-direction:column;gap:12px}
+  #manualCard{grid-column:1 / -1}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+
+<div class="stage">
+  <div class="phone" role="application" aria-label="員工拍單 App">
+
+    <!-- 頂部細抬頭 -->
+    <header class="appbar">
+      <div class="who">
+        <span class="store-badge" aria-label="門市 TP">TP</span>
+        <span>
+          <span class="name">林小美</span>
+          <span class="shift">早班 · 07/16（三）</span>
+        </span>
+      </div>
+      <div class="orient-toggle" role="group" aria-label="拍攝方向">
+        <button type="button" id="opt-portrait" aria-pressed="true" onclick="setOrient('portrait')">直式</button>
+        <button type="button" id="opt-landscape" aria-pressed="false" onclick="setOrient('landscape')">橫式</button>
+      </div>
+      <div class="appbar-actions">
+        <button class="icon-btn" title="更新人臉" aria-label="更新人臉" onclick="toast('已進入人臉更新流程（示意）')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/>
+            <circle cx="9" cy="10.5" r=".9" fill="currentColor" stroke="none"/>
+            <circle cx="15" cy="10.5" r=".9" fill="currentColor" stroke="none"/>
+            <path d="M9 15c.9.8 1.9 1.2 3 1.2s2.1-.4 3-1.2"/>
+          </svg>
+        </button>
+        <button class="icon-btn" title="登出" aria-label="登出" onclick="toast('已登出（示意）')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4"/>
+            <path d="M10 8l-4 4 4 4M6 12h9"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- 內容 -->
+    <main class="content">
+
+      <!-- ===== TAB 1：拍單 ===== -->
+      <section class="pane active" id="pane-shoot" aria-label="拍單">
+        <div class="viewfinder">
+          <span class="shot-count" id="shotCount">已拍 2 張</span>
+          <div class="vf-frame" aria-hidden="true"><b></b></div>
+          <p class="vf-hint">將單據對準框內，光線充足、拍清楚金額</p>
+          <div class="vf-flash" id="vfFlash" aria-hidden="true"></div>
+        </div>
+
+        <!-- 拍攝控制列 -->
+        <div class="cam-dock" id="camDock">
+          <div class="cam-side">
+            <button class="btn btn-ghost btn-sm" onclick="nextShot()">下一張</button>
+          </div>
+          <button class="shutter" aria-label="快門" onclick="snap()"></button>
+          <div class="cam-side">
+            <button class="btn btn-primary btn-sm" onclick="finishShoot()">完成</button>
+          </div>
+        </div>
+
+        <!-- 上傳進度（完成後切換到這裡） -->
+        <div class="upload-panel" id="uploadPanel">
+          <div id="uplProgress">
+            <p class="upl-line" id="uplLine">上傳中 1/2…</p>
+            <div class="upl-bar"><i id="uplFill"></i></div>
+          </div>
+          <div class="upl-done" id="uplDone">
+            <span class="ok-chip">✓ 已送出 2 張</span>
+            <p class="big">背景辨識中，稍後到「確認區」確認</p>
+            <button class="btn btn-primary" style="width:100%" onclick="showTab('confirm')">前往確認區</button>
+            <button class="btn btn-ghost btn-sm" style="width:100%" onclick="resetShoot()">繼續拍下一批</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== TAB 2：確認區 ===== -->
+      <section class="pane" id="pane-confirm" aria-label="確認區">
+        <h2 class="pane-title">確認區</h2>
+        <p class="pane-sub">辨識完成後請逐筆核對再送出</p>
+
+        <div class="toolbar">
+          <button class="btn" onclick="toggleManual()">＋ 無單據建帳</button>
+          <button class="btn refresh" title="重整" aria-label="重整" onclick="toast('已重新整理 · 仍有 1 筆辨識中')">↻</button>
+        </div>
+
+        <div class="cardlist" id="confirmList">
+
+          <!-- 無單據建帳表單卡（預設收合） -->
+          <div class="card" id="manualCard">
+            <h3>無單據建帳</h3>
+            <div class="field">
+              <label for="m-sum">摘要</label>
+              <input id="m-sum" placeholder="例：跑腿代購冰塊">
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="m-cat">分類</label>
+                <select id="m-cat">
+                  <option>雜項支出</option><option>清潔用品</option><option>文具耗材</option>
+                  <option>修繕維護</option><option>食材備品</option><option>運費</option>
+                </select>
+              </div>
+              <div class="field f-amt">
+                <label for="m-amt">金額</label>
+                <input id="m-amt" inputmode="numeric" placeholder="0">
+              </div>
+            </div>
+            <div class="field">
+              <label for="m-why">原因（選填）</label>
+              <input id="m-why" placeholder="為何沒有單據？">
+            </div>
+            <button class="btn btn-ghost" onclick="toast('開啟相機（示意）')">📷 拍照（選填）</button>
+            <div class="card-actions">
+              <button class="btn btn-primary" onclick="toast('已送出無單據建帳'); toggleManual()">送出</button>
+              <button class="btn btn-ghost" onclick="toggleManual()">取消</button>
+            </div>
+          </div>
+
+          <!-- 卡 1：正常，可送出 -->
+          <div class="card" id="c1">
+            <div class="card-head">
+              <span class="thumb-wrap"><button type="button" class="thumb" data-cap="漂白水 4L × 2、菜瓜布一組 · $158" onclick="openLightbox(this)" aria-label="放大收據縮圖"><span class="receipt"></span><span class="zoom-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-3.6-3.6"/><path d="M10.5 8v5M8 10.5h5"/></svg></span></button><span class="dot dot-ok"></span></span>
+              <div class="card-meta">
+                <span class="card-time">14:12 拍攝 · 辨識完成</span>
+                <div class="field" style="margin-top:4px">
+                  <label for="c1-sum">摘要</label>
+                  <input id="c1-sum" value="漂白水 4L × 2、菜瓜布一組">
+                </div>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="c1-cat">分類</label>
+                <select id="c1-cat">
+                  <option selected>清潔用品</option><option>文具耗材</option><option>修繕維護</option>
+                  <option>食材備品</option><option>雜項支出</option><option>運費</option>
+                </select>
+              </div>
+              <div class="field f-amt">
+                <label for="c1-amt">金額</label>
+                <input id="c1-amt" class="amt" inputmode="numeric" value="158">
+              </div>
+            </div>
+            <div class="field">
+              <label for="c1-note">備註</label>
+              <input id="c1-note" placeholder="備註（可留空）">
+            </div>
+            <div class="card-actions">
+              <button class="btn btn-primary" onclick="sendCard('c1')">送出</button>
+              <button class="btn btn-danger" onclick="discardCard('c1')">丟棄</button>
+            </div>
+          </div>
+
+          <!-- 卡 2：正常，可送出 -->
+          <div class="card" id="c2">
+            <div class="card-head">
+              <span class="thumb-wrap"><button type="button" class="thumb" data-cap="A4 影印紙一箱（5 包）· $620" onclick="openLightbox(this)" aria-label="放大收據縮圖"><span class="receipt"></span><span class="zoom-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-3.6-3.6"/><path d="M10.5 8v5M8 10.5h5"/></svg></span></button><span class="dot dot-ok"></span></span>
+              <div class="card-meta">
+                <span class="card-time">13:47 拍攝 · 辨識完成</span>
+                <div class="field" style="margin-top:4px">
+                  <label for="c2-sum">摘要</label>
+                  <input id="c2-sum" value="A4 影印紙一箱（5 包）">
+                </div>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="c2-cat">分類</label>
+                <select id="c2-cat">
+                  <option>清潔用品</option><option selected>文具耗材</option><option>修繕維護</option>
+                  <option>食材備品</option><option>雜項支出</option><option>運費</option>
+                </select>
+              </div>
+              <div class="field f-amt">
+                <label for="c2-amt">金額</label>
+                <input id="c2-amt" class="amt" inputmode="numeric" value="620">
+              </div>
+            </div>
+            <div class="field">
+              <label for="c2-note">備註</label>
+              <input id="c2-note" value="含運送到店" placeholder="備註（可留空）">
+            </div>
+            <div class="card-actions">
+              <button class="btn btn-primary" onclick="sendCard('c2')">送出</button>
+              <button class="btn btn-danger" onclick="discardCard('c2')">丟棄</button>
+            </div>
+          </div>
+
+          <!-- 卡 3：辨識中（欄位未回填、不出現按鈕） -->
+          <div class="card" id="c3">
+            <div class="card-head">
+              <span class="thumb-wrap"><span class="thumb placeholder" aria-hidden="true">🕓</span><span class="dot dot-warn pulse"></span></span>
+              <div class="card-meta">
+                <span class="card-time">14:31 拍攝</span>
+                <div class="status-strip pending" style="margin-top:6px">🕓 辨識中…（稍後按重整）</div>
+                <div class="skeleton" aria-hidden="true"><i></i><i></i></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 卡 4：OCR 失敗，手動確認 -->
+          <div class="card" id="c4">
+            <div class="card-head">
+              <span class="thumb-wrap"><button type="button" class="thumb" data-cap="辨識失敗的單據 · 請對照原圖手動輸入" onclick="openLightbox(this)" aria-label="放大收據縮圖"><span class="receipt"></span><span class="zoom-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-3.6-3.6"/><path d="M10.5 8v5M8 10.5h5"/></svg></span></button><span class="dot dot-bad"></span></span>
+              <div class="card-meta">
+                <span class="card-time">12:58 拍攝</span>
+                <div class="status-strip fail" style="margin-top:6px">⚠ OCR 失敗，請手動確認金額/分類</div>
+              </div>
+            </div>
+            <div class="field">
+              <label for="c4-sum">摘要</label>
+              <input id="c4-sum" placeholder="請輸入品名摘要">
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="c4-cat">分類</label>
+                <select id="c4-cat">
+                  <option value="" selected>請選擇分類</option>
+                  <option>清潔用品</option><option>文具耗材</option><option>修繕維護</option>
+                  <option>食材備品</option><option>雜項支出</option><option>運費</option>
+                </select>
+              </div>
+              <div class="field f-amt">
+                <label for="c4-amt">金額</label>
+                <input id="c4-amt" class="amt" inputmode="numeric" placeholder="0">
+              </div>
+            </div>
+            <div class="field">
+              <label for="c4-note">備註</label>
+              <input id="c4-note" placeholder="備註（可留空）">
+            </div>
+            <div class="card-actions">
+              <button class="btn" onclick="toast('已重新送辨識，請稍候')">重新辨識</button>
+              <button class="btn btn-primary" onclick="sendCard('c4')">送出</button>
+              <button class="btn btn-danger" style="flex:0 0 74px" onclick="discardCard('c4')">丟棄</button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 空狀態：卡片全部處理完才顯示（:has 驅動） -->
+        <div class="empty-state">確認區沒有待確認單據</div>
+      </section>
+
+      <!-- ===== TAB 3：複查 ===== -->
+      <section class="pane" id="pane-review" aria-label="複查">
+        <h2 class="pane-title">複查（本班已送出）</h2>
+        <p class="pane-sub">唯讀 · 早班 08:00 起 · 台灣時間</p>
+
+        <div class="cardlist">
+
+          <div class="card ro-card">
+            <div class="card-head">
+              <span class="thumb-wrap"><button type="button" class="thumb" data-cap="#E-0716-009 · A4 影印紙一箱（5 包）· $620" onclick="openLightbox(this)" aria-label="放大收據縮圖"><span class="receipt"></span><span class="zoom-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-3.6-3.6"/><path d="M10.5 8v5M8 10.5h5"/></svg></span></button></span>
+              <div class="card-meta">
+                <span class="card-id">#E-0716-009 · 09:41</span>
+                <p class="ro-summary" style="margin:3px 0 0">A4 影印紙一箱（5 包）</p>
+                <span style="margin-top:5px"><span class="chip">文具耗材</span></span>
+              </div>
+            </div>
+            <div class="ro-line"><span class="k">備註</span><span class="v">含運送到店</span></div>
+            <div class="ro-line"><span class="k">金額</span><span class="ro-amt">$620</span></div>
+          </div>
+
+          <div class="card ro-card">
+            <div class="card-head">
+              <span class="thumb-wrap"><button type="button" class="thumb" data-cap="#E-0716-010 · 冷藏櫃門把維修工資＋零件 · $1,380" onclick="openLightbox(this)" aria-label="放大收據縮圖"><span class="receipt"></span><span class="zoom-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-3.6-3.6"/><path d="M10.5 8v5M8 10.5h5"/></svg></span></button></span>
+              <div class="card-meta">
+                <span class="card-id">#E-0716-010 · 11:05</span>
+                <p class="ro-summary" style="margin:3px 0 0">冷藏櫃門把維修工資＋零件</p>
+                <span style="margin-top:5px"><span class="chip">修繕維護</span></span>
+              </div>
+            </div>
+            <div class="ro-line"><span class="k">備註</span><span class="v">王師傅到府，附估價單</span></div>
+            <div class="ro-line"><span class="k">金額</span><span class="ro-amt">$1,380</span></div>
+          </div>
+
+          <div class="card ro-card">
+            <div class="card-head">
+              <span class="thumb-wrap"><button type="button" class="thumb" data-cap="#E-0716-011 · 垃圾袋（超大）×3 捲、酒精噴瓶 · $480" onclick="openLightbox(this)" aria-label="放大收據縮圖"><span class="receipt"></span><span class="zoom-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-3.6-3.6"/><path d="M10.5 8v5M8 10.5h5"/></svg></span></button></span>
+              <div class="card-meta">
+                <span class="card-id">#E-0716-011 · 13:22</span>
+                <p class="ro-summary" style="margin:3px 0 0">垃圾袋（超大）×3 捲、酒精噴瓶</p>
+                <span style="margin-top:5px"><span class="chip">清潔用品</span></span>
+              </div>
+            </div>
+            <div class="ro-line"><span class="k">備註</span><span class="v">—</span></div>
+            <div class="ro-line"><span class="k">金額</span><span class="ro-amt">$480</span></div>
+          </div>
+
+        </div>
+
+        <div class="total-bar">
+          <span class="lbl">共 3 筆</span>
+          <span class="sum">總額 $2,480</span>
+        </div>
+      </section>
+
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </main>
+
+    <!-- 底部 tab bar -->
+    <nav class="tabbar" aria-label="主功能">
+      <button class="tab active" id="tab-shoot" onclick="showTab('shoot')" aria-label="拍單">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+          <path d="M4 8.5A1.5 1.5 0 0 1 5.5 7H8l1.4-2h5.2L16 7h2.5A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9Z"/>
+          <circle cx="12" cy="13" r="3.4"/>
+        </svg>
+        拍單
+      </button>
+      <button class="tab" id="tab-confirm" onclick="showTab('confirm')" aria-label="確認區，3 筆待確認">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 4h14v16H5z"/><path d="M8.5 9.5l1.8 1.8 3.2-3.3"/><path d="M8.5 14.5h7M8.5 17h4.5"/>
+        </svg>
+        確認區
+        <span class="badge" id="confirmBadge">3</span>
+      </button>
+      <button class="tab" id="tab-review" onclick="showTab('review')" aria-label="複查">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/><path d="M8.6 11l1.7 1.7 3-3"/>
+        </svg>
+        複查
+      </button>
+    </nav>
+
+    <!-- 放大燈箱（所有縮圖共用） -->
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="收據放大檢視">
+      <div class="lb-backdrop" onclick="closeLightbox()"></div>
+      <button type="button" class="lb-close" onclick="closeLightbox()" aria-label="關閉放大檢視">&times;</button>
+      <div class="lb-stage">
+        <div class="receipt receipt-lg" aria-hidden="true"></div>
+        <p class="lb-cap" id="lbCap">收據放大檢視</p>
+        <p class="lb-hint">滾輪／雙指縮放 · 拖曳平移 · 雙擊還原</p>
+      </div>
+    </div>
+
+  </div>
+  <p class="stage-note">員工端 · 手機版原型（平板同套放大 · 深淺色跟隨系統）</p>
+</div>
+
+<script>
+/* ---- tab 切換 ---- */
+function showTab(name){
+  ['shoot','confirm','review'].forEach(function(t){
+    document.getElementById('pane-'+t).classList.toggle('active', t===name);
+    document.getElementById('tab-'+t).classList.toggle('active', t===name);
+  });
+}
+
+/* ---- 收據縮圖畫法（縮圖＋燈箱共用）---- */
+function buildReceipts(){
+  var rows = [58,46,66,52,40];   /* 每列品名長度 %，模擬收據品項 */
+  var html = '<span class="r-head"></span>';
+  rows.forEach(function(w){
+    html += '<span class="r-row"><i class="w-l" style="width:'+w+'%"></i><i class="w-p"></i></span>';
+  });
+  html += '<span class="r-div"></span>';
+  html += '<span class="r-row total"><i class="w-l"></i><i class="w-p"></i></span>';
+  document.querySelectorAll('.receipt').forEach(function(r){ r.innerHTML = html; });
+}
+buildReceipts();
+
+/* ---- 放大燈箱（可縮放 + 平移）---- */
+var lbOpener = null;
+var lbEl = document.getElementById('lightbox');
+var lbImg = lbEl.querySelector('.receipt-lg');
+var MINZ = 1, MAXZ = 4;
+var zScale = 1, zTx = 0, zTy = 0;
+var pointers = new Map();
+var panLast = null, pinchDist = 0, pinchStartScale = 1;
+var wheelTimer = null, lastTapT = 0, lastTapX = 0, lastTapY = 0;
+
+function zApply(){ lbImg.style.transform = 'translate('+zTx+'px,'+zTy+'px) scale('+zScale+')'; }
+function zReset(){ zScale = 1; zTx = 0; zTy = 0; lbImg.classList.remove('grabbing'); zApply(); }
+function clampZ(s){ return Math.max(MINZ, Math.min(MAXZ, s)); }
+
+/* 以某個螢幕座標為中心縮放（滾輪以游標為中心、pinch 以雙指中點為中心） */
+function zoomAt(cx, cy, next){
+  next = clampZ(next);
+  if(next === zScale) return;
+  var r = lbImg.getBoundingClientRect();
+  var vx = r.left + r.width/2, vy = r.top + r.height/2;   /* 目前視覺中心 */
+  var ratio = next / zScale;
+  zTx += (cx - vx) * (1 - ratio);
+  zTy += (cy - vy) * (1 - ratio);
+  zScale = next;
+  zApply();
+}
+
+function openLightbox(btn){
+  lbOpener = btn;
+  document.getElementById('lbCap').textContent = btn.getAttribute('data-cap') || '收據放大檢視';
+  zReset();                                  /* 每次開都重置成 1x、置中 */
+  lbEl.classList.add('open');
+  lbEl.querySelector('.lb-close').focus();
+}
+function closeLightbox(){
+  lbEl.classList.remove('open');
+  pointers.clear(); panLast = null; pinchDist = 0;
+  zReset();                                  /* 關閉時重置縮放/位移 */
+  if(lbOpener){ lbOpener.focus(); lbOpener = null; }
+}
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape' && lbEl.classList.contains('open')) closeLightbox();
+});
+
+/* 桌機：滾輪縮放（以游標為中心） */
+lbImg.addEventListener('wheel', function(e){
+  e.preventDefault();
+  lbImg.classList.add('no-anim');
+  var factor = e.deltaY < 0 ? 1.16 : 1/1.16;
+  zoomAt(e.clientX, e.clientY, zScale * factor);
+  clearTimeout(wheelTimer);
+  wheelTimer = setTimeout(function(){ lbImg.classList.remove('no-anim'); }, 140);
+}, {passive:false});
+
+/* 觸控 + 滑鼠：pinch 縮放、拖曳平移（Pointer Events 一套通吃） */
+function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+function mid(a,b){ return {x:(a.x+b.x)/2, y:(a.y+b.y)/2}; }
+
+lbImg.addEventListener('pointerdown', function(e){
+  lbImg.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  lbImg.classList.add('no-anim');
+  if(pointers.size === 1){
+    panLast = {x:e.clientX, y:e.clientY};
+    if(zScale > 1) lbImg.classList.add('grabbing');
+  } else if(pointers.size === 2){
+    var p = Array.from(pointers.values());
+    pinchDist = dist(p[0], p[1]);
+    pinchStartScale = zScale;
+  }
+});
+lbImg.addEventListener('pointermove', function(e){
+  if(!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  var p = Array.from(pointers.values());
+  if(pointers.size >= 2 && pinchDist > 0){
+    var m = mid(p[0], p[1]);
+    zoomAt(m.x, m.y, pinchStartScale * (dist(p[0], p[1]) / pinchDist));
+  } else if(pointers.size === 1 && panLast && zScale > 1){
+    zTx += e.clientX - panLast.x;
+    zTy += e.clientY - panLast.y;
+    panLast = {x:e.clientX, y:e.clientY};
+    zApply();
+  }
+});
+function endPointer(e){
+  pointers.delete(e.pointerId);
+  /* 觸控 double-tap 切換（滑鼠走原生 dblclick） */
+  if(e.pointerType !== 'mouse' && e.type === 'pointerup'){
+    var now = Date.now();
+    if(now - lastTapT < 300 && Math.hypot(e.clientX-lastTapX, e.clientY-lastTapY) < 24){
+      if(zScale > 1) zReset(); else zoomAt(e.clientX, e.clientY, 2.5);
+      lastTapT = 0;
+    } else { lastTapT = now; lastTapX = e.clientX; lastTapY = e.clientY; }
+  }
+  if(pointers.size === 1){
+    var r = Array.from(pointers.values())[0];
+    panLast = {x:r.x, y:r.y}; pinchDist = 0;
+  }
+  if(pointers.size === 0){
+    panLast = null; pinchDist = 0;
+    lbImg.classList.remove('grabbing');
+    setTimeout(function(){ if(pointers.size===0) lbImg.classList.remove('no-anim'); }, 30);
+  }
+}
+lbImg.addEventListener('pointerup', endPointer);
+lbImg.addEventListener('pointercancel', endPointer);
+
+/* 桌機：雙擊 1x ↔ 放大 切換 */
+lbImg.addEventListener('dblclick', function(e){
+  e.preventDefault();
+  if(zScale > 1) zReset(); else zoomAt(e.clientX, e.clientY, 2.5);
+});
+
+/* ---- 直式／橫式切換 ---- */
+function setOrient(mode){
+  var phone = document.querySelector('.phone');
+  var land = (mode === 'landscape');
+  phone.classList.toggle('land', land);
+  document.getElementById('opt-portrait').setAttribute('aria-pressed', String(!land));
+  document.getElementById('opt-landscape').setAttribute('aria-pressed', String(land));
+  /* 不強制跳分頁：保持使用者當下所在的 tab（直式↔橫式都停在原分頁） */
+}
+
+/* ---- 拍單流程 ---- */
+var shots = 2;
+function snap(){
+  shots++;
+  document.getElementById('shotCount').textContent = '已拍 ' + shots + ' 張';
+  var f = document.getElementById('vfFlash');
+  f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
+}
+function nextShot(){ toast('已保留本張，請拍下一張'); }
+function finishShoot(){
+  if(shots === 0){ toast('還沒拍任何單據'); return; }
+  document.getElementById('camDock').style.display = 'none';
+  var panel = document.getElementById('uploadPanel');
+  panel.classList.add('show');
+  var fill = document.getElementById('uplFill');
+  var line = document.getElementById('uplLine');
+  var total = shots, i = 0;
+  line.textContent = '上傳中 0/' + total + '…';
+  var timer = setInterval(function(){
+    i++;
+    line.textContent = '上傳中 ' + i + '/' + total + '…';
+    fill.style.width = (i/total*100) + '%';
+    if(i >= total){
+      clearInterval(timer);
+      setTimeout(function(){
+        document.getElementById('uplProgress').style.display = 'none';
+        var done = document.getElementById('uplDone');
+        done.querySelector('.ok-chip').textContent = '✓ 已送出 ' + total + ' 張';
+        done.classList.add('show');
+      }, 450);
+    }
+  }, 600);
+}
+function resetShoot(){
+  shots = 0;
+  document.getElementById('shotCount').textContent = '已拍 0 張';
+  document.getElementById('uploadPanel').classList.remove('show');
+  document.getElementById('uplDone').classList.remove('show');
+  document.getElementById('uplProgress').style.display = '';
+  document.getElementById('uplFill').style.width = '0';
+  document.getElementById('camDock').style.display = '';
+}
+
+/* ---- 確認區 ---- */
+function toggleManual(){
+  document.getElementById('manualCard').classList.toggle('show');
+}
+function bumpBadge(delta){
+  var b = document.getElementById('confirmBadge');
+  var n = Math.max(0, parseInt(b.textContent,10) + delta);
+  b.textContent = n;
+  b.classList.toggle('zero', n === 0);
+}
+function sendCard(id){
+  var card = document.getElementById(id);
+  if(!card || card.classList.contains('sent')) return;
+  card.classList.add('sent');
+  card.querySelectorAll('input,select,button').forEach(function(el){ el.disabled = true; });
+  var actions = card.querySelector('.card-actions');
+  if(actions){
+    var chip = document.createElement('span');
+    chip.className = 'sent-chip';
+    chip.textContent = '✓ 已送出，可到「複查」查看';
+    actions.replaceWith(chip);
+  }
+  bumpBadge(-1);
+  toast('已送出 1 筆');
+}
+function discardCard(id){
+  var card = document.getElementById(id);
+  if(!card) return;
+  card.remove();
+  bumpBadge(-1);
+  toast('已丟棄');
+}
+
+/* ---- toast ---- */
+var toastTimer = null;
+function toast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+}
+</script>

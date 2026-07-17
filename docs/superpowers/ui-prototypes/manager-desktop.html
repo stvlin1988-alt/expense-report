@@ -1,0 +1,1083 @@
+<title>經理管理工作台</title>
+<style>
+/* ============================================================
+   DESIGN TOKENS — 「雜支管理」經理（super_admin）桌機工作台
+   完全沿用 accountant-desktop.html 定案 token，勿改值。
+   accent #2E6BE6 (dark #5B8DF0) / ground #F4F6FA / surface #FFFFFF
+   ink #1C2733 / muted #5C6B80 / 語意色 ok/warn/bad 獨立於 accent
+   字級 12/13/14/17/21・金額 tabular-nums・radius 10/7・系統字
+   版面：208px 固定側欄（含全域選店）+ 滿版主區 + sticky 毛玻璃工具列
+   ============================================================ */
+:root{
+  --accent:#2E6BE6;
+  --accent-ink:#1E4FB8;
+  --accent-soft:#E8EFFC;
+  --ground:#F4F6FA;
+  --surface:#FFFFFF;
+  --surface-2:#F8FAFD;
+  --ink:#1C2733;
+  --muted:#5C6B80;
+  --faint:#8896A8;
+  --line:#DDE4EE;
+  --line-soft:#E8EDF5;
+  --ok:#1E9E5A;      --ok-soft:#E3F5EB;   --ok-ink:#14713F;
+  --warn:#C7860A;    --warn-soft:#FCF2DC; --warn-ink:#8F5E03;
+  --bad:#D6455A;     --bad-soft:#FCE9EC;  --bad-ink:#AF2B40;
+  --neutral-soft:#EDF1F7;
+  --shadow:0 1px 2px rgba(28,39,51,.05),0 4px 16px rgba(28,39,51,.06);
+  --shadow-pop:0 8px 32px rgba(28,39,51,.18);
+  --radius:10px;
+  --radius-sm:7px;
+  --sidebar-w:208px;
+  --toolbar-bg:rgba(244,246,250,.92);
+  --sticky-col-shadow:1px 0 0 0 var(--line),9px 0 12px -8px rgba(20,28,40,.14);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --accent:#5B8DF0;
+    --accent-ink:#8FB2F5;
+    --accent-soft:#1D2C4A;
+    --ground:#12161D;
+    --surface:#1A2029;
+    --surface-2:#1F2631;
+    --ink:#E4EAF2;
+    --muted:#96A3B5;
+    --faint:#6B7889;
+    --line:#2C3542;
+    --line-soft:#252D39;
+    --ok:#3DBE7B;   --ok-soft:#15301F;   --ok-ink:#6FD8A0;
+    --warn:#E0A63C; --warn-soft:#33290F; --warn-ink:#EFC170;
+    --bad:#E56B7D;  --bad-soft:#3A1B21;  --bad-ink:#F09AA7;
+    --neutral-soft:#252D39;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.3);
+    --shadow-pop:0 8px 32px rgba(0,0,0,.55);
+    --toolbar-bg:rgba(18,22,29,.92);
+    --sticky-col-shadow:1px 0 0 0 var(--line),9px 0 14px -8px rgba(0,0,0,.55);
+  }
+}
+:root[data-theme="dark"]{
+  --accent:#5B8DF0; --accent-ink:#8FB2F5; --accent-soft:#1D2C4A;
+  --ground:#12161D; --surface:#1A2029; --surface-2:#1F2631;
+  --ink:#E4EAF2; --muted:#96A3B5; --faint:#6B7889;
+  --line:#2C3542; --line-soft:#252D39;
+  --ok:#3DBE7B; --ok-soft:#15301F; --ok-ink:#6FD8A0;
+  --warn:#E0A63C; --warn-soft:#33290F; --warn-ink:#EFC170;
+  --bad:#E56B7D; --bad-soft:#3A1B21; --bad-ink:#F09AA7;
+  --neutral-soft:#252D39;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.3);
+  --shadow-pop:0 8px 32px rgba(0,0,0,.55);
+  --toolbar-bg:rgba(18,22,29,.92);
+  --sticky-col-shadow:1px 0 0 0 var(--line),9px 0 14px -8px rgba(0,0,0,.55);
+}
+:root[data-theme="light"]{
+  --accent:#2E6BE6; --accent-ink:#1E4FB8; --accent-soft:#E8EFFC;
+  --ground:#F4F6FA; --surface:#FFFFFF; --surface-2:#F8FAFD;
+  --ink:#1C2733; --muted:#5C6B80; --faint:#8896A8;
+  --line:#DDE4EE; --line-soft:#E8EDF5;
+  --ok:#1E9E5A; --ok-soft:#E3F5EB; --ok-ink:#14713F;
+  --warn:#C7860A; --warn-soft:#FCF2DC; --warn-ink:#8F5E03;
+  --bad:#D6455A; --bad-soft:#FCE9EC; --bad-ink:#AF2B40;
+  --neutral-soft:#EDF1F7;
+  --shadow:0 1px 2px rgba(28,39,51,.05),0 4px 16px rgba(28,39,51,.06);
+  --shadow-pop:0 8px 32px rgba(28,39,51,.18);
+  --toolbar-bg:rgba(244,246,250,.92);
+  --sticky-col-shadow:1px 0 0 0 var(--line),9px 0 12px -8px rgba(20,28,40,.14);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--ground)}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Segoe UI","Microsoft JhengHei",sans-serif;
+  font-size:14px;line-height:1.55;color:var(--ink);
+  overflow-x:hidden;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition:none !important;animation:none !important}
+}
+
+/* ---------- 左側欄 ---------- */
+.sidebar{
+  position:fixed;inset:0 auto 0 0;width:var(--sidebar-w);
+  background:var(--surface);border-right:1px solid var(--line-soft);
+  display:flex;flex-direction:column;z-index:40;
+}
+.brand{padding:22px 18px 16px;border-bottom:1px solid var(--line-soft)}
+.brand-name{font-size:17px;font-weight:700;letter-spacing:.02em}
+.brand-sub{font-size:12px;color:var(--faint);margin-top:2px;letter-spacing:.08em}
+/* 全域選店：一個動作同時決定 稽核 + 月報表 看哪家 */
+.store-scope{padding:14px 14px 12px;border-bottom:1px solid var(--line-soft)}
+.store-scope-label{
+  display:block;font-size:12px;color:var(--faint);margin-bottom:6px;letter-spacing:.03em;
+}
+.store-scope-sel{
+  width:100%;height:36px;padding:0 30px 0 12px;
+  appearance:none;-webkit-appearance:none;
+  border:1.5px solid var(--accent);border-radius:var(--radius-sm);
+  background-color:var(--accent-soft);color:var(--accent-ink);
+  font-size:13px;font-weight:700;letter-spacing:.03em;cursor:pointer;
+  background-image:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238896A8' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;
+}
+.store-scope-sel:focus{box-shadow:0 0 0 3px var(--accent-soft);outline:none}
+.nav{padding:12px 10px;display:flex;flex-direction:column;gap:2px;flex:1}
+.nav-item{
+  display:flex;align-items:center;gap:10px;width:100%;
+  padding:9px 12px;border:0;background:none;border-radius:var(--radius-sm);
+  color:var(--muted);font-size:14px;text-align:left;
+  transition:background .12s,color .12s;
+}
+.nav-item:hover{background:var(--surface-2);color:var(--ink)}
+.nav-item[aria-current="page"]{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.nav-ico{width:18px;height:18px;flex:none;display:inline-block}
+.nav-ico svg{display:block;width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.nav-ro{margin-left:auto;font-size:11px;color:var(--faint);letter-spacing:.02em}
+.side-foot{padding:14px 16px;border-top:1px solid var(--line-soft)}
+.side-user{display:flex;align-items:center;gap:10px}
+.avatar{
+  width:32px;height:32px;border-radius:50%;flex:none;
+  background:var(--accent-soft);color:var(--accent-ink);
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
+}
+.side-user-name{font-size:13px;font-weight:600;line-height:1.3}
+.side-user-role{font-size:12px;color:var(--faint)}
+.logout-btn{
+  margin-top:10px;width:100%;padding:6px 0;font-size:13px;color:var(--muted);
+  background:none;border:1px solid var(--line);border-radius:var(--radius-sm);
+  transition:border-color .12s,color .12s;
+}
+.logout-btn:hover{color:var(--bad-ink);border-color:var(--bad)}
+
+/* ---------- 主區 ---------- */
+.main{margin-left:var(--sidebar-w);min-height:100vh;display:flex;flex-direction:column}
+.view{display:none;flex:1;flex-direction:column}
+.view.active{display:flex}
+.page-body{padding:20px 28px 48px;display:flex;flex-direction:column;gap:18px}
+
+/* ---------- sticky 工具列 ---------- */
+.toolbar{
+  position:sticky;top:0;z-index:30;
+  background:var(--toolbar-bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line-soft);
+  padding:14px 28px 12px;display:flex;flex-direction:column;gap:10px;
+}
+.toolbar-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.period-title{font-size:17px;font-weight:700;letter-spacing:.01em}
+.period-range{font-size:13px;color:var(--muted)}
+.spacer{flex:1}
+.filter-label{font-size:12px;color:var(--faint);margin-right:-4px}
+
+/* ---------- 徽章 / pill ---------- */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.6;
+  white-space:nowrap;
+}
+.badge-open{background:var(--ok-soft);color:var(--ok-ink)}
+.badge-pending{background:var(--warn-soft);color:var(--warn-ink)}
+.badge-done{background:var(--ok-soft);color:var(--ok-ink)}
+.badge-bad{background:var(--bad-soft);color:var(--bad-ink)}
+.badge-neutral{background:var(--neutral-soft);color:var(--muted)}
+.badge-scope{background:var(--accent-soft);color:var(--accent-ink);font-variant-numeric:tabular-nums}
+.badge-locked{background:var(--neutral-soft);color:var(--muted)}
+
+/* ---------- 表單控件 / 按鈕 ---------- */
+.input,.select{
+  height:32px;padding:0 10px;font-size:13px;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);
+  color:var(--ink);transition:border-color .12s,box-shadow .12s;
+}
+.select{padding-right:26px;appearance:none;
+  background-image:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238896A8' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;}
+.input:hover,.select:hover{border-color:var(--faint)}
+.input:focus,.select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);outline:none}
+.btn{
+  height:32px;padding:0 14px;font-size:13px;font-weight:600;
+  border-radius:var(--radius-sm);border:1px solid transparent;
+  display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+  transition:background .12s,border-color .12s,color .12s,box-shadow .12s;
+}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{filter:brightness(1.08)}
+.btn-secondary{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.btn-secondary:hover{border-color:var(--faint)}
+.btn-ghost{background:none;color:var(--accent-ink);border-color:transparent}
+.btn-ghost:hover{background:var(--accent-soft)}
+.btn-danger-ghost{background:none;color:var(--bad-ink);border-color:transparent}
+.btn-danger-ghost:hover{background:var(--bad-soft)}
+.btn-danger-soft{background:var(--bad-soft);color:var(--bad-ink);border-color:var(--bad)}
+.btn-danger-soft:hover{background:var(--bad);color:#fff}
+.btn-ok-soft{background:var(--ok-soft);color:var(--ok-ink);border-color:var(--ok)}
+.btn-ok-soft:hover{background:var(--ok);color:#fff}
+.btn-sm{height:26px;padding:0 8px;font-size:12px;font-weight:500}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+input[type="checkbox"]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+
+/* ---------- 卡片 ---------- */
+.card{
+  background:var(--surface);border:1px solid var(--line-soft);
+  border-radius:var(--radius);box-shadow:var(--shadow);
+}
+.card-head{
+  padding:14px 18px;border-bottom:1px solid var(--line-soft);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.card-title{font-size:14px;font-weight:700}
+.card-body{padding:16px 18px}
+.table-wrap{overflow-x:auto;border-radius:var(--radius)}
+.report-note{font-size:12px;color:var(--faint);padding:10px 18px 14px}
+
+/* ---------- 通用金額 / 店代號 ---------- */
+.num{font-variant-numeric:tabular-nums;text-align:right;font-weight:600;white-space:nowrap}
+.num.neg{color:var(--bad)}
+.store-tag{
+  display:inline-block;font-size:12px;font-weight:700;letter-spacing:.05em;
+  font-variant-numeric:tabular-nums;color:var(--accent-ink);
+  background:var(--accent-soft);border-radius:5px;padding:1px 7px;
+}
+
+/* ---------- 月報表 交叉表 ----------
+   ⚠️ sticky 首欄必須 border-collapse:separate + border-spacing:0，
+   collapse 會讓 sticky 欄被裁掉（瀏覽器已知行為）。邊框只靠 border-bottom。 */
+.xt{border-collapse:separate;border-spacing:0;width:100%;min-width:640px;font-size:13px}
+.xt th,.xt td{
+  padding:10px 14px;text-align:right;border-bottom:1px solid var(--line-soft);
+  white-space:nowrap;background:var(--surface);
+}
+.xt thead th{
+  font-size:12px;font-weight:600;color:var(--faint);letter-spacing:.04em;
+  border-bottom:1px solid var(--line);
+}
+.xt th:first-child,.xt td:first-child{
+  text-align:left;position:sticky;left:0;z-index:2;
+  min-width:168px;box-shadow:var(--sticky-col-shadow);
+}
+.xt td{font-variant-numeric:tabular-nums}
+.xt tbody tr:hover td{background:var(--surface-2)}
+.xt .tot-col{background:var(--accent-soft);color:var(--accent-ink);font-weight:700}
+.xt tbody tr:hover td.tot-col{background:var(--accent-soft)}
+.xt tr.total-row td{
+  font-weight:700;border-top:2px solid var(--line);border-bottom:0;font-size:13px;
+}
+.xt tr.sub-row td{background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:400}
+.xt tr.sub-row td:first-child{padding-left:38px;background:var(--surface-2)}
+.xt tr.sub-row:hover td{background:var(--surface-2)}
+.cat-toggle{
+  background:none;border:0;padding:0;display:inline-flex;align-items:center;gap:7px;
+  font-size:13px;font-weight:600;color:var(--ink);
+}
+.cat-toggle .tri{
+  width:0;height:0;border-left:5px solid var(--faint);
+  border-top:4px solid transparent;border-bottom:4px solid transparent;
+  transition:transform .12s;flex:none;
+}
+.cat-toggle[aria-expanded="true"] .tri{transform:rotate(90deg)}
+.cat-plain{padding-left:12px}
+/* 單店模式：科目→金額 一欄，收窄置左 */
+.xt.xt-one{min-width:420px;max-width:560px}
+
+/* ---------- 店別管理 ---------- */
+.store-table{border-collapse:separate;border-spacing:0;width:100%;min-width:720px}
+.store-table th{
+  text-align:left;font-size:12px;font-weight:600;color:var(--faint);
+  padding:9px 14px;border-bottom:1px solid var(--line);white-space:nowrap;letter-spacing:.04em;
+  background:var(--surface);
+}
+.store-table td{
+  padding:11px 14px;border-bottom:1px solid var(--line-soft);
+  font-size:13px;vertical-align:middle;background:var(--surface);
+}
+.store-table tbody tr:hover td{background:var(--surface-2)}
+.store-table tr:last-child td{border-bottom:0}
+.sc-code{
+  font-size:15px;font-weight:700;letter-spacing:.06em;font-variant-numeric:tabular-nums;
+  background:var(--accent-soft);color:var(--accent-ink);
+  border-radius:var(--radius-sm);padding:4px 12px;display:inline-block;
+}
+.chk-inline{display:inline-flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;user-select:none}
+.chk-inline .chk-note{font-size:12px;color:var(--faint)}
+.add-row{display:flex;gap:8px;align-items:center;max-width:420px}
+.add-row .input{flex:1;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.add-row .input::placeholder{text-transform:none;letter-spacing:0;font-weight:400;color:var(--faint)}
+.legend-hint{font-size:12.5px;color:var(--muted);line-height:1.8}
+.legend-hint b{color:var(--ink)}
+
+/* ---------- 稽核（唯讀） ---------- */
+.audit-table{border-collapse:separate;border-spacing:0;width:100%;min-width:760px}
+.audit-table th{
+  text-align:left;font-size:12px;font-weight:600;color:var(--faint);
+  padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap;letter-spacing:.04em;
+  background:var(--surface);
+}
+.audit-table th.num-h{text-align:right}
+.audit-table td{
+  padding:9px 12px;border-bottom:1px solid var(--line-soft);
+  font-size:13px;vertical-align:middle;background:var(--surface);
+}
+.audit-table tbody tr:hover td{background:var(--surface-2)}
+.audit-table tr.day-head td{
+  background:var(--ground);color:var(--muted);font-size:12px;font-weight:700;
+  letter-spacing:.05em;padding:8px 12px;
+}
+.audit-table tr.day-head:hover td{background:var(--ground)}
+.doc-cell{display:flex;align-items:flex-start;gap:10px;min-width:220px;max-width:340px}
+.doc-meta{min-width:0}
+.doc-summary{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-sub{
+  display:block;font-size:11px;color:var(--faint);
+  font-variant-numeric:tabular-nums;margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.doc-id{font-variant-numeric:tabular-nums;font-size:11px;color:var(--muted);white-space:nowrap}
+.doc-note{display:block;font-size:12px;color:var(--faint);margin-top:3px;white-space:normal}
+.chip{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--neutral-soft);color:var(--muted);white-space:nowrap}
+.lamp{display:inline-flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.dot-g{background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
+.dot-y{background:var(--warn);box-shadow:0 0 0 3px var(--warn-soft)}
+.empty-tip{
+  text-align:center;padding:52px 24px;color:var(--muted);font-size:14px;
+  background:var(--surface);border:1px dashed var(--line);border-radius:var(--radius);
+}
+.empty-tip b{color:var(--accent-ink)}
+.empty-stores{display:flex;gap:8px;justify-content:center;margin-top:14px}
+.audit-back-bar{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.audit-back-bar .btn-secondary{padding-left:10px}
+
+/* ---------- 收據縮圖（純 CSS 迷你收據＋放大鏡暗示） ---------- */
+.rcp{
+  width:52px;height:68px;flex:0 0 52px;background:#fff;
+  border-radius:5px;position:relative;overflow:hidden;cursor:zoom-in;
+  border:1px solid var(--line);box-shadow:0 2px 6px rgba(28,39,51,.12);padding:0;
+}
+.rcp .rh{position:absolute;top:0;left:0;right:0;height:12px;background:#2B3646}
+.rcp .rl{position:absolute;left:6px;height:3px;border-radius:2px;background:#C9D2DE}
+.rcp .rl.l1{top:18px;width:32px}.rcp .rl.l2{top:25px;width:22px}
+.rcp .rl.l3{top:32px;width:36px}.rcp .rl.l4{top:39px;width:18px}
+.rcp .rt{position:absolute;left:6px;right:6px;top:49px;border-top:1.5px dashed #8A96A6}
+.rcp .rt2{position:absolute;right:6px;top:54px;width:20px;height:4px;background:#5B6675;border-radius:2px}
+.rcp .mag{
+  position:absolute;right:3px;bottom:3px;width:12px;height:12px;
+  border:2px solid #5B6675;border-radius:50%;
+}
+.rcp .mag::after{
+  content:"";position:absolute;width:5px;height:2px;background:#5B6675;
+  right:-4px;bottom:-2px;transform:rotate(45deg);border-radius:1px;
+}
+
+/* ---------- 月結設定（唯讀🔒） ---------- */
+.ro-banner{
+  display:flex;align-items:center;gap:10px;
+  background:var(--neutral-soft);border:1px solid var(--line-soft);
+  border-radius:var(--radius);padding:12px 16px;font-size:13px;color:var(--muted);
+}
+.ro-banner .lock-ico{flex:none;width:18px;height:18px;color:var(--faint)}
+.ro-banner .lock-ico svg{display:block;width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.ro-card{background:var(--surface-2)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+@media (max-width:1100px){.grid-2{grid-template-columns:1fr}}
+.kv-row{display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px dashed var(--line-soft);font-size:13px}
+.kv-row:last-child{border-bottom:0}
+.kv-row .k{color:var(--muted)}
+.kv-row .v{font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+
+/* ---------- 我的密碼 ---------- */
+.pw-card{max-width:420px}
+.pw-field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.pw-field label{font-size:13px;font-weight:600}
+.pw-field .help{font-size:12px;color:var(--faint)}
+.pw-input{width:160px;letter-spacing:.4em;font-variant-numeric:tabular-nums;text-align:center}
+
+/* ---------- Modal ---------- */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(20,28,40,.45);z-index:60;
+  display:none;align-items:center;justify-content:center;padding:24px;
+}
+.modal-backdrop.open{display:flex}
+.modal{
+  background:var(--surface);border-radius:14px;box-shadow:var(--shadow-pop);
+  width:100%;max-width:440px;border:1px solid var(--line-soft);
+}
+.modal-head{padding:18px 20px 0;display:flex;align-items:flex-start;gap:10px}
+.modal-title{font-size:15px;font-weight:700;flex:1}
+.modal-x{
+  background:none;border:0;color:var(--faint);font-size:18px;line-height:1;
+  padding:2px 6px;border-radius:5px;
+}
+.modal-x:hover{background:var(--neutral-soft);color:var(--ink)}
+.modal-body{padding:12px 20px 4px;font-size:13px;color:var(--muted);line-height:1.7}
+.modal-foot{padding:16px 20px 18px;display:flex;justify-content:flex-end;gap:8px}
+.btn-danger{background:var(--bad);color:#fff;border-color:var(--bad)}
+.btn-danger:hover{filter:brightness(1.06)}
+
+/* ---------- 燈箱（桌機：滾輪縮放＋拖曳平移＋雙擊） ---------- */
+.lb{
+  position:fixed;inset:0;z-index:80;display:none;
+  background:rgba(8,12,18,.9);overflow:hidden;touch-action:none;
+}
+.lb.on{display:block}
+.lb-close{
+  position:fixed;top:16px;right:16px;z-index:82;
+  width:44px;height:44px;border-radius:50%;border:none;cursor:pointer;
+  background:rgba(255,255,255,.16);color:#fff;font-size:20px;line-height:1;
+}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lb-hint{
+  position:fixed;bottom:16px;left:0;right:0;text-align:center;
+  color:rgba(255,255,255,.65);font-size:12px;pointer-events:none;z-index:82;
+}
+.lb-stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.rcp-big{
+  width:280px;height:390px;background:#fff;border-radius:8px;position:relative;
+  box-shadow:0 18px 60px rgba(0,0,0,.5);will-change:transform;cursor:grab;user-select:none;
+}
+.rcp-big:active{cursor:grabbing}
+.rcp-big .bh{position:absolute;top:0;left:0;right:0;height:62px;background:#2B3646;border-radius:8px 8px 0 0}
+.rcp-big .bh::after{
+  content:"RECEIPT";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#B9C4D2;font-size:14px;letter-spacing:.35em;font-weight:700;
+}
+.rcp-big .bl{position:absolute;left:32px;height:9px;border-radius:4px;background:#CCD5E0}
+.rcp-big .b1{top:90px;width:158px}.rcp-big .b2{top:116px;width:112px}
+.rcp-big .b3{top:142px;width:182px}.rcp-big .b4{top:168px;width:86px}
+.rcp-big .b5{top:194px;width:144px}.rcp-big .b6{top:220px;width:122px}
+.rcp-big .bt{position:absolute;left:32px;right:32px;top:266px;border-top:2px dashed #8A96A6}
+.rcp-big .bsum{
+  position:absolute;left:32px;right:32px;top:290px;
+  display:flex;justify-content:space-between;align-items:center;
+  color:#39434F;font-weight:800;font-size:17px;font-variant-numeric:tabular-nums;
+}
+.rcp-big .bfoot{position:absolute;left:32px;right:32px;top:340px;height:7px;
+  background:repeating-linear-gradient(90deg,#DEE4EC 0 9px,transparent 9px 16px);border-radius:3px}
+
+/* ---------- Toast ---------- */
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(8px);
+  background:var(--ink);color:var(--ground);font-size:13px;font-weight:600;
+  padding:9px 16px;border-radius:999px;opacity:0;pointer-events:none;
+  transition:opacity .2s,transform .2s;z-index:90;white-space:nowrap;max-width:88%;
+  overflow:hidden;text-overflow:ellipsis;
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ---------- 窄視窗防爆版 ---------- */
+@media (max-width:900px){
+  .sidebar{position:static;width:auto;flex-direction:row;align-items:center;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line-soft)}
+  .brand{border-bottom:0;padding:12px 16px}
+  .store-scope{border-bottom:0;padding:8px 12px;flex:0 0 168px}
+  .store-scope-label{display:none}
+  .nav{flex-direction:row;padding:8px;overflow-x:auto}
+  .nav-ro{display:none}
+  .side-foot{border-top:0;margin-left:auto}
+  .logout-btn{display:none}
+  .main{margin-left:0}
+  .page-body,.toolbar{padding-left:16px;padding-right:16px}
+}
+</style>
+
+<div class="sidebar">
+  <div class="brand">
+    <div class="brand-name">雜支管理</div>
+    <div class="brand-sub">經理工作台</div>
+  </div>
+
+  <!-- 全域選店：同時決定 稽核 + 月報表 -->
+  <div class="store-scope">
+    <label class="store-scope-label" for="store-scope-sel">門市範圍（稽核＋月報表）</label>
+    <select class="store-scope-sel" id="store-scope-sel" aria-label="選擇門市，同時決定稽核與月報表範圍"></select>
+  </div>
+
+  <nav class="nav" aria-label="主導覽">
+    <button class="nav-item" data-view="report" aria-current="page">
+      <span class="nav-ico"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg></span>月報表
+    </button>
+    <button class="nav-item" data-view="audit">
+      <span class="nav-ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8.5 11l1.8 1.8 3.4-3.4"/></svg></span>稽核
+      <span class="nav-ro">唯讀</span>
+    </button>
+    <button class="nav-item" data-view="stores">
+      <span class="nav-ico"><svg viewBox="0 0 24 24"><path d="M3 9l1.5-5h15L21 9M3 9v11h18V9M3 9h18M9 20v-6h6v6"/></svg></span>店別管理
+    </button>
+    <button class="nav-item" data-view="closing">
+      <span class="nav-ico"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></span>月結設定
+      <span class="nav-ro">🔒</span>
+    </button>
+    <button class="nav-item" data-view="password">
+      <span class="nav-ico"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>我的密碼
+    </button>
+  </nav>
+
+  <div class="side-foot">
+    <div class="side-user">
+      <div class="avatar">王</div>
+      <div>
+        <div class="side-user-name">王經理</div>
+        <div class="side-user-role">經理・跨店管理</div>
+      </div>
+    </div>
+    <button class="logout-btn" id="btn-logout">登出</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ================= 月報表 ================= -->
+  <section class="view active" id="view-report" aria-label="月報表">
+    <div class="toolbar">
+      <div class="toolbar-row">
+        <span class="period-title">月報表　2026 年 6 月</span>
+        <span class="period-range">06/01 – 06/30（台灣時間・營業日 08:00 分界）</span>
+        <span class="badge badge-open">進行中</span>
+        <span class="spacer"></span>
+        <span class="filter-label">範圍</span>
+        <select class="select" id="report-scope-sel" aria-label="月報表門市範圍（與側欄選店同步）"></select>
+        <button class="btn btn-secondary" id="btn-export">匯出 CSV</button>
+      </div>
+    </div>
+    <div class="page-body">
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">店 × 科目 交叉表</span>
+          <span class="badge badge-scope" id="report-scope-badge">全部門市</span>
+          <span class="spacer"></span>
+          <span style="font-size:12px;color:var(--faint)">點科目名稱可展開子分類</span>
+        </div>
+        <div class="table-wrap" id="report-wrap"></div>
+        <div class="report-note">金額單位：新台幣（NT$）。僅計入「已核銷」單據；退回與挪期不列入。負數（如押金退回、沖銷調整）以紅字顯示。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 店別管理 ================= -->
+  <section class="view" id="view-stores" aria-label="店別管理">
+    <div class="toolbar">
+      <div class="toolbar-row">
+        <span class="period-title">店別管理</span>
+        <span class="period-range">「檢視顯示」與「對外連結」為兩個獨立控制，僅經理可改</span>
+      </div>
+    </div>
+    <div class="page-body">
+      <div class="card">
+        <div class="table-wrap">
+          <table class="store-table">
+            <thead>
+              <tr>
+                <th style="width:110px">店別</th>
+                <th style="width:120px">對外狀態</th>
+                <th>檢視顯示（選單／月報表）</th>
+                <th>對外連結（kill-switch）</th>
+                <th style="width:1%">操作</th>
+              </tr>
+            </thead>
+            <tbody id="store-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><span class="card-title">新增店</span></div>
+          <div class="card-body">
+            <div class="add-row">
+              <input class="input" id="new-store-code" maxlength="2" placeholder="店別英文代號（≤2 字母，如 TN）" autocomplete="off" aria-label="店別英文代號">
+              <button class="btn btn-primary" id="btn-add-store">新增</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-body legend-hint">
+            「<b>檢視顯示</b>」打勾＝這家店會出現在選店選單／月報表；取消只是隱藏顯示，不影響該店營運。<br>
+            「<b>對外連結</b>」關閉＝該店所有人員／主管立即被擋在計算機最外層（真正停用該店）。<br>
+            兩者互不影響，可各自單獨切換。
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 稽核（唯讀） ================= -->
+  <section class="view" id="view-audit" aria-label="稽核（唯讀）">
+    <div class="toolbar">
+      <div class="toolbar-row">
+        <span class="period-title">交接班稽核</span>
+        <span class="badge badge-locked">唯讀</span>
+        <span class="period-range">打勾稽核由各店主管於交接班執行，經理僅檢視結果</span>
+        <span class="spacer"></span>
+        <span class="badge badge-scope" id="audit-scope-badge">全部門市</span>
+      </div>
+    </div>
+    <div class="page-body" id="audit-body"></div>
+  </section>
+
+  <!-- ================= 月結設定（唯讀🔒） ================= -->
+  <section class="view" id="view-closing" aria-label="月結設定（唯讀）">
+    <div class="toolbar">
+      <div class="toolbar-row">
+        <span class="period-title">月結設定</span>
+        <span class="badge badge-locked">🔒 唯讀</span>
+        <span class="period-range">目前期間　2026 年 6 月（06/01 – 06/30）</span>
+        <span class="badge badge-open">進行中</span>
+      </div>
+    </div>
+    <div class="page-body">
+      <div class="ro-banner">
+        <span class="lock-ico"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
+        月結設定僅供檢視——只有<b style="color:var(--ink)">會計</b>可以修改月結日與鎖定偏移。如需調整請聯絡會計。
+      </div>
+      <div class="grid-2">
+        <div class="card ro-card">
+          <div class="card-head">
+            <span class="card-title">目前設定</span>
+            <span class="badge badge-locked">僅會計可改</span>
+          </div>
+          <div class="card-body">
+            <div class="kv-row"><span class="k">月結日</span><span class="v">每月 5 日</span></div>
+            <div class="kv-row"><span class="k">鎖定偏移</span><span class="v">封月後 24 小時</span></div>
+            <div class="kv-row"><span class="k">營業日分界</span><span class="v">08:00（台灣時間）</span></div>
+          </div>
+        </div>
+        <div class="card ro-card">
+          <div class="card-head">
+            <span class="card-title">本期時程</span>
+            <span class="badge badge-neutral">台灣時間</span>
+          </div>
+          <div class="card-body">
+            <div class="kv-row"><span class="k">期間 ID</span><span class="v">2026-06</span></div>
+            <div class="kv-row"><span class="k">預計封月時間</span><span class="v">2026/07/05 08:00</span></div>
+            <div class="kv-row"><span class="k">封月後鎖定</span><span class="v">2026/07/06 08:00 起不可異動</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 我的密碼 ================= -->
+  <section class="view" id="view-password" aria-label="我的密碼">
+    <div class="toolbar">
+      <div class="toolbar-row">
+        <span class="period-title">我的密碼</span>
+        <span class="period-range">變更登入用 4 位數密碼</span>
+      </div>
+    </div>
+    <div class="page-body">
+      <div class="card pw-card">
+        <div class="card-body">
+          <div class="pw-field">
+            <label for="pw-old">舊密碼</label>
+            <input class="input pw-input" id="pw-old" type="password" maxlength="4" inputmode="numeric" autocomplete="current-password" placeholder="••••">
+          </div>
+          <div class="pw-field">
+            <label for="pw-new">新密碼</label>
+            <input class="input pw-input" id="pw-new" type="password" maxlength="4" inputmode="numeric" autocomplete="new-password" placeholder="••••">
+            <span class="help">4 位數字，變更後其他裝置需重新登入。</span>
+          </div>
+          <button class="btn btn-primary" id="btn-pw-save">變更密碼</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ================= Modal：確認（關閉對外連結／刪除店） ================= -->
+<div class="modal-backdrop" id="modal-confirm" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="confirm-title"></div>
+      <button class="modal-x" data-close="modal-confirm" aria-label="關閉">×</button>
+    </div>
+    <div class="modal-body" id="confirm-desc"></div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" data-close="modal-confirm">取消</button>
+      <button class="btn btn-danger" id="confirm-ok"></button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 燈箱：收據放大 ================= -->
+<div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="收據放大檢視">
+  <button class="lb-close" id="lb-close" aria-label="關閉">✕</button>
+  <div class="lb-stage" id="lb-stage">
+    <div class="rcp-big" id="lb-img">
+      <i class="bh"></i>
+      <i class="bl b1"></i><i class="bl b2"></i><i class="bl b3"></i>
+      <i class="bl b4"></i><i class="bl b5"></i><i class="bl b6"></i>
+      <i class="bt"></i>
+      <div class="bsum"><span>TOTAL</span><span id="lb-amt"></span></div>
+      <i class="bfoot"></i>
+    </div>
+  </div>
+  <div class="lb-hint">滾輪縮放（1x–4x）・拖曳平移・雙擊切換 1x↔2.5x・Esc 或點背景關閉</div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+"use strict";
+var $ = function(s){ return document.querySelector(s); };
+
+/* ================= 假資料（沿用 super-mobile 定案資料模型） ================= */
+var stores = [
+  { code:"TP", visible:true,  online:true  },
+  { code:"TC", visible:true,  online:true  },
+  { code:"KH", visible:true,  online:false }
+];
+var CATS = [
+  { name:"食材耗用", subs:[
+      { name:"生鮮蔬果", v:{TP:48210,TC:36540,KH:28150} },
+      { name:"冷凍肉品", v:{TP:27860,TC:21300,KH:16780} } ] },
+  { name:"清潔用品", subs:[
+      { name:"清潔洗劑", v:{TP:4320,TC:3640,KH:2980} },
+      { name:"紙巾耗材", v:{TP:3180,TC:2210,KH:1760} } ] },
+  { name:"文具事務", v:{TP:1240,TC:860,KH:590} },
+  { name:"修繕維護", v:{TP:6800,TC:0,KH:12400} },
+  { name:"水電瓦斯", v:{TP:18320,TC:15660,KH:13240} },
+  { name:"雜項調整", v:{TP:-1500,TC:320,KH:0} }
+];
+var AUDITS = {
+  TP:[ {day:"2026/06/16（二）", no:"TP-0616-012", by:"陳小美", time:"13:45", sum:"拖把補充包 ×2", cat:"清潔用品", amt:420,  note:"倉庫備品", st:"pending"},
+       {day:"2026/06/16（二）", no:"TP-0616-009", by:"林大同", time:"09:12", sum:"瓦斯桶押金退回", cat:"雜項調整", amt:-1500, note:"", st:"ok"},
+       {day:"2026/06/15（一）", no:"TP-0615-007", by:"林大同", time:"16:20", sum:"A4 影印紙 ×5 包", cat:"文具事務", amt:625,  note:"", st:"ok"} ],
+  TC:[ {day:"2026/06/16（二）", no:"TC-0616-004", by:"張雅婷", time:"11:08", sum:"燈管更換工資", cat:"修繕維護", amt:1800, note:"外場天花板", st:"pending"},
+       {day:"2026/06/14（日）", no:"TC-0614-009", by:"張雅婷", time:"19:41", sum:"垃圾袋 ×3 捲", cat:"清潔用品", amt:255,  note:"", st:"ok"} ],
+  KH:[ {day:"2026/06/13（六）", no:"KH-0613-002", by:"吳志明", time:"10:33", sum:"保鮮膜 ×4", cat:"食材耗用", amt:380,  note:"", st:"pending"},
+       {day:"2026/06/12（五）", no:"KH-0612-011", by:"吳志明", time:"14:57", sum:"原子筆 ×1 盒", cat:"文具事務", amt:120,  note:"櫃台用", st:"ok"} ]
+};
+var state = { store:"ALL", expanded:{} };
+
+/* ================= 工具 ================= */
+function visStores(){ return stores.filter(function(s){ return s.visible; }); }
+function catVal(c, code){
+  if (c.subs) return c.subs.reduce(function(a,s){ return a + s.v[code]; }, 0);
+  return c.v[code];
+}
+function fmt(n){
+  var s = Math.abs(n).toLocaleString("en-US");
+  return (n < 0 ? "−" : "") + s;   /* U+2212 minus，與會計桌機一致 */
+}
+function amtTd(n, cls){
+  return '<td class="num' + (n < 0 ? " neg" : "") + (cls ? " " + cls : "") + '">' + fmt(n) + "</td>";
+}
+function esc(t){ return String(t).replace(/[&<>"]/g, function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+var toastTimer = null;
+function toast(msg){
+  var t = $("#toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove("on"); }, 2200);
+}
+
+/* ================= 側欄分頁切換 ================= */
+var navItems = document.querySelectorAll(".nav-item");
+navItems.forEach(function(item){
+  item.addEventListener("click", function(){
+    navItems.forEach(function(n){ n.removeAttribute("aria-current"); });
+    item.setAttribute("aria-current","page");
+    document.querySelectorAll(".view").forEach(function(v){ v.classList.remove("active"); });
+    var target = document.getElementById("view-" + item.dataset.view);
+    if (target) target.classList.add("active");
+    window.scrollTo(0,0);
+  });
+});
+$("#btn-logout").addEventListener("click", function(){ toast("示範原型：登出"); });
+$("#btn-pw-save").addEventListener("click", function(){ toast("示範原型：密碼已更新"); });
+$("#btn-export").addEventListener("click", function(){ toast("示範原型：已匯出 CSV"); });
+
+/* ================= 全域選店（側欄＋月報表工具列兩個 select 同步） ================= */
+function renderScopeSels(){
+  var opts = '<option value="ALL">全部門市</option>' + visStores().map(function(s){
+    return '<option value="' + s.code + '">' + s.code + "</option>";
+  }).join("");
+  [$("#store-scope-sel"), $("#report-scope-sel")].forEach(function(sel){
+    sel.innerHTML = opts;
+    sel.value = state.store;
+  });
+  var label = state.store === "ALL" ? "全部門市" : "門市 " + state.store;
+  $("#report-scope-badge").textContent = label;
+  $("#audit-scope-badge").textContent = label;
+}
+function setStore(code){
+  if (code !== "ALL" && !visStores().some(function(s){ return s.code === code; })) code = "ALL";
+  state.store = code;
+  renderScopeSels(); renderReport(); renderAudit();
+}
+$("#store-scope-sel").addEventListener("change", function(e){ setStore(e.target.value); });
+$("#report-scope-sel").addEventListener("change", function(e){ setStore(e.target.value); });
+
+/* ================= 月報表 ================= */
+function catNameCell(c, i){
+  if (c.subs){
+    var open = !!state.expanded[i];
+    return '<td><button class="cat-toggle" data-i="' + i + '" aria-expanded="' + open + '">' +
+           '<span class="tri"></span>' + esc(c.name) + "</button></td>";
+  }
+  return '<td><span class="cat-plain">' + esc(c.name) + "</span></td>";
+}
+function renderCross(){
+  var vs = visStores();
+  var head = '<tr><th>科目大類</th>' + vs.map(function(s){ return "<th>" + s.code + "</th>"; }).join("") +
+             '<th class="tot-col">總計</th></tr>';
+  var rows = "";
+  CATS.forEach(function(c, i){
+    var rowTot = 0;
+    var tds = vs.map(function(s){
+      var v = catVal(c, s.code); rowTot += v;
+      return amtTd(v);
+    }).join("");
+    rows += "<tr>" + catNameCell(c, i) + tds + amtTd(rowTot, "tot-col") + "</tr>";
+    if (c.subs && state.expanded[i]){
+      c.subs.forEach(function(sub){
+        var subTot = 0;
+        var stds = vs.map(function(s){ var v = sub.v[s.code]; subTot += v; return amtTd(v); }).join("");
+        rows += '<tr class="sub-row"><td>' + esc(sub.name) + "</td>" + stds + amtTd(subTot, "tot-col") + "</tr>";
+      });
+    }
+  });
+  var grand = 0;
+  var totTds = vs.map(function(s){
+    var t = CATS.reduce(function(a,c){ return a + catVal(c, s.code); }, 0);
+    grand += t;
+    return amtTd(t);
+  }).join("");
+  rows += '<tr class="total-row"><td>總計</td>' + totTds + amtTd(grand, "tot-col") + "</tr>";
+  $("#report-wrap").innerHTML =
+    '<table class="xt" aria-label="全部門市月報表交叉表"><thead>' + head + "</thead><tbody>" + rows + "</tbody></table>";
+}
+function renderOneStore(code){
+  var head = '<tr><th>科目大類</th><th>' + code + "</th></tr>";
+  var rows = "", total = 0;
+  CATS.forEach(function(c, i){
+    var v = catVal(c, code); total += v;
+    rows += "<tr>" + catNameCell(c, i) + amtTd(v) + "</tr>";
+    if (c.subs && state.expanded[i]){
+      c.subs.forEach(function(sub){
+        rows += '<tr class="sub-row"><td>' + esc(sub.name) + "</td>" + amtTd(sub.v[code]) + "</tr>";
+      });
+    }
+  });
+  rows += '<tr class="total-row"><td>總計</td>' + amtTd(total, "tot-col") + "</tr>";
+  $("#report-wrap").innerHTML =
+    '<table class="xt xt-one" aria-label="門市 ' + code + ' 月報表"><thead>' + head + "</thead><tbody>" + rows + "</tbody></table>";
+}
+function renderReport(){
+  if (state.store === "ALL") renderCross(); else renderOneStore(state.store);
+  document.querySelectorAll("#report-wrap .cat-toggle").forEach(function(t){
+    t.addEventListener("click", function(){
+      var i = t.dataset.i;
+      state.expanded[i] = !state.expanded[i];
+      renderReport();
+    });
+  });
+}
+
+/* ================= 稽核（唯讀） ================= */
+function renderAudit(){
+  var body = $("#audit-body");
+  if (state.store === "ALL"){
+    var btns = visStores().map(function(s){
+      return '<button class="btn btn-secondary audit-pick" data-code="' + s.code + '">' + s.code + "</button>";
+    }).join("");
+    body.innerHTML =
+      '<div class="empty-tip">請先在左側「<b>門市範圍</b>」選擇一家店<br>' +
+      '<span style="font-size:12px;color:var(--faint)">選店同時決定稽核與月報表看哪家</span>' +
+      '<div class="empty-stores">' + btns + "</div></div>";
+    body.querySelectorAll(".audit-pick").forEach(function(b){
+      b.addEventListener("click", function(){ setStore(b.dataset.code); });
+    });
+    return;
+  }
+  var list = AUDITS[state.store] || [];
+  var rows = "", lastDay = "";
+  list.forEach(function(a){
+    if (a.day !== lastDay){
+      rows += '<tr class="day-head"><td colspan="5">營業日　' + esc(a.day) + "</td></tr>";
+      lastDay = a.day;
+    }
+    var lamp = a.st === "ok"
+      ? '<span class="lamp"><span class="dot dot-g"></span>已稽核</span>'
+      : '<span class="lamp"><span class="dot dot-y"></span>待稽核</span>';
+    var badge = a.st === "ok"
+      ? '<span class="badge badge-done">主管已打勾</span>'
+      : '<span class="badge badge-pending">主管未處理</span>';
+    rows += "<tr>" +
+      '<td><div class="doc-cell">' +
+        '<button class="rcp" data-amt="' + a.amt + '" aria-label="放大收據 ' + esc(a.no) + '">' +
+          '<i class="rh"></i><i class="rl l1"></i><i class="rl l2"></i><i class="rl l3"></i><i class="rl l4"></i>' +
+          '<i class="rt"></i><i class="rt2"></i><i class="mag"></i></button>' +
+        '<div class="doc-meta">' +
+          '<span class="doc-summary">' + esc(a.sum) + "</span>" +
+          '<span class="doc-sub"><span class="doc-id">' + esc(a.no) + "</span> · " + esc(a.by) + " · " + esc(a.time) + "</span>" +
+          (a.note ? '<span class="doc-note">備註：' + esc(a.note) + "</span>" : "") +
+        "</div></div></td>" +
+      '<td><span class="store-tag">' + esc(state.store) + "</span></td>" +
+      '<td><span class="chip">' + esc(a.cat) + "</span></td>" +
+      amtTd(a.amt) +
+      '<td><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">' + lamp + badge + "</div></td>" +
+      "</tr>";
+  });
+  body.innerHTML =
+    '<div class="audit-back-bar">' +
+      '<button class="btn btn-secondary" id="audit-back">‹ 返回全部門市</button>' +
+      '<span class="period-range">目前檢視　<span class="store-tag">' + esc(state.store) + '</span></span>' +
+    "</div>" +
+    '<div class="card"><div class="table-wrap">' +
+    '<table class="audit-table"><thead><tr>' +
+    "<th>單據</th><th>店別</th><th>分類</th><th class=\"num-h\">金額</th><th>稽核狀態</th>" +
+    "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
+    '<div class="report-note">經理端為唯讀檢視；打勾稽核由各店主管於交接班執行。時間為台灣時間。點收據縮圖可放大檢視。</div></div>';
+  var backBtn = body.querySelector("#audit-back");
+  if (backBtn) backBtn.addEventListener("click", function(){ setStore("ALL"); });
+  body.querySelectorAll(".rcp").forEach(function(b){
+    b.addEventListener("click", function(){ openLb(Number(b.dataset.amt)); });
+  });
+}
+
+/* ================= 店別管理 ================= */
+var pendingConfirm = null;
+function askConfirm(title, desc, okLabel, cb){
+  $("#confirm-title").textContent = title;
+  $("#confirm-desc").textContent = desc;
+  $("#confirm-ok").textContent = okLabel;
+  pendingConfirm = cb;
+  $("#modal-confirm").classList.add("open");
+  $("#confirm-ok").focus();
+}
+function closeConfirm(){ $("#modal-confirm").classList.remove("open"); pendingConfirm = null; }
+document.querySelectorAll("[data-close]").forEach(function(btn){
+  btn.addEventListener("click", closeConfirm);
+});
+$("#modal-confirm").addEventListener("click", function(e){ if (e.target === e.currentTarget) closeConfirm(); });
+$("#confirm-ok").addEventListener("click", function(){ var cb = pendingConfirm; closeConfirm(); if (cb) cb(); });
+
+function renderStores(){
+  var tbody = $("#store-tbody");
+  tbody.innerHTML = stores.map(function(s, i){
+    var st = s.online
+      ? '<span class="badge badge-open">連線中</span>'
+      : '<span class="badge badge-bad">已關閉</span>';
+    var linkBtn = s.online
+      ? '<button class="btn btn-danger-soft" data-a="link" data-i="' + i + '">關閉對外連結</button>'
+      : '<button class="btn btn-ok-soft" data-a="link" data-i="' + i + '">開啟對外連結</button>';
+    return "<tr>" +
+      '<td><span class="sc-code">' + esc(s.code) + "</span></td>" +
+      "<td>" + st + "</td>" +
+      '<td><label class="chk-inline"><input type="checkbox" data-a="vis" data-i="' + i + '"' + (s.visible ? " checked" : "") + ">顯示於選單／月報表" +
+        '<span class="chk-note">' + (s.visible ? "" : "（已隱藏，不影響營運）") + "</span></label></td>" +
+      "<td>" + linkBtn + "</td>" +
+      '<td><button class="btn btn-danger-ghost btn-sm" data-a="del" data-i="' + i + '">刪除</button></td>' +
+      "</tr>";
+  }).join("");
+
+  tbody.querySelectorAll("[data-a=vis]").forEach(function(c){
+    c.addEventListener("change", function(){
+      var s = stores[Number(c.dataset.i)];
+      s.visible = c.checked;
+      if (!s.visible && state.store === s.code) state.store = "ALL";
+      renderStores(); renderScopeSels(); renderReport(); renderAudit();
+      toast(s.code + (s.visible ? " 已顯示於選單/月報表" : " 已自選單/月報表隱藏"));
+    });
+  });
+  tbody.querySelectorAll("[data-a=link]").forEach(function(b){
+    b.addEventListener("click", function(){
+      var s = stores[Number(b.dataset.i)];
+      if (s.online){
+        askConfirm("關閉 " + s.code + " 對外連結？",
+          "關閉後，" + s.code + " 所有人員／主管會立即被擋在計算機最外層（真正停用該店）。確定要關閉嗎？",
+          "確定關閉",
+          function(){ s.online = false; renderStores(); toast(s.code + " 對外連結已關閉"); });
+      } else {
+        s.online = true; renderStores(); toast(s.code + " 對外連結已開啟");
+      }
+    });
+  });
+  tbody.querySelectorAll("[data-a=del]").forEach(function(b){
+    b.addEventListener("click", function(){
+      var i = Number(b.dataset.i), s = stores[i];
+      askConfirm("刪除店別 " + s.code + "？",
+        "刪除後該店將自系統移除（歷史報表資料保留）。此動作無法復原。",
+        "確定刪除",
+        function(){
+          stores.splice(i, 1);
+          if (state.store === s.code) state.store = "ALL";
+          renderStores(); renderScopeSels(); renderReport(); renderAudit();
+          toast("已刪除店別 " + s.code);
+        });
+    });
+  });
+}
+$("#btn-add-store").addEventListener("click", function(){
+  var inp = $("#new-store-code");
+  var code = inp.value.trim().toUpperCase();
+  if (!/^[A-Z]{1,2}$/.test(code)){ toast("店別代號需為 1–2 個英文字母"); inp.focus(); return; }
+  if (stores.some(function(s){ return s.code === code; })){ toast(code + " 已存在"); inp.focus(); return; }
+  stores.push({ code:code, visible:true, online:true });
+  inp.value = "";
+  renderStores(); renderScopeSels();
+  toast("已新增店別 " + code);
+});
+
+/* ================= 燈箱（桌機：滾輪縮放＋拖曳平移＋雙擊 1x↔2.5x，1x–4x） ================= */
+var lb = $("#lb"), lbImg = $("#lb-img"), lbStage = $("#lb-stage");
+var Z = { s:1, tx:0, ty:0, min:1, max:4 };
+function applyZ(){
+  var lim = 220 * Z.s;
+  Z.tx = Math.max(-lim, Math.min(lim, Z.tx));
+  Z.ty = Math.max(-lim, Math.min(lim, Z.ty));
+  lbImg.style.transform = "translate(" + Z.tx + "px," + Z.ty + "px) scale(" + Z.s + ")";
+}
+function openLb(amt){
+  $("#lb-amt").textContent = "NT$ " + fmt(amt);
+  Z.s = 1; Z.tx = 0; Z.ty = 0; applyZ();
+  lb.classList.add("on");
+  $("#lb-close").focus();
+}
+function closeLb(){ lb.classList.remove("on"); }
+$("#lb-close").addEventListener("click", closeLb);
+lb.addEventListener("click", function(e){ if (e.target === lb || e.target === lbStage) closeLb(); });
+document.addEventListener("keydown", function(e){
+  if (e.key !== "Escape") return;
+  if (lb.classList.contains("on")) closeLb();
+  else if ($("#modal-confirm").classList.contains("open")) closeConfirm();
+});
+lb.addEventListener("wheel", function(e){
+  e.preventDefault();
+  var f = e.deltaY < 0 ? 1.15 : 1/1.15;
+  var ns = Math.max(Z.min, Math.min(Z.max, Z.s * f));
+  var r = lbStage.getBoundingClientRect();
+  var px = e.clientX - (r.left + r.width/2), py = e.clientY - (r.top + r.height/2);
+  Z.tx = px - (px - Z.tx) * (ns / Z.s);
+  Z.ty = py - (py - Z.ty) * (ns / Z.s);
+  Z.s = ns;
+  if (Z.s === 1){ Z.tx = 0; Z.ty = 0; }
+  applyZ();
+}, {passive:false});
+
+var dragging = false, lastX = 0, lastY = 0;
+lb.addEventListener("pointerdown", function(e){
+  if (e.target === $("#lb-close")) return;
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  lb.setPointerCapture(e.pointerId);
+});
+lb.addEventListener("pointermove", function(e){
+  if (!dragging) return;
+  Z.tx += e.clientX - lastX; Z.ty += e.clientY - lastY;
+  lastX = e.clientX; lastY = e.clientY;
+  applyZ();
+});
+function ptrUp(){ dragging = false; }
+lb.addEventListener("pointerup", ptrUp);
+lb.addEventListener("pointercancel", ptrUp);
+function dblZoom(){
+  if (Z.s > 1){ Z.s = 1; Z.tx = 0; Z.ty = 0; } else { Z.s = 2.5; }
+  applyZ();
+}
+lbImg.addEventListener("dblclick", function(e){ e.preventDefault(); dblZoom(); });
+
+/* ================= init ================= */
+renderScopeSels(); renderReport(); renderAudit(); renderStores();
+})();
+</script>
