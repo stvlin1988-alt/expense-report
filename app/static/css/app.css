@@ -462,3 +462,103 @@ tr.au-open-row td { font-weight: 600; }
 .wk-input:focus { border-color: var(--wk-accent); box-shadow: 0 0 0 3px var(--wk-accent-soft); outline: none; }
 .wk-modal-err { color: var(--wk-bad-ink); font-size: 12px; margin-top: 6px; min-height: 15px; }
 .wk-modal-foot { padding: 16px 20px 18px; display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ============================================================
+   核銷表（Task 3；會計桌機 pilot 第一個完整視覺驗收點）
+   視覺 SoT: docs/superpowers/ui-prototypes/accountant-desktop.html（.tx-table/.doc-cell/.status-cell 段）
+   7 欄：勾選/單據(縮圖+摘要+單號·建立者)/店別/分類/金額/燈號+狀態/操作，依營業日分組卡片。
+   ============================================================ */
+
+/* ---- 表單控件（篩選列用；小尺寸，跟 .wk-input 共用 class 但工具列情境覆寫寬度/間距） ---- */
+.wk-select {
+  height: 32px; padding: 0 26px 0 10px; font-size: 13px;
+  background: var(--wk-surface); border: 1px solid var(--wk-line); border-radius: var(--wk-radius-sm);
+  color: var(--wk-ink); appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238896A8' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center;
+  transition: border-color .12s, box-shadow .12s;
+}
+.wk-select:hover { border-color: var(--wk-faint); }
+.wk-select:focus { border-color: var(--wk-accent); box-shadow: 0 0 0 3px var(--wk-accent-soft); outline: none; }
+/* .wk-input 原是 modal 專用（width:100%/margin-top:10px），工具列一行排列要收成內容寬、貼齊按鈕 */
+.wk-toolbar-row .wk-input, .wk-toolbar-row .wk-select { width: auto; margin-top: 0; }
+.wk-toolbar-row .wk-input { height: 32px; }
+
+/* ---- 按鈕：小尺寸（表格列內操作鈕用，避免 32px 高的預設 .wk-btn 撐爆行高） ---- */
+.wk-btn-sm { height: 26px; padding: 0 8px; font-size: 12px; font-weight: 500; }
+
+/* ---- 主區 body（sticky 工具列下方的可捲動內容區，對齊原型 .page-body 內距） ---- */
+.wk-page-body { padding: 20px 28px 48px; display: flex; flex-direction: column; gap: 18px; }
+@media (max-width: 900px) { .wk-page-body { padding-left: 16px; padding-right: 16px; } }
+
+.wk-empty { color: var(--wk-faint); font-size: 13px; padding: 24px; text-align: center; }
+
+/* ---- 依營業日分組卡片 ---- */
+.wk-rc-group + .wk-rc-group { margin-top: 14px; }
+.wk-rc-dayhead {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 16px; font-size: 13px; font-weight: 700; color: var(--wk-muted);
+  letter-spacing: .03em; background: var(--wk-surface-2); border-bottom: 1px solid var(--wk-line-soft);
+  border-radius: var(--wk-radius) var(--wk-radius) 0 0;
+}
+.wk-rc-daysub { font-size: 12px; font-weight: 500; color: var(--wk-muted); display: inline-flex; align-items: center; gap: 6px; }
+.wk-rc-daysub .num { font-size: 13px; font-weight: 700; color: var(--wk-ink); }
+
+/* ---- 表格外層可橫捲容器（原型 .table-wrap；一般桌機因 min-width:680px 一頁看完免橫捲） ---- */
+.table-wrap { overflow-x: auto; border-radius: 0 0 var(--wk-radius) var(--wk-radius); }
+
+/* ---- 核銷表：separate + border-spacing:0（避免日後加 sticky 表頭踩雷）---- */
+.wk-rc-table { width: 100%; min-width: 680px; border-collapse: separate; border-spacing: 0; }
+.wk-rc-table th {
+  text-align: left; font-size: 12px; font-weight: 600; color: var(--wk-faint);
+  padding: 9px 10px; border-bottom: 1px solid var(--wk-line); background: var(--wk-surface);
+  white-space: nowrap; letter-spacing: .04em;
+}
+.wk-rc-table th.num-h { text-align: right; }
+.wk-rc-table td {
+  padding: 9px 10px; border-bottom: 1px solid var(--wk-line-soft);
+  font-size: 13px; vertical-align: middle; background: var(--wk-surface);
+}
+.wk-rc-table tbody tr:hover td { background: var(--wk-surface-2); }
+.wk-rc-table td.wk-rc-sel { width: 36px; }
+.wk-rc-table input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--wk-accent); cursor: pointer; }
+
+/* ---- 單據格：縮圖 + 摘要 + 單號·建立者（併欄） ---- */
+.wk-doc-cell { display: flex; align-items: flex-start; gap: 9px; min-width: 188px; max-width: 320px; }
+.wk-rcp-thumb {
+  width: 44px; height: 34px; border-radius: 5px; flex: none; object-fit: cover;
+  background: var(--wk-neutral-soft); border: 1px solid var(--wk-line-soft); cursor: zoom-in;
+}
+.wk-rcp-none {
+  display: flex; align-items: center; justify-content: center; width: 44px; height: 34px;
+  border-radius: 5px; flex: none; background: var(--wk-neutral-soft); color: var(--wk-faint); font-size: 12px;
+}
+.wk-doc-meta { min-width: 0; }
+.wk-doc-summary { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wk-doc-sub {
+  display: block; font-size: 11px; color: var(--wk-faint); font-variant-numeric: tabular-nums;
+  margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ---- 分類 / 金額行內編輯 ---- */
+.wk-rc-table select[data-f="category"] { height: 28px; font-size: 12px; min-width: 88px; max-width: 128px; }
+.wk-amt-input {
+  width: 82px; height: 28px; text-align: right; font-variant-numeric: tabular-nums;
+  font-size: 13px; font-weight: 600; padding: 0 8px;
+  border: 1px solid var(--wk-accent); border-radius: var(--wk-radius-sm);
+  background: var(--wk-surface); box-shadow: 0 0 0 3px var(--wk-accent-soft); color: var(--wk-ink);
+}
+
+/* ---- 燈號 + 狀態（併欄） ---- */
+.wk-lamp-cell { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; white-space: nowrap; }
+.wk-status {
+  display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; line-height: 1.6; white-space: nowrap;
+  background: var(--wk-neutral-soft); color: var(--wk-muted);
+}
+tr[data-status="audited"] .wk-status { background: var(--wk-warn-soft); color: var(--wk-warn-ink); }
+tr[data-status="reconciled"] .wk-status { background: var(--wk-ok-soft); color: var(--wk-ok-ink); }
+tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: var(--wk-bad-ink); }
+
+/* ---- 操作欄：內容寬即可，不搶「單據」欄空間 ---- */
+.wk-rc-table td.rc-rowbtns { width: 1%; white-space: nowrap; }

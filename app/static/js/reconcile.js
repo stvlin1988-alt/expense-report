@@ -108,6 +108,16 @@ function amountCell(n) {
   return `<span class="rc-amt${negative ? ' rc-neg' : ''}">${text}</span>`;
 }
 
+// 就地更新一個 `.num` 金額節點（不整頁重繪）：文字＋負數紅字 class 都跟著換。
+// 給核銷表 sticky 工具列合計 / 日小計節點用（那三個節點本身就是 <span class="num">，
+// 不像 amountCell() 是「另包一層」給舊 .pd-table 用的）。
+function setNumEl(el, n) {
+  if (!el) return;
+  const { text, negative } = fmtAmount(n);
+  el.textContent = text;
+  el.classList.toggle('neg', negative);
+}
+
 function periodBadgeHtml(period) {
   if (!period) return '';
   const cls = period.status === 'closed' ? 'closed' : period.status === 'closing' ? 'closing' : 'open';
@@ -269,96 +279,91 @@ export async function showReconcilePanel(identity) {
   function rowHtml(e) {
     const editable = e.status === 'audited' || e.status === 'reconciled';
     const canApprove = e.status === 'audited';
-    const canReject = editable;
-    const canMoveNext = e.status === 'audited' || e.status === 'rejected';
     const thumb = e.thumb_url
-      ? `<img src="${e.thumb_url}" loading="lazy" width="48" class="au-thumb" data-zoom="${e.image_url || ''}">`
-      : '—';
+      ? `<img src="${e.thumb_url}" loading="lazy" class="wk-rcp-thumb au-thumb" data-zoom="${e.image_url || ''}" alt="收據">`
+      : '<span class="wk-rcp-none">—</span>';
     const { negative } = fmtAmount(e.amount);
-    const rejectInfo = (e.status === 'rejected' && e.reject_reason)
-      ? `<div class="rc-reject-reason">${escapeHtml(e.reject_reason)}</div>` : '';
-    const resubmitBadge = showResubmitBadge(e)
-      ? `<div class="rc-resubmit">🔄 主管已重送　${escapeHtml(formatDateTimeTW(e.resubmitted_at))}</div>` : '';
+    // Step 0 結論：item 沒有 created_at 欄位（見 app/reconcile/serialize.py 白名單），
+    // 單據格只放單號／建立者，不放時間；store_name 後端已經是英文代號（_maps 用 s.code），
+    // 直接用即可，不必另建 client helper 查 code。
+    const meta = `${escapeHtml(e.doc_no || `#${e.id}`)} · ${escapeHtml(e.created_by_name || '')}`;
+    const rejectInfo = (e.status === 'rejected' && e.reject_reason) ? `<div class="rc-reject-reason">${escapeHtml(e.reject_reason)}</div>` : '';
+    const resubmitBadge = showResubmitBadge(e) ? `<div class="rc-resubmit">🔄 主管已重送 ${escapeHtml(formatDateTimeTW(e.resubmitted_at))}</div>` : '';
     return `<tr data-id="${e.id}" data-status="${e.status}">
-      <td>${canApprove ? '<input type="checkbox" class="rc-sel">' : ''}</td>
-      <td class="au-docno">${escapeHtml(e.doc_no || `#${e.id}`)}</td>
-      <td>${thumb}</td>
-      <td>${escapeHtml(e.store_name || '')}</td>
-      <td>${escapeHtml(e.created_by_name || '')}</td>
-      <td>${escapeHtml(e.summary || '')}${e.is_no_receipt ? ' <span class="au-mod">無單據</span>' : ''}</td>
-      <td>${editable
-        ? `<select data-f="category">${categoryOptionsHtml(state.categories, e.category_id)}</select>`
-        : escapeHtml(e.category_name || '')}</td>
-      <td>${editable
-        ? `<input value="${e.amount ?? ''}" inputmode="decimal" data-f="amount" class="rc-amt-input${negative ? ' rc-neg' : ''}" style="width:90px">`
-        : amountCell(e.amount)}</td>
-      <td>${lightLabel(e.light)}</td>
-      <td>${escapeHtml(STATUS_LABEL[e.status] || e.status)}${rejectInfo}${resubmitBadge}</td>
+      <td class="wk-rc-sel">${canApprove ? '<input type="checkbox" class="rc-sel">' : ''}</td>
+      <td><div class="wk-doc-cell">${thumb}
+        <div class="wk-doc-meta"><span class="wk-doc-summary">${escapeHtml(e.summary || '')}${e.is_no_receipt ? ' <span class="au-mod">無單據</span>' : ''}</span>
+          <span class="wk-doc-sub">${meta}</span></div></div></td>
+      <td><span class="wk-store-tag">${escapeHtml(e.store_code || e.store_name || '')}</span></td>
+      <td>${editable ? `<select data-f="category">${categoryOptionsHtml(state.categories, e.category_id)}</select>` : escapeHtml(e.category_name || '')}</td>
+      <td class="num${negative ? ' neg' : ''}">${editable
+        ? `<input value="${e.amount ?? ''}" inputmode="decimal" data-f="amount" class="wk-amt-input${negative ? ' neg' : ''}">`
+        : fmtAmount(e.amount).text}</td>
+      <td><div class="wk-lamp-cell">${lightLabel(e.light)}<span class="wk-status">${escapeHtml(STATUS_LABEL[e.status] || e.status)}</span>${rejectInfo}${resubmitBadge}</div></td>
       <td class="rc-rowbtns">
-        ${canApprove ? '<button data-act="approve" type="button">核銷</button>' : ''}
-        ${canReject ? '<button data-act="reject" type="button">退回</button>' : ''}
-        ${canMoveNext ? '<button data-act="movenext" type="button">挪下期</button>' : ''}
+        ${canApprove ? '<button class="wk-btn wk-btn-sm wk-btn-primary" data-act="approve" type="button">核銷</button>' : ''}
+        ${editable ? '<button class="wk-btn wk-btn-sm wk-btn-secondary" data-act="reject" type="button">退回</button>' : ''}
+        ${(e.status === 'audited' || e.status === 'rejected') ? '<button class="wk-btn wk-btn-sm wk-btn-ghost" data-act="movenext" type="button">挪下期</button>' : ''}
         <div class="pd-row-err" data-f="err"></div>
       </td>
     </tr>`;
   }
 
   function groupsHtml() {
-    if (!state.groups.length) return '<div class="ap-empty">沒有符合條件的單據</div>';
-    return state.groups.map((g, idx) => {
-      const sub = amountCell(g.subtotal);
-      return `
-      <div class="au-group">
-        <div class="au-group-head">${escapeHtml(g.business_date)}　日小計 <span id="rc-subtotal-${idx}">${sub}</span></div>
-        <div class="pd-table-wrap">
-        <table class="pd-table"><thead><tr>
-          <th><input type="checkbox" class="rc-selall"></th>
-          <th>單號</th><th>圖</th><th>店別</th><th>建立者</th><th>摘要</th><th>分類</th><th>金額</th><th>燈</th><th>狀態</th><th>操作</th>
-        </tr></thead><tbody>${g.items.map(rowHtml).join('')}</tbody></table>
-        </div>
-      </div>`;
-    }).join('');
+    if (!state.groups.length) return '<div class="wk-empty">沒有符合條件的單據</div>';
+    return state.groups.map((g, idx) => `
+      <div class="wk-card wk-rc-group">
+        <div class="wk-rc-dayhead">${escapeHtml(g.business_date)}<span class="wk-rc-daysub">日小計 <span id="rc-subtotal-${idx}" class="num${fmtAmount(g.subtotal).negative ? ' neg' : ''}">${fmtAmount(g.subtotal).text}</span></span></div>
+        <div class="table-wrap"><table class="wk-rc-table">
+          <thead><tr><th><input type="checkbox" class="rc-selall"></th><th>單據</th><th>店別</th><th>分類</th><th class="num-h">金額</th><th>燈號／狀態</th><th>操作</th></tr></thead>
+          <tbody>${g.items.map(rowHtml).join('')}</tbody>
+        </table></div>
+      </div>`).join('');
   }
 
   function periodBarHtml() {
     const p = state.period;
     const label = p ? escapeHtml(p.label) : '（無期間）';
     return `
-      <div class="rc-period-bar">
+      <div class="wk-toolbar-row">
         <span class="rc-period-label">目前期間：${label}</span>
         ${periodBadgeHtml(p)}
-        <input type="number" id="rc-period-switch" placeholder="期間 ID" value="${state.filters.period_id}" style="width:90px">
-        <button class="ap-btn secondary" id="rc-period-go" type="button">切換</button>
-        ${state.filters.period_id !== '' ? '<button class="ap-btn secondary" id="rc-period-clear" type="button">回目前期間</button>' : ''}
+        <input type="number" id="rc-period-switch" class="wk-input" placeholder="期間 ID" value="${state.filters.period_id}" style="width:90px">
+        <button class="wk-btn wk-btn-sm wk-btn-secondary" id="rc-period-go" type="button">切換</button>
+        ${state.filters.period_id !== '' ? '<button class="wk-btn wk-btn-sm wk-btn-secondary" id="rc-period-clear" type="button">回目前期間</button>' : ''}
       </div>`;
   }
 
   function reconcileHtml() {
     const f = state.filters;
     return `
-      ${periodBarHtml()}
-      <div class="rc-filters">
-        <select id="rc-f-status">${statusOptionsHtml(f.status)}</select>
-        <select id="rc-f-store">${storeOptionsHtml(f.store_id)}</select>
-        <select id="rc-f-cat">${catFilterOptionsHtml(f.category_id)}</select>
-        <input type="date" id="rc-f-from" value="${f.date_from}">
-        ～
-        <input type="date" id="rc-f-to" value="${f.date_to}">
-        <button class="ap-btn" id="rc-f-apply" type="button">套用</button>
-        <button class="ap-btn secondary" id="rc-refresh" type="button">↻ 重整</button>
-        <button class="ap-btn" id="rc-manual-open" type="button">新增單據</button>
+      <div class="wk-toolbar">
+        ${periodBarHtml()}
+        <div class="wk-toolbar-row">
+          <select id="rc-f-status" class="wk-select">${statusOptionsHtml(f.status)}</select>
+          <select id="rc-f-store" class="wk-select">${storeOptionsHtml(f.store_id)}</select>
+          <select id="rc-f-cat" class="wk-select">${catFilterOptionsHtml(f.category_id)}</select>
+          <input type="date" id="rc-f-from" class="wk-input" value="${f.date_from}">
+          ～
+          <input type="date" id="rc-f-to" class="wk-input" value="${f.date_to}">
+          <button class="wk-btn wk-btn-sm wk-btn-primary" id="rc-f-apply" type="button">套用</button>
+          <button class="wk-btn wk-btn-sm wk-btn-secondary" id="rc-refresh" type="button">↻ 重整</button>
+          <button class="wk-btn wk-btn-sm wk-btn-secondary" id="rc-manual-open" type="button">新增單據</button>
+        </div>
+        <div class="wk-toolbar-row">
+          待核銷 <span id="rc-total-pending" class="num${fmtAmount(state.total.pending).negative ? ' neg' : ''}">${fmtAmount(state.total.pending).text}</span>
+          已核銷 <span id="rc-total-reconciled" class="num${fmtAmount(state.total.reconciled).negative ? ' neg' : ''}">${fmtAmount(state.total.reconciled).text}</span>
+          共 <span id="rc-total-count">${state.total.count}</span> 筆
+        </div>
       </div>
-      <div id="rc-manual-box"></div>
-      <div class="rc-totals">
-        待核銷 <span id="rc-total-pending">${amountCell(state.total.pending)}</span>
-        已核銷 <span id="rc-total-reconciled">${amountCell(state.total.reconciled)}</span>
-        共 <span id="rc-total-count">${state.total.count}</span> 筆
-      </div>
-      <div class="rc-batchbar">
-        <button class="ap-btn" id="rc-batch-approve" type="button">一鍵核銷勾選</button>
-        <span class="rc-msg" id="rc-batch-msg">${escapeHtml(state.batchMsg)}</span>
-      </div>
-      <div id="rc-groups">${groupsHtml()}</div>`;
+      <div class="wk-page-body">
+        <div id="rc-manual-box"></div>
+        <div class="rc-batchbar">
+          <button class="wk-btn wk-btn-primary" id="rc-batch-approve" type="button">一鍵核銷勾選</button>
+          <span class="rc-msg" id="rc-batch-msg">${escapeHtml(state.batchMsg)}</span>
+        </div>
+        <div id="rc-groups">${groupsHtml()}</div>
+      </div>`;
   }
 
   function manualFormHtml() {
@@ -437,7 +442,7 @@ export async function showReconcilePanel(identity) {
       if (amt) {
         amt.addEventListener('input', () => {
           const parsed = parseAmountInput(amt.value);
-          amt.classList.toggle('rc-neg', parsed.valid && parsed.value < 0);
+          amt.classList.toggle('neg', parsed.valid && parsed.value < 0);
         });
         amt.addEventListener('blur', async () => {
           err.textContent = '';
@@ -453,11 +458,11 @@ export async function showReconcilePanel(identity) {
                 state.total = patched.total;
                 const idx = state.groups.indexOf(patched.group);
                 const subEl = body.querySelector(`#rc-subtotal-${idx}`);
-                if (subEl) subEl.innerHTML = amountCell(patched.group.subtotal);
+                setNumEl(subEl, patched.group.subtotal);
                 const pendEl = body.querySelector('#rc-total-pending');
-                if (pendEl) pendEl.innerHTML = amountCell(state.total.pending);
+                setNumEl(pendEl, state.total.pending);
                 const recEl = body.querySelector('#rc-total-reconciled');
-                if (recEl) recEl.innerHTML = amountCell(state.total.reconciled);
+                setNumEl(recEl, state.total.reconciled);
                 const cntEl = body.querySelector('#rc-total-count');
                 if (cntEl) cntEl.textContent = state.total.count;
               }
