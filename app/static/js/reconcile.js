@@ -6,6 +6,7 @@ import { escapeHtml, isValidPin } from './admin_util.js';
 import { categoryOptionsHtml, parseAmountInput, lightLabel } from './expenses_util.js';
 import { openImageLightbox } from './lightbox.js';
 import { formatDateTimeTW } from './audit_util.js';
+import { wkConfirm, wkPrompt } from './wk_modal.js';
 
 const root = () => document.getElementById('modal-root');
 
@@ -478,7 +479,12 @@ export async function showReconcilePanel(identity) {
       const rejectBtn = tr.querySelector('[data-act="reject"]');
       if (rejectBtn) rejectBtn.addEventListener('click', async () => {
         err.textContent = '';
-        const reason = window.prompt('請輸入退回原因（必填，200 字以內）');
+        const reason = await wkPrompt({
+          title: '退回單據',
+          desc: '請輸入退回原因（必填，200 字內）',
+          okLabel: '退回',
+          validate: (v) => (v && v.trim()) ? '' : '請填寫退回原因',
+        });
         if (reason === null) return; // 使用者取消
         try {
           const { status, data } = await rcApi.reject(id, reason);
@@ -658,7 +664,13 @@ export async function showReconcilePanel(identity) {
         const { status, data } = await rcApi.closePreview(period.id);
         if (status !== 200) { periodMsg.style.color = '#c62828'; periodMsg.textContent = '讀取失敗，請重試'; return; }
         const n = data.unaudited_count || 0;
-        if (!window.confirm(`這期還有 ${n} 筆沒打勾，封月後這些單不進帳，確定要封嗎？`)) return;
+        const ok = await wkConfirm({
+          title: '提前封月',
+          desc: `這期還有 ${n} 筆沒打勾，封月後這些單不進帳，確定要封嗎？`,
+          okLabel: '確定封月',
+          danger: true,
+        });
+        if (!ok) return;
         const res = await rcApi.closePeriod(period.id);
         if (res.status === 200) {
           await refreshPeriod(period.id);

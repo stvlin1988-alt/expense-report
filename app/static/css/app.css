@@ -431,3 +431,34 @@ tr.au-open-row td { font-weight: 600; }
   .wk-main { margin-left: 0; }
   .wk-toolbar { padding-left: 16px; padding-right: 16px; }
 }
+
+/* ---- 按鈕：danger（實心，值同原型 reject 按鈕 inline style: bg/border=--bad） ---- */
+.wk-btn-danger { background: var(--wk-bad); color: #fff; border-color: var(--wk-bad); }
+.wk-btn-danger:hover { filter: brightness(1.08); }
+
+/* ---- Modal（取代 window.prompt/confirm；值照原型 accountant-desktop.html 的 .modal-* 段） ---- */
+.wk-modal-backdrop {
+  position: fixed; inset: 0; background: rgba(20,28,40,.45); z-index: 60;
+  display: none; align-items: center; justify-content: center; padding: 24px;
+}
+.wk-modal-backdrop.open { display: flex; }
+.wk-modal {
+  background: var(--wk-surface); border-radius: 14px; box-shadow: var(--wk-shadow-pop);
+  width: 100%; max-width: 440px; border: 1px solid var(--wk-line-soft);
+}
+.wk-modal-head { padding: 18px 20px 0; display: flex; align-items: flex-start; gap: 10px; }
+.wk-modal-title { font-size: 15px; font-weight: 700; flex: 1; }
+.wk-modal-x {
+  background: none; border: 0; color: var(--wk-faint); font-size: 18px; line-height: 1;
+  padding: 2px 6px; border-radius: 5px;
+}
+.wk-modal-x:hover { background: var(--wk-neutral-soft); color: var(--wk-ink); }
+.wk-modal-body { padding: 12px 20px 4px; font-size: 13px; color: var(--wk-muted); }
+.wk-input {
+  width: 100%; box-sizing: border-box; height: 34px; margin-top: 10px; padding: 0 11px;
+  border: 1px solid var(--wk-line); border-radius: var(--wk-radius-sm); background: var(--wk-surface);
+  font-size: 13px; color: var(--wk-ink);
+}
+.wk-input:focus { border-color: var(--wk-accent); box-shadow: 0 0 0 3px var(--wk-accent-soft); outline: none; }
+.wk-modal-err { color: var(--wk-bad-ink); font-size: 12px; margin-top: 6px; min-height: 15px; }
+.wk-modal-foot { padding: 16px 20px 18px; display: flex; justify-content: flex-end; gap: 8px; }
