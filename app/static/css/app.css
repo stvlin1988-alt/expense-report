@@ -255,3 +255,179 @@ tr.au-open-row td { font-weight: 600; }
 .rc-period-section { margin-bottom: 24px; }
 .rc-period-section h3 { font-size: 16px; margin: 0 0 8px; color: #333; }
 .ap-hint { color:#888; font-size:12px; margin-top:8px; } .st-onoff { cursor:pointer; user-select:none; }
+
+/* ============================================================
+   工作台設計系統（UI 重塑 2026-07；會計桌機 pilot，各角色沿用）
+   token + 側欄工作台殼。與舊 .ap-*/.rc-*/.mr-* 並存，本段只新增不改動上方。
+   視覺 SoT: docs/superpowers/ui-prototypes/accountant-desktop.html
+   ============================================================ */
+
+/* ---- design tokens（值逐字取自原型 :root 三段，全部加 --wk- 前綴） ---- */
+:root {
+  --wk-accent: #2E6BE6;
+  --wk-accent-ink: #1E4FB8;
+  --wk-accent-soft: #E8EFFC;
+  --wk-ground: #F4F6FA;
+  --wk-surface: #FFFFFF;
+  --wk-surface-2: #F8FAFD;
+  --wk-ink: #1C2733;
+  --wk-muted: #5C6B80;
+  --wk-faint: #8896A8;
+  --wk-line: #DDE4EE;
+  --wk-line-soft: #E8EDF5;
+  --wk-ok: #1E9E5A;      --wk-ok-soft: #E3F5EB;   --wk-ok-ink: #14713F;
+  --wk-warn: #C7860A;    --wk-warn-soft: #FCF2DC; --wk-warn-ink: #8F5E03;
+  --wk-bad: #D6455A;     --wk-bad-soft: #FCE9EC;  --wk-bad-ink: #AF2B40;
+  --wk-neutral-soft: #EDF1F7;
+  --wk-shadow: 0 1px 2px rgba(28,39,51,.05),0 4px 16px rgba(28,39,51,.06);
+  --wk-shadow-pop: 0 8px 32px rgba(28,39,51,.18);
+  --wk-radius: 10px;
+  --wk-radius-sm: 7px;
+  --wk-sidebar-w: 208px;
+  --wk-toolbar-bg: rgba(244,246,250,.92);
+  --wk-sticky-shadow: -1px 0 0 0 var(--wk-line),-9px 0 12px -8px rgba(20,28,40,.14);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --wk-accent: #5B8DF0;
+    --wk-accent-ink: #8FB2F5;
+    --wk-accent-soft: #1D2C4A;
+    --wk-ground: #12161D;
+    --wk-surface: #1A2029;
+    --wk-surface-2: #1F2631;
+    --wk-ink: #E4EAF2;
+    --wk-muted: #96A3B5;
+    --wk-faint: #6B7889;
+    --wk-line: #2C3542;
+    --wk-line-soft: #252D39;
+    --wk-ok: #3DBE7B;   --wk-ok-soft: #15301F;   --wk-ok-ink: #6FD8A0;
+    --wk-warn: #E0A63C; --wk-warn-soft: #33290F; --wk-warn-ink: #EFC170;
+    --wk-bad: #E56B7D;  --wk-bad-soft: #3A1B21;  --wk-bad-ink: #F09AA7;
+    --wk-neutral-soft: #252D39;
+    --wk-shadow: 0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.3);
+    --wk-shadow-pop: 0 8px 32px rgba(0,0,0,.55);
+    --wk-toolbar-bg: rgba(18,22,29,.92);
+    --wk-sticky-shadow: -1px 0 0 0 var(--wk-line),-9px 0 14px -8px rgba(0,0,0,.55);
+  }
+}
+:root[data-theme="dark"] {
+  --wk-accent: #5B8DF0; --wk-accent-ink: #8FB2F5; --wk-accent-soft: #1D2C4A;
+  --wk-ground: #12161D; --wk-surface: #1A2029; --wk-surface-2: #1F2631;
+  --wk-ink: #E4EAF2; --wk-muted: #96A3B5; --wk-faint: #6B7889;
+  --wk-line: #2C3542; --wk-line-soft: #252D39;
+  --wk-ok: #3DBE7B; --wk-ok-soft: #15301F; --wk-ok-ink: #6FD8A0;
+  --wk-warn: #E0A63C; --wk-warn-soft: #33290F; --wk-warn-ink: #EFC170;
+  --wk-bad: #E56B7D; --wk-bad-soft: #3A1B21; --wk-bad-ink: #F09AA7;
+  --wk-neutral-soft: #252D39;
+  --wk-shadow: 0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.3);
+  --wk-shadow-pop: 0 8px 32px rgba(0,0,0,.55);
+  --wk-toolbar-bg: rgba(18,22,29,.92);
+  --wk-sticky-shadow: -1px 0 0 0 var(--wk-line),-9px 0 14px -8px rgba(0,0,0,.55);
+}
+:root[data-theme="light"] {
+  --wk-accent: #2E6BE6; --wk-accent-ink: #1E4FB8; --wk-accent-soft: #E8EFFC;
+  --wk-ground: #F4F6FA; --wk-surface: #FFFFFF; --wk-surface-2: #F8FAFD;
+  --wk-ink: #1C2733; --wk-muted: #5C6B80; --wk-faint: #8896A8;
+  --wk-line: #DDE4EE; --wk-line-soft: #E8EDF5;
+  --wk-ok: #1E9E5A; --wk-ok-soft: #E3F5EB; --wk-ok-ink: #14713F;
+  --wk-warn: #C7860A; --wk-warn-soft: #FCF2DC; --wk-warn-ink: #8F5E03;
+  --wk-bad: #D6455A; --wk-bad-soft: #FCE9EC; --wk-bad-ink: #AF2B40;
+  --wk-neutral-soft: #EDF1F7;
+  --wk-shadow: 0 1px 2px rgba(28,39,51,.05),0 4px 16px rgba(28,39,51,.06);
+  --wk-shadow-pop: 0 8px 32px rgba(28,39,51,.18);
+  --wk-toolbar-bg: rgba(244,246,250,.92);
+  --wk-sticky-shadow: -1px 0 0 0 var(--wk-line),-9px 0 12px -8px rgba(20,28,40,.14);
+}
+
+/* ---- 殼：取代 .admin-panel 的全屏定位角色（覆蓋整頁，蓋在 covert 計算機外殼之上） ---- */
+.wk-app {
+  position: fixed; inset: 0; z-index: 50;
+  background: var(--wk-ground); color: var(--wk-ink); overflow: auto;
+}
+.wk-app button, .wk-app input, .wk-app select, .wk-app textarea { font: inherit; color: inherit; }
+
+/* ---- 左側欄 ---- */
+.wk-sidebar {
+  position: fixed; inset: 0 auto 0 0; width: var(--wk-sidebar-w);
+  background: var(--wk-surface); border-right: 1px solid var(--wk-line-soft);
+  display: flex; flex-direction: column; z-index: 40;
+}
+.wk-brand { padding: 22px 18px 18px; border-bottom: 1px solid var(--wk-line-soft); }
+.wk-brand-name { font-size: 17px; font-weight: 700; letter-spacing: .02em; }
+.wk-brand-sub { font-size: 12px; color: var(--wk-faint); margin-top: 2px; letter-spacing: .08em; }
+.wk-nav { padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.wk-nav-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 9px 12px; border: 0; background: none; border-radius: var(--wk-radius-sm);
+  color: var(--wk-muted); font-size: 14px; text-align: left;
+  transition: background .12s, color .12s;
+}
+.wk-nav-item:hover { background: var(--wk-surface-2); color: var(--wk-ink); }
+.wk-nav-item[aria-current="page"] { background: var(--wk-accent-soft); color: var(--wk-accent-ink); font-weight: 600; }
+.wk-side-foot { padding: 14px 16px; border-top: 1px solid var(--wk-line-soft); }
+.wk-side-user { display: flex; align-items: center; gap: 10px; }
+.wk-avatar {
+  width: 32px; height: 32px; border-radius: 50%; flex: none;
+  background: var(--wk-accent-soft); color: var(--wk-accent-ink);
+  display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
+}
+.wk-side-user-name { font-size: 13px; font-weight: 600; line-height: 1.3; }
+.wk-side-user-role { font-size: 12px; color: var(--wk-faint); }
+.wk-side-foot .wk-btn { margin-top: 10px; width: 100%; }
+
+/* ---- 主區 ---- */
+.wk-main { margin-left: var(--wk-sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
+.wk-view { display: none; flex: 1; flex-direction: column; }
+.wk-view.active { display: flex; }
+
+/* ---- sticky 工具列（毛玻璃） ---- */
+.wk-toolbar {
+  position: sticky; top: 0; z-index: 30;
+  background: var(--wk-toolbar-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--wk-line-soft);
+  padding: 14px 28px 12px; display: flex; flex-direction: column; gap: 10px;
+}
+.wk-toolbar-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* ---- 按鈕 ---- */
+.wk-btn {
+  height: 32px; padding: 0 14px; font-size: 13px; font-weight: 600;
+  border-radius: var(--wk-radius-sm); border: 1px solid transparent;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  transition: background .12s, border-color .12s, color .12s, box-shadow .12s;
+}
+.wk-btn-primary { background: var(--wk-accent); color: #fff; border-color: var(--wk-accent); }
+.wk-btn-primary:hover { filter: brightness(1.08); }
+.wk-btn-secondary { background: var(--wk-surface); color: var(--wk-ink); border-color: var(--wk-line); }
+.wk-btn-secondary:hover { border-color: var(--wk-faint); }
+.wk-btn-ghost { background: none; color: var(--wk-accent-ink); border-color: transparent; }
+.wk-btn-ghost:hover { background: var(--wk-accent-soft); }
+.wk-btn-danger-soft { background: var(--wk-bad-soft); color: var(--wk-bad-ink); border-color: var(--wk-bad); }
+.wk-btn-danger-soft:hover { background: var(--wk-bad); color: #fff; border-color: var(--wk-bad); }
+.wk-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ---- 卡片 ---- */
+.wk-card { background: var(--wk-surface); border: 1px solid var(--wk-line-soft); border-radius: var(--wk-radius); box-shadow: var(--wk-shadow); }
+.wk-card-head { padding: 14px 18px; border-bottom: 1px solid var(--wk-line-soft); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.wk-card-title { font-size: 14px; font-weight: 700; }
+.wk-card-body { padding: 16px 18px; }
+
+/* ---- 金額 / 店代號 ---- */
+.num { font-variant-numeric: tabular-nums; text-align: right; font-weight: 600; white-space: nowrap; }
+.num.neg { color: var(--wk-bad); }
+.wk-store-tag {
+  display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .05em;
+  font-variant-numeric: tabular-nums; color: var(--wk-accent-ink);
+  background: var(--wk-accent-soft); border-radius: 5px; padding: 1px 7px;
+}
+
+/* ---- 窄視窗防爆版（照原型 fallback：側欄轉頂列） ---- */
+@media (max-width: 900px) {
+  .wk-sidebar { position: static; width: auto; flex-direction: row; align-items: center; border-right: 0; border-bottom: 1px solid var(--wk-line-soft); }
+  .wk-brand { border-bottom: 0; padding: 12px 16px; }
+  .wk-nav { flex-direction: row; padding: 8px; overflow-x: auto; }
+  .wk-side-foot { border-top: 0; margin-left: auto; }
+  .wk-side-foot .wk-btn { display: none; }
+  .wk-main { margin-left: 0; }
+  .wk-toolbar { padding-left: 16px; padding-right: 16px; }
+}

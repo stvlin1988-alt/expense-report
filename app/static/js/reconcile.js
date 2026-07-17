@@ -153,18 +153,21 @@ export async function showReconcilePanel(identity) {
   ];
 
   function shellHtml() {
-    const tabBtns = tabs.map((t) =>
-      `<button class="ap-tab${t.key === state.tab ? ' active' : ''}" data-tab="${t.key}" type="button">${t.label}</button>`
+    const navBtns = tabs.map((t) =>
+      `<button class="wk-nav-item"${t.key === state.tab ? ' aria-current="page"' : ''} data-tab="${t.key}" type="button">${t.label}</button>`
     ).join('');
     return `
-      <div class="admin-panel">
-        <header class="ap-head"><div class="ap-inner ap-head-inner">
-          <span class="ap-title">會計核銷</span>
-          <span class="ap-who">${escapeHtml(identity.name)}</span>
-          <button class="ap-btn ap-logout" id="rc-logout" type="button">登出</button>
-        </div></header>
-        <nav class="ap-tabs"><div class="ap-inner ap-tabs-inner">${tabBtns}</div></nav>
-        <section class="ap-body"><div class="ap-inner" id="rc-body"></div></section>
+      <div class="wk-app">
+        <aside class="wk-sidebar">
+          <div class="wk-brand"><div class="wk-brand-name">會計核銷</div><div class="wk-brand-sub">核銷工作台</div></div>
+          <nav class="wk-nav">${navBtns}</nav>
+          <div class="wk-side-foot">
+            <div class="wk-side-user"><span class="wk-avatar">${escapeHtml(identity.name.slice(0, 1))}</span>
+              <div><div class="wk-side-user-name">${escapeHtml(identity.name)}</div><div class="wk-side-user-role">會計</div></div></div>
+            <button class="wk-btn wk-btn-secondary" id="rc-logout" type="button">登出</button>
+          </div>
+        </aside>
+        <main class="wk-main"><div id="rc-body"></div></main>
       </div>`;
   }
 
@@ -722,11 +725,11 @@ export async function showReconcilePanel(identity) {
       try { await fetch('/auth/logout', { method: 'POST' }); } catch (e) { /* ignore */ }
       location.reload();
     });
-    root().querySelectorAll('.ap-tab').forEach((btn) => {
+    root().querySelectorAll('.wk-nav-item').forEach((btn) => {
       btn.addEventListener('click', () => {
         state.tab = btn.dataset.tab;
-        root().querySelectorAll('.ap-tab').forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
+        root().querySelectorAll('.wk-nav-item').forEach((b) => b.removeAttribute('aria-current'));
+        btn.setAttribute('aria-current', 'page');
         renderActiveTab();
       });
     });
