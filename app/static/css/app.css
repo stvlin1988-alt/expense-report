@@ -548,6 +548,7 @@ tr.au-open-row td { font-weight: 600; }
   border: 1px solid var(--wk-accent); border-radius: var(--wk-radius-sm);
   background: var(--wk-surface); box-shadow: 0 0 0 3px var(--wk-accent-soft); color: var(--wk-ink);
 }
+.wk-amt-input.neg { color: var(--wk-bad); }
 
 /* ---- 燈號 + 狀態（併欄） ---- */
 .wk-lamp-cell { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; white-space: nowrap; }
