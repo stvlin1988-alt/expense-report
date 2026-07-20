@@ -911,6 +911,7 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 .mb-thumb-wrap{ position:relative; flex:none; }
 .mb-card-meta{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
 .mb-card-time{ font-size:11.5px; color:var(--wk-faint); }
+.mb-card-id{ font-size:11.5px; color:var(--wk-faint); letter-spacing:.03em; }
 
 .mb-field{ display:flex; flex-direction:column; gap:4px; }
 .mb-field label{ font-size:11px; color:var(--wk-faint); letter-spacing:.08em; }
