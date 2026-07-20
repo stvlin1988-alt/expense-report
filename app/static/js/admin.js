@@ -11,7 +11,7 @@ const root = () => document.getElementById('modal-root');
 
 export async function showAdminPanel(identity) {
   const isSuper = identity.role === 'super_admin';
-  const state = { tab: 'audit', storeId: null, stores: [] };
+  const state = { tab: isSuper ? 'report' : 'audit', storeId: null, stores: [] };
 
   // 先抓店清單（供調店切換 + 分頁下拉）
   try {
@@ -27,35 +27,42 @@ export async function showAdminPanel(identity) {
   }
 
   const tabs = [
+    ...(isSuper ? [{ key: 'report', label: '月報表' }] : []),
     { key: 'audit', label: '稽核' },
-    ...(isSuper ? [{ key: 'monthly', label: '月結' }] : []),
-    { key: 'logs', label: '操作記錄' },
+    ...(isSuper ? [{ key: 'stores', label: '店別管理' }] : []),
+    ...(isSuper ? [{ key: 'closing', label: '月結設定', ro: true }] : []),
     { key: 'accounts', label: '帳號' },
     { key: 'devices', label: '裝置' },
-    ...(isSuper ? [{ key: 'stores', label: '店別' }] : []),
+    { key: 'logs', label: '操作記錄' },
     { key: 'mypw', label: '我的密碼' },
   ];
 
   function shellHtml() {
-    const storeOpts = isSuper
-      ? `<select id="ap-store" class="ap-select">
-           <option value=""${state.storeId == null ? ' selected' : ''}>全部店</option>
-           ${state.stores.filter((s) => s.viewable !== false).map((s) => `<option value="${s.id}"${s.id === state.storeId ? ' selected' : ''}>${escapeHtml(s.code)}</option>`).join('')}
-         </select>`
-      : '';
-    const tabBtns = tabs.map((t) =>
-      `<button class="ap-tab${t.key === state.tab ? ' active' : ''}" data-tab="${t.key}" type="button">${t.label}</button>`
+    const scope = isSuper ? `
+      <div class="wk-store-scope">
+        <label class="wk-store-scope-label" for="ap-store">門市範圍（稽核＋月報表）</label>
+        <select class="wk-store-scope-sel" id="ap-store" aria-label="選擇門市，同時決定稽核與月報表範圍">
+          <option value=""${state.storeId == null ? ' selected' : ''}>全部門市</option>
+          ${state.stores.filter((s) => s.viewable !== false).map((s) => `<option value="${s.id}"${s.id === state.storeId ? ' selected' : ''}>${escapeHtml(s.code)}</option>`).join('')}
+        </select>
+      </div>` : '';
+    const navBtns = tabs.map((t) =>
+      `<button class="wk-nav-item" data-tab="${t.key}"${t.key === state.tab ? ' aria-current="page"' : ''} type="button">${escapeHtml(t.label)}${t.ro ? '<span class="wk-nav-ro">🔒</span>' : ''}</button>`
     ).join('');
+    const roleLabel = isSuper ? '經理・跨店管理' : '主管';
     return `
-      <div class="admin-panel">
-        <header class="ap-head"><div class="ap-inner ap-head-inner">
-          <span class="ap-title">管理後台</span>
-          <span class="ap-who">${escapeHtml(identity.name)}</span>
-          ${storeOpts}
-          <button class="ap-btn ap-logout" id="ap-logout" type="button">登出</button>
-        </div></header>
-        <nav class="ap-tabs"><div class="ap-inner ap-tabs-inner">${tabBtns}</div></nav>
-        <section class="ap-body"><div class="ap-inner" id="ap-body"></div></section>
+      <div class="wk-app">
+        <aside class="wk-sidebar">
+          <div class="wk-brand"><div class="wk-brand-name">雜支管理</div><div class="wk-brand-sub">${isSuper ? '經理工作台' : '主管工作台'}</div></div>
+          ${scope}
+          <nav class="wk-nav" aria-label="主導覽">${navBtns}</nav>
+          <div class="wk-side-foot">
+            <div class="wk-side-user"><span class="wk-avatar">${escapeHtml(identity.name.slice(0, 1))}</span>
+              <div><div class="wk-side-user-name">${escapeHtml(identity.name)}</div><div class="wk-side-user-role">${roleLabel}</div></div></div>
+            <button class="wk-btn wk-btn-secondary" id="ap-logout" type="button">登出</button>
+          </div>
+        </aside>
+        <main class="wk-main"><div id="ap-body"></div></main>
       </div>`;
   }
 
@@ -79,7 +86,7 @@ export async function showAdminPanel(identity) {
     const sel = document.getElementById('ap-store');
     if (sel) {
       const cur = sel.value;
-      sel.innerHTML = `<option value="">全部店</option>` +
+      sel.innerHTML = `<option value="">全部門市</option>` +
         state.stores.filter((s) => s.viewable !== false).map((s) => `<option value="${s.id}">${escapeHtml(s.code)}</option>`).join('');
       sel.value = cur;
     }
@@ -209,11 +216,22 @@ export async function showAdminPanel(identity) {
     });
   }
 
-  // 經理（super_admin）唯讀：月結日/鎖定偏移純文字顯示（不提供編輯，後端 PATCH 對經理亦 403）＋當期月報表。
-  async function renderMonthly(container, identity) {
-    container.innerHTML = `
-      <div class="ap-form" id="mo-settings"><div class="ap-empty">載入中…</div></div>
-      <div id="mo-report"></div>`;
+  // 月報表（super_admin only）：跟隨側欄的門市範圍選單（同一個選店同時管稽核與月結）：
+  // 選特定店→只看該店；選「全部門市」(storeId null)→各店攤開。
+  // 此 task 只搬程式、維持舊樣式，wk 化留 Task 2。
+  function renderReport(container) {
+    container.innerHTML = `<div id="mo-report"></div>`;
+    const reportDiv = container.querySelector('#mo-report');
+    renderMonthReport(reportDiv, {
+      storeId: state.storeId != null ? String(state.storeId) : '',
+      lockStore: true,
+    });
+  }
+
+  // 月結設定（super_admin only）：唯讀顯示月結日/鎖定偏移（不提供編輯，後端 PATCH 對經理亦 403）。
+  // 此 task 只搬程式、維持舊樣式，wk 化留 Task 3。
+  async function renderClosing(container) {
+    container.innerHTML = `<div class="ap-form" id="mo-settings"><div class="ap-empty">載入中…</div></div>`;
     const settingsBox = container.querySelector('#mo-settings');
     try {
       const { status, data } = await periodsApi.getSettings();
@@ -227,13 +245,6 @@ export async function showAdminPanel(identity) {
     } catch (e) {
       settingsBox.innerHTML = '<div class="ap-empty">載入失敗，請重試</div>';
     }
-    // 月報表跟隨標頭的店別選單（同一個選店同時管稽核與月結）：
-    // 選特定店→只看該店；選「全部店」(storeId null)→各店攤開。
-    const reportDiv = container.querySelector('#mo-report');
-    renderMonthReport(reportDiv, {
-      storeId: state.storeId != null ? String(state.storeId) : '',
-      lockStore: true,
-    });
   }
 
   function renderActiveTab() {
@@ -250,7 +261,8 @@ export async function showAdminPanel(identity) {
     else if (state.tab === 'audit') renderAudit(body, identity, state.storeId);
     else if (state.tab === 'logs') renderLogs(body, identity, state.storeId);
     else if (state.tab === 'stores') renderStores(body);
-    else if (state.tab === 'monthly') renderMonthly(body, identity);
+    else if (state.tab === 'report') renderReport(body);
+    else if (state.tab === 'closing') renderClosing(body);
     else if (state.tab === 'mypw') renderMyPassword(body);
   }
 
@@ -267,11 +279,12 @@ export async function showAdminPanel(identity) {
       else localStorage.removeItem('admin_store_id');
       renderActiveTab();
     });
-    root().querySelectorAll('.ap-tab').forEach((btn) => {
+    root().querySelectorAll('.wk-nav-item').forEach((btn) => {
       btn.addEventListener('click', () => {
         state.tab = btn.dataset.tab;
-        root().querySelectorAll('.ap-tab').forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
+        root().querySelectorAll('.wk-nav-item').forEach((b) => b.removeAttribute('aria-current'));
+        btn.setAttribute('aria-current', 'page');
+        window.scrollTo(0, 0);
         renderActiveTab();
       });
     });
