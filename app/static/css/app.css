@@ -629,6 +629,7 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 .wk-xt td{ font-variant-numeric:tabular-nums; }
 .wk-xt tbody tr:hover td{ background:var(--wk-surface-2); }
 .wk-xt .wk-xt-tot{ background:var(--wk-accent-soft); color:var(--wk-accent-ink); font-weight:700; }
+.wk-xt tbody tr:hover td.wk-xt-tot{ background:var(--wk-accent-soft); }
 .wk-xt tr.mr-total-row td{ font-weight:700; border-top:2px solid var(--wk-line); border-bottom:0; }
 .wk-xt tr.mr-child-row td{ background:var(--wk-surface-2); color:var(--wk-muted); font-size:12px; font-weight:400; }
 .wk-xt tr.mr-child-row td:first-child{ padding-left:38px; background:var(--wk-surface-2); }
@@ -637,6 +638,7 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 .wk-tri{ width:0; height:0; border-left:5px solid var(--wk-faint); border-top:4px solid transparent;
   border-bottom:4px solid transparent; transition:transform .12s; flex:none; }
 .wk-cat-toggle[aria-expanded="true"] .wk-tri{ transform:rotate(90deg); }
+.wk-cat-plain{ padding-left:12px; }
 .wk-xt.wk-xt-one{ min-width:420px; max-width:560px; }
 
 /* ---- 工具列/報表小元件（Task 2；原型對應 .period-title/.spacer/.filter-label/.report-note）---- */

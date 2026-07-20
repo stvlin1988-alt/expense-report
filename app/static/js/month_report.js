@@ -38,7 +38,7 @@ function majorRowHtml(row, idx, stores, storeId) {
   const hasChildren = !!(row.children && row.children.length);
   const nameCell = hasChildren
     ? `<button type="button" class="wk-cat-toggle" data-idx="${idx}" aria-expanded="false"><span class="wk-tri"></span>${escapeHtml(row.major_name)}</button>`
-    : escapeHtml(row.major_name);
+    : `<span class="wk-cat-plain">${escapeHtml(row.major_name)}</span>`;
   const amountTds = storeId
     ? cellHtml(pickCell(row, storeId))
     : perStoreTds(row, stores) + cellHtml(row.total, 'wk-xt-tot');
@@ -59,7 +59,7 @@ function childRowHtml(child, parentIdx, stores, storeId) {
 
 function footerRowHtml(data, stores, storeId) {
   const amountTds = storeId
-    ? cellHtml((data.store_totals && data.store_totals[storeId]) || null)
+    ? cellHtml((data.store_totals && data.store_totals[storeId]) || null, 'wk-xt-tot')
     : stores.map((s) => cellHtml((data.store_totals && data.store_totals[s.id]) || null)).join('')
       + cellHtml(data.grand_total, 'wk-xt-tot');
   return `<tr class="mr-total-row"><td>總計</td>${amountTds}</tr>`;
