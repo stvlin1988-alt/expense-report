@@ -6,6 +6,7 @@ import { renderAudit } from './admin_audit.js';
 import { renderLogs } from './admin_logs.js';
 import { renderMonthReport } from './month_report.js';
 import { periodsApi } from './periods_api.js';
+import { wkConfirm } from './wk_modal.js';
 
 const root = () => document.getElementById('modal-root');
 
@@ -128,41 +129,39 @@ export async function showAdminPanel(identity) {
   function renderStores(container) {
     // 僅 super_admin 進得來（tab 不對其他角色顯示）
     const rows = state.stores.map((s) => {
-      const view = s.viewable !== false;
-      const conn = s.active !== false;
-      return `<tr><td>${escapeHtml(s.code)}</td>
-           <td><label class="st-onoff"><input type="checkbox" class="st-viewable" data-id="${s.id}"${view ? ' checked' : ''}> 顯示</label></td>
-           <td>${conn ? '連線中' : '<span class="rc-neg">已關閉</span>'}
-               <button class="ap-btn" data-conn="${s.id}" data-active="${conn ? '1' : '0'}" type="button">${conn ? '關閉對外連結' : '開啟對外連結'}</button></td>
-           <td class="ap-rowbtns"><button class="ap-btn danger" data-del="${s.id}" type="button">刪除</button></td></tr>`;
+      const view = s.viewable !== false, conn = s.active !== false;
+      const st = conn ? '<span class="wk-badge wk-badge-open">連線中</span>' : '<span class="wk-badge wk-badge-bad">已關閉</span>';
+      const linkBtn = conn
+        ? `<button class="wk-btn wk-btn-danger-soft" data-conn="${s.id}" data-active="1" type="button">關閉對外連結</button>`
+        : `<button class="wk-btn wk-btn-ok-soft" data-conn="${s.id}" data-active="0" type="button">開啟對外連結</button>`;
+      return `<tr>
+        <td><span class="wk-sc-code">${escapeHtml(s.code)}</span></td>
+        <td>${st}</td>
+        <td><label class="wk-chk-inline"><input type="checkbox" class="st-viewable" data-id="${s.id}"${view ? ' checked' : ''}>顯示於選單／月報表<span class="wk-chk-note">${view ? '' : '（已隱藏，不影響營運）'}</span></label></td>
+        <td>${linkBtn}</td>
+      </tr>`;
     }).join('');
     container.innerHTML = `
-      <div class="ap-table-wrap">
-        <table class="ap-table">
-          <thead><tr><th>店別</th><th>檢視</th><th>對外連結</th><th>操作</th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="4">尚無店別</td></tr>'}</tbody>
-        </table>
-      </div>
-      <p class="ap-hint">「檢視」打勾＝這家店會出現在選店選單／月報表等檢視裡（取消只是隱藏，不影響營運）。<br>
-      「對外連結」關閉＝該店所有人員／主管立即被擋在計算機外、進不去（真正停用該店）。兩者互不影響，僅經理可改。</p>
-      <div class="ap-form">
-        <input type="text" id="st-code" placeholder="店別（英文）" autocomplete="off">
-        <button class="ap-btn" id="st-add" type="button">新增店</button>
-        <div class="ap-msg" id="st-msg"></div>
+      <div class="wk-toolbar"><div class="wk-toolbar-row"><span class="wk-toolbar-title">店別管理</span>
+        <span class="wk-filter-label">「檢視顯示」與「對外連結」為兩個獨立控制，僅經理可改</span></div></div>
+      <div class="wk-page-body">
+        <div class="wk-card"><div class="table-wrap"><table class="wk-store-table">
+          <thead><tr><th style="width:110px">店別</th><th style="width:120px">對外狀態</th><th>檢視顯示（選單／月報表）</th><th>對外連結（kill-switch）</th></tr></thead>
+          <tbody id="store-tbody">${rows || '<tr><td colspan="4" class="wk-empty">尚無店別</td></tr>'}</tbody>
+        </table></div></div>
+        <div class="wk-grid-2">
+          <div class="wk-card"><div class="wk-card-head"><span class="wk-card-title">新增店</span></div>
+            <div class="wk-card-body"><div class="wk-add-row">
+              <input class="wk-input" id="st-code" maxlength="2" placeholder="店別英文代號（≤2 字母，如 TN）" autocomplete="off">
+              <button class="wk-btn wk-btn-primary" id="st-add" type="button">新增</button>
+            </div><div class="wk-msg" id="st-msg"></div></div></div>
+          <div class="wk-card"><div class="wk-card-body wk-legend-hint">
+            「<b>檢視顯示</b>」打勾＝這家店會出現在選店選單／月報表；取消只是隱藏，不影響營運。<br>
+            「<b>對外連結</b>」關閉＝該店所有人員／主管立即被擋在計算機最外層（真正停用該店）。<br>兩者互不影響，可各自單獨切換。
+          </div></div>
+        </div>
       </div>`;
     const msg = container.querySelector('#st-msg');
-    container.querySelectorAll('button[data-del]').forEach((b) => {
-      b.addEventListener('click', async () => {
-        const id = parseInt(b.dataset.del, 10);
-        if (!confirm('確定刪除此店別？（店內有帳號或裝置則無法刪除）')) return;
-        try {
-          const { status, data } = await api.deleteStore(id);
-          if (status === 200 && data.status === 'ok') { await refreshStores(); renderActiveTab(); }
-          else if (status === 409) { msg.style.color = '#c62828'; msg.textContent = '店別有帳號或裝置，無法刪除'; }
-          else { msg.style.color = '#c62828'; msg.textContent = '刪除失敗'; }
-        } catch (e) { msg.style.color = '#c62828'; msg.textContent = '刪除失敗，請重試'; }
-      });
-    });
     // 檢視顯示：打勾方框（顯示/隱藏於檢視，不影響營運）
     container.querySelectorAll('input.st-viewable').forEach((cb) => {
       cb.addEventListener('change', async () => {
@@ -174,20 +173,25 @@ export async function showAdminPanel(identity) {
           if (!(status === 200 && data.status === 'ok')) {
             cb.checked = !next;
             msg.style.color = '#c62828'; msg.textContent = '切換失敗';
-          } else { await refreshStores(); }
+          } else { await refreshStores(); renderActiveTab(); }
         } catch (e) {
           cb.checked = !next;
           msg.style.color = '#c62828'; msg.textContent = '切換失敗，請重試';
         }
       });
     });
-    // 對外連結：停用/啟用按鈕（真正關掉該店＝把人員擋在計算機外）
+    // 對外連結 kill-switch：關閉走 wkConfirm modal（取代 confirm）
     container.querySelectorAll('button[data-conn]').forEach((b) => {
       b.addEventListener('click', async () => {
         msg.textContent = '';
         const id = parseInt(b.dataset.conn, 10);
         const next = b.dataset.active !== '1';   // 目前連線→關閉(false)；目前關閉→開啟(true)
-        if (!next && !confirm('關閉對外連結後，這家店所有人員／主管會立即被擋在計算機外、無法進入。確定？')) return;
+        const s = state.stores.find((x) => x.id === id) || {};
+        if (!next && !(await wkConfirm({
+          title: `關閉 ${s.code} 對外連結？`,
+          desc: `關閉後，${s.code} 所有人員／主管會立即被擋在計算機最外層（真正停用該店）。確定要關閉嗎？`,
+          okLabel: '確定關閉', danger: true,
+        }))) return;
         try {
           const { status, data } = await api.setStoreActive(id, next);
           if (status === 200 && data.status === 'ok') { await refreshStores(); renderActiveTab(); }
@@ -197,11 +201,12 @@ export async function showAdminPanel(identity) {
     });
     container.querySelector('#st-add').addEventListener('click', async () => {
       msg.textContent = '';
-      const code = container.querySelector('#st-code').value.trim();
-      if (!code) { msg.textContent = '請填店別'; return; }
+      const raw = container.querySelector('#st-code').value.trim().toUpperCase();
+      if (!/^[A-Z]{1,2}$/.test(raw)) { msg.style.color = '#c62828'; msg.textContent = '店別代號需為 1–2 個英文字母'; return; }
+      if (state.stores.some((s) => s.code === raw)) { msg.style.color = '#c62828'; msg.textContent = '店別已存在'; return; }
       try {
         // 店別以英文代碼為唯一識別；name 帶同 code（後端 name 缺省亦等於 code）
-        const { status, data } = await api.createStore(code, code);
+        const { status, data } = await api.createStore(raw, raw);
         if (status === 200 && data.status === 'ok') {
           await refreshStores();
           renderActiveTab();

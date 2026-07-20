@@ -410,6 +410,8 @@ tr.au-open-row td { font-weight: 600; }
 .wk-btn-ghost:hover { background: var(--wk-accent-soft); }
 .wk-btn-danger-soft { background: var(--wk-bad-soft); color: var(--wk-bad-ink); border-color: var(--wk-bad); }
 .wk-btn-danger-soft:hover { background: var(--wk-bad); color: #fff; border-color: var(--wk-bad); }
+.wk-btn-ok-soft { background: var(--wk-ok-soft); color: var(--wk-ok-ink); border-color: var(--wk-ok); }
+.wk-btn-ok-soft:hover { background: var(--wk-ok); color: #fff; }
 .wk-btn:disabled { opacity: .45; cursor: not-allowed; }
 
 /* ---- 卡片 ---- */
@@ -659,3 +661,27 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 .wk-kv-row:last-child{ border-bottom:0; }
 .wk-kv-row .k{ color:var(--wk-muted); }
 .wk-kv-row .v{ font-weight:600; font-variant-numeric:tabular-nums; text-align:right; }
+
+/* ---- 店別管理 view（Task 4；經理端 .wk-store-table 等；值逐字取自原型 .store-table/.sc-code/.chk-inline/.add-row/.legend-hint）---- */
+.wk-store-table{ border-collapse:separate; border-spacing:0; width:100%; min-width:720px; }
+.wk-store-table th{
+  text-align:left; font-size:12px; font-weight:600; color:var(--wk-faint);
+  padding:9px 14px; border-bottom:1px solid var(--wk-line); white-space:nowrap; letter-spacing:.04em;
+  background:var(--wk-surface); }
+.wk-store-table td{
+  padding:11px 14px; border-bottom:1px solid var(--wk-line-soft);
+  font-size:13px; vertical-align:middle; background:var(--wk-surface); }
+.wk-store-table tbody tr:hover td{ background:var(--wk-surface-2); }
+.wk-store-table tr:last-child td{ border-bottom:0; }
+.wk-sc-code{
+  font-size:15px; font-weight:700; letter-spacing:.06em; font-variant-numeric:tabular-nums;
+  background:var(--wk-accent-soft); color:var(--wk-accent-ink);
+  border-radius:var(--wk-radius-sm); padding:4px 12px; display:inline-block; }
+.wk-chk-inline{ display:inline-flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; user-select:none; }
+.wk-chk-inline .wk-chk-note{ font-size:12px; color:var(--wk-faint); }
+.wk-add-row{ display:flex; gap:8px; align-items:center; max-width:420px; }
+.wk-add-row .wk-input{ flex:1; text-transform:uppercase; letter-spacing:.08em; font-weight:700; }
+.wk-add-row .wk-input::placeholder{ text-transform:none; letter-spacing:0; font-weight:400; color:var(--wk-faint); }
+.wk-legend-hint{ font-size:12.5px; color:var(--wk-muted); line-height:1.8; }
+.wk-legend-hint b{ color:var(--wk-ink); }
+.wk-msg{ font-size:13px; margin-top:8px; color:var(--wk-muted); }
