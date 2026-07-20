@@ -946,3 +946,7 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 
 .mb-empty-state{ display:none; text-align:center; color:var(--wk-faint); font-size:14px;
   padding:52px 12px; border:1px dashed var(--wk-line); border-radius:var(--wk-radius); }
+
+/* 無單據建帳表單卡：accent 邊框 + accent-soft 光暈（原型 #manualCard :270-274） */
+.mb-manual-card{ border-color:var(--wk-accent); box-shadow:0 0 0 3px var(--wk-accent-soft); }
+.mb-manual-card h3{ margin:0; font-size:14.5px; }

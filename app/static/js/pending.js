@@ -200,66 +200,73 @@ function wireThumbZoom(card) {
   }
 }
 
-// 無單據建帳表單（Task 4 會正式卡片化，本 task 先接上鈕、沿用既有表單邏輯）。
+// 無單據建帳表單卡：確認區內展開/收合，沿用 noReceipt API + 可選佐證照（Camera 記憶體不落地）。
 function showNoReceiptForm(container, tree, onDone) {
   const formEl = container.querySelector('#mb-noreceipt-form');
   formEl.innerHTML = `
-    <div class="mb-card" id="mb-nr-box">
-      <div class="mb-field"><input placeholder="摘要" id="nr-summary"></div>
+    <div class="mb-card mb-manual-card" id="mb-manual-card">
+      <h3>無單據建帳</h3>
+      <div class="mb-field"><input placeholder="摘要" id="mb-nr-summary"></div>
       <div class="mb-field-row">
-        <div class="mb-field"><select id="nr-category"></select></div>
-        <div class="mb-field mb-f-amt"><input placeholder="金額" inputmode="decimal" id="nr-amount"></div>
+        <div class="mb-field"><select id="mb-nr-category"></select></div>
+        <div class="mb-field mb-f-amt"><input placeholder="金額" inputmode="decimal" id="mb-nr-amount" class="mb-amt"></div>
       </div>
-      <div class="mb-field"><input placeholder="原因（選填）" id="nr-reason"></div>
+      <div class="mb-field"><input placeholder="原因（選填）" id="mb-nr-reason"></div>
       <div class="nr-photo">
-        <button class="mb-btn mb-btn-ghost mb-btn-sm" id="nr-photo-btn" type="button">📷 拍照（選填）</button>
-        <div id="nr-cam" class="nr-cam" hidden>
-          <video id="nr-video" playsinline></video>
-          <canvas id="nr-canvas" hidden></canvas>
-          <button class="mb-btn mb-btn-sm" id="nr-shoot" type="button">拍下</button>
+        <button class="mb-btn mb-btn-ghost mb-btn-sm" id="mb-nr-photo-btn" type="button">📷 拍照（選填）</button>
+        <div id="mb-nr-cam" class="nr-cam" hidden>
+          <video id="mb-nr-video" playsinline></video>
+          <canvas id="mb-nr-canvas" hidden></canvas>
+          <button class="mb-btn mb-btn-sm" id="mb-nr-shoot" type="button">拍下</button>
         </div>
-        <div id="nr-preview" class="nr-preview"></div>
+        <div id="mb-nr-preview" class="nr-preview"></div>
       </div>
       <div class="mb-card-actions">
-        <button class="mb-btn mb-btn-primary" id="nr-submit" type="button">送出</button>
-        <button class="mb-btn mb-btn-ghost" id="nr-cancel" type="button">取消</button>
+        <button class="mb-btn mb-btn-primary" id="mb-nr-submit" type="button">送出</button>
+        <button class="mb-btn mb-btn-ghost" id="mb-nr-cancel" type="button">取消</button>
       </div>
-      <div class="pd-row-err" id="nr-err"></div>
+      <div class="pd-row-err" id="mb-nr-err"></div>
     </div>`;
-  formEl.querySelector('#nr-category').innerHTML = categoryOptionsHtml(tree, null);
-  const err = formEl.querySelector('#nr-err');
+  formEl.querySelector('#mb-nr-category').innerHTML = categoryOptionsHtml(tree, null);
+  const err = formEl.querySelector('#mb-nr-err');
+
+  const amtInput = formEl.querySelector('#mb-nr-amount');
+  amtInput.addEventListener('input', () => {
+    const parsed = parseAmountInput(amtInput.value);
+    amtInput.classList.toggle('neg', parsed.valid && parsed.value < 0);
+  });
 
   // 可選附一張佐證照（沿用 Camera，記憶體不落地）
   let photo = null;
-  const cam = new Camera(formEl.querySelector('#nr-video'), formEl.querySelector('#nr-canvas'));
-  const camBox = formEl.querySelector('#nr-cam');
-  const preview = formEl.querySelector('#nr-preview');
+  const cam = new Camera(formEl.querySelector('#mb-nr-video'), formEl.querySelector('#mb-nr-canvas'));
+  const camBox = formEl.querySelector('#mb-nr-cam');
+  const preview = formEl.querySelector('#mb-nr-preview');
   const stopCam = () => { try { cam.stop(); } catch { /* noop */ } camBox.hidden = true; };
-  formEl.querySelector('#nr-photo-btn').addEventListener('click', async () => {
+  formEl.querySelector('#mb-nr-photo-btn').addEventListener('click', async () => {
     err.textContent = '';
     camBox.hidden = false;
     try { await cam.start(); } catch { err.textContent = '無法開啟相機'; camBox.hidden = true; }
   });
-  formEl.querySelector('#nr-shoot').addEventListener('click', () => {
+  formEl.querySelector('#mb-nr-shoot').addEventListener('click', () => {
     photo = cam.capture();
     stopCam();
     preview.innerHTML = `<img src="${photo}" width="80" alt="佐證照">
-      <button class="mb-btn mb-btn-ghost mb-btn-sm" id="nr-photo-clear" type="button">移除</button>`;
-    preview.querySelector('#nr-photo-clear').addEventListener('click', () => {
+      <button class="mb-btn mb-btn-ghost mb-btn-sm" id="mb-nr-photo-clear" type="button">移除</button>`;
+    preview.querySelector('#mb-nr-photo-clear').addEventListener('click', () => {
       photo = null; preview.innerHTML = '';
     });
   });
 
-  formEl.querySelector('#nr-cancel').addEventListener('click', () => {
+  formEl.querySelector('#mb-nr-cancel').addEventListener('click', () => {
     stopCam(); formEl.innerHTML = '';
   });
-  formEl.querySelector('#nr-submit').addEventListener('click', async () => {
+  formEl.querySelector('#mb-nr-submit').addEventListener('click', async () => {
     err.textContent = '';
-    const summary = formEl.querySelector('#nr-summary').value;
-    const parsed = parseAmountInput(formEl.querySelector('#nr-amount').value);
+    const summary = formEl.querySelector('#mb-nr-summary').value;
+    const parsed = parseAmountInput(amtInput.value);
     if (!parsed.valid) { err.textContent = '金額格式不正確，請重新輸入'; return; }
-    const reason = formEl.querySelector('#nr-reason').value.trim();
-    const catSelect = formEl.querySelector('#nr-category');
+    const reason = formEl.querySelector('#mb-nr-reason').value.trim();
+    const catSelect = formEl.querySelector('#mb-nr-category');
     const categoryId = catSelect.value === '' ? null : Number(catSelect.value);
     const payload = {
       summary, amount: parsed.value, category_id: categoryId, reason,
@@ -268,6 +275,7 @@ function showNoReceiptForm(container, tree, onDone) {
     const { status } = await noReceipt(payload);
     if (status === 200) {
       stopCam();
+      mbToast('已建立');
       onDone();
     } else {
       err.textContent = '建立失敗，請稍後再試';
