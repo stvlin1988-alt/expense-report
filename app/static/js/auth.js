@@ -2,7 +2,6 @@ import { Camera } from './camera.js';
 import { showAdminPanel } from './admin.js';
 import { showReconcilePanel } from './reconcile.js';
 import { escapeHtml } from './admin_util.js';
-import { showPendingView } from './pending.js';
 import { showReviewView } from './review.js';
 import { showEmployeeApp } from './employee_app.js';
 
@@ -34,7 +33,6 @@ export function showAppView(identity) {
         </div>
         <video id="av-video" autoplay playsinline muted style="display:none;"></video>
         <canvas id="av-canvas" style="display:none;"></canvas>
-        ${isEmployee ? '<button class="modal-btn" id="av-pending" type="button">確認區</button>' : ''}
         ${isEmployee ? '<button class="modal-btn" id="av-review" type="button">複查</button>' : ''}
         <button class="modal-btn secondary" id="av-reface" type="button">更新人臉</button>
         <div class="modal-msg" id="av-msg" style="color:#4cd964;"></div>
@@ -79,10 +77,6 @@ export function showAppView(identity) {
   });
 
   if (isEmployee) {
-    document.getElementById('av-pending').addEventListener('click', () => {
-      cam.stop();
-      showPendingView(() => showAppView(identity));
-    });
     document.getElementById('av-review').addEventListener('click', () => {
       cam.stop();
       showReviewView(() => showAppView(identity));

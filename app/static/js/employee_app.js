@@ -1,11 +1,11 @@
 // 員工手機殼（UI 重塑 2026-07）：抬頭 + 3 pane 內容區 + 底部 tab bar。
 // 取代員工登入後原本逐頁 .modal-box 疊層流程（auth.js showAppView，非員工 fallback 仍保留）。
-// pane 內容此檔不填：拍單/確認區/複查分別由 Task 2（capture.js renderShootPane）、
-// Task 3（pending.js renderConfirmPane）、Task 5（review.js renderReviewPane）補上，
-// 屆時只需在 renderPane() 內 import 並呼叫對應函式（呼叫慣例見下方註解）。
+// pane 內容：拍單（Task 2 capture.js renderShootPane）、確認區（Task 3 pending.js renderConfirmPane）
+// 已接上；複查 pane 留給 Task 5（review.js renderReviewPane）。
 import { Camera } from './camera.js';
 import { escapeHtml } from './admin_util.js';
 import { renderShootPane } from './capture.js';
+import { renderConfirmPane } from './pending.js';
 
 const root = () => document.getElementById('modal-root');
 
@@ -90,11 +90,11 @@ export function showEmployeeApp(identity) {
   }
 
   function renderPane(name) {
-    // Task 3/5 落地時的呼叫慣例（沿承 brief）：
-    //   confirm: renderConfirmPane(panes.confirm, { onCountChange: setConfirmBadge })
-    //   review:  renderReviewPane(panes.review)
+    // Task 5 落地時的呼叫慣例（沿承 brief）：review: renderReviewPane(panes.review)
     if (name === 'shoot') {
       renderShootPane(panes.shoot, { onUploaded: () => { showTab('confirm'); } });
+    } else if (name === 'confirm') {
+      renderConfirmPane(panes.confirm, { onCountChange: setConfirmBadge });
     }
   }
 

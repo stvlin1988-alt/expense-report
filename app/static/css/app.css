@@ -883,3 +883,66 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 .mb-app.land .mb-upload-panel.show{ position:absolute; inset:0; left:auto; margin:auto;
   height:max-content; max-width:340px; border:1px solid var(--wk-line);
   border-radius:var(--wk-radius); box-shadow:var(--mb-shadow); z-index:4; }
+
+/* ---------- Task 3：確認區卡片（值照原型 employee-mobile.html:172-279，加 mb- 前綴 + --wk- token） ---------- */
+.mb-toolbar{ display:flex; gap:8px; margin-bottom:12px; }
+.mb-toolbar .mb-btn{ flex:1; }
+.mb-toolbar .mb-btn.refresh{ flex:0 0 auto; width:52px; padding:0; font-size:17px; color:var(--wk-muted); }
+
+.mb-cardlist{ display:flex; flex-direction:column; gap:12px; }
+.mb-card{ background:var(--wk-surface); border:1px solid var(--wk-line); border-radius:var(--wk-radius);
+  padding:12px; display:flex; flex-direction:column; gap:10px; }
+.mb-card-head{ display:flex; gap:10px; align-items:flex-start; }
+
+/* 收據縮圖：真 <img thumb_url>（非原型假收據 CSS），無圖時退回佔位塊 */
+.mb-thumb{ flex:none; width:52px; height:64px; border-radius:var(--wk-radius-sm); position:relative;
+  padding:0; border:1px solid var(--wk-line); overflow:hidden; background:var(--wk-surface-2);
+  display:block; cursor:zoom-in; }
+.mb-thumb img{ display:block; width:100%; height:100%; object-fit:cover; }
+.mb-thumb:hover{ border-color:var(--wk-faint); }
+.mb-thumb.placeholder{ cursor:default; background:linear-gradient(160deg,var(--mb-thumb-a),var(--mb-thumb-b));
+  display:flex; align-items:center; justify-content:center; color:var(--wk-faint); font-size:17px; }
+.mb-zoom-badge{ position:absolute; right:2px; bottom:2px; width:16px; height:16px; border-radius:5px;
+  background:rgba(20,28,38,.72); color:#fff; display:flex; align-items:center; justify-content:center; font-size:9px; }
+
+.mb-dot{ position:absolute; top:-4px; right:-4px; width:12px; height:12px; border-radius:50%;
+  border:2px solid var(--wk-surface); }
+.mb-dot-ok{ background:var(--wk-ok); } .mb-dot-warn{ background:var(--wk-warn); } .mb-dot-bad{ background:var(--wk-bad); }
+.mb-thumb-wrap{ position:relative; flex:none; }
+.mb-card-meta{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.mb-card-time{ font-size:11.5px; color:var(--wk-faint); }
+
+.mb-field{ display:flex; flex-direction:column; gap:4px; }
+.mb-field label{ font-size:11px; color:var(--wk-faint); letter-spacing:.08em; }
+.mb-field input, .mb-field select{ min-height:44px; border:1px solid var(--wk-line);
+  border-radius:var(--wk-radius-sm); background:var(--wk-surface-2); padding:0 11px; font-size:14.5px;
+  width:100%; color:var(--wk-ink); }
+.mb-field input::placeholder{ color:var(--wk-faint); }
+.mb-field input:focus, .mb-field select:focus{ outline:2px solid var(--wk-accent); outline-offset:0;
+  border-color:var(--wk-accent); }
+.mb-field-row{ display:flex; gap:8px; }
+.mb-field-row .mb-field{ flex:1; min-width:0; }
+.mb-field-row .mb-field.mb-f-amt{ flex:0 0 118px; }
+.mb-f-amt input{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
+.mb-card-actions{ display:flex; gap:8px; margin-top:2px; }
+.mb-card-actions .mb-btn{ flex:1; }
+
+.mb-status-strip{ display:flex; align-items:center; gap:8px; border-radius:var(--wk-radius-sm);
+  padding:10px 12px; font-size:13.5px; }
+.mb-status-strip.pending{ background:var(--wk-surface-2); color:var(--wk-muted); border:1px dashed var(--wk-line); }
+.mb-status-strip.fail{ background:var(--wk-warn-soft); color:var(--wk-warn-ink); }
+.mb-skeleton{ display:flex; flex-direction:column; gap:8px; margin-top:2px; }
+.mb-skeleton i{ display:block; height:12px; border-radius:6px; background:var(--wk-surface-2);
+  border:1px solid var(--wk-line); }
+.mb-skeleton i:nth-child(1){ width:62%; } .mb-skeleton i:nth-child(2){ width:40%; }
+@media (prefers-reduced-motion: no-preference){
+  .mb-dot-warn.pulse{ animation:mbPulse 1.6s ease-in-out infinite; }
+  @keyframes mbPulse{ 50%{ opacity:.35; } }
+}
+.mb-card.sent{ opacity:.72; }
+.mb-sent-chip{ display:inline-flex; align-items:center; gap:6px; align-self:flex-start;
+  background:var(--wk-ok-soft); color:var(--wk-ok-ink); border-radius:999px;
+  padding:7px 13px; font-size:13px; font-weight:600; }
+
+.mb-empty-state{ display:none; text-align:center; color:var(--wk-faint); font-size:14px;
+  padding:52px 12px; border:1px dashed var(--wk-line); border-radius:var(--wk-radius); }
