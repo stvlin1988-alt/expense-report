@@ -646,3 +646,16 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 .wk-spacer{ flex:1; }
 .wk-filter-label{ font-size:12px; color:var(--wk-faint); }
 .wk-report-note{ font-size:12px; color:var(--wk-faint); padding:10px 18px 14px; }
+
+/* ---- 月結設定唯讀 view（Task 3；經理端 .wk-ro-*；值逐字取自原型 .ro-banner/.ro-card/.grid-2/.kv-row）---- */
+.wk-ro-banner{ display:flex; align-items:center; gap:10px; background:var(--wk-neutral-soft,#EDF1F7);
+  border:1px solid var(--wk-line-soft); border-radius:var(--wk-radius); padding:12px 16px; font-size:13px; color:var(--wk-muted); }
+.wk-ro-banner b{ color:var(--wk-ink); }
+.wk-ro-card{ background:var(--wk-surface-2); }
+.wk-grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start; }
+@media (max-width:1100px){ .wk-grid-2{ grid-template-columns:1fr; } }
+.wk-kv-row{ display:flex; justify-content:space-between; gap:16px; padding:9px 0;
+  border-bottom:1px dashed var(--wk-line-soft); font-size:13px; }
+.wk-kv-row:last-child{ border-bottom:0; }
+.wk-kv-row .k{ color:var(--wk-muted); }
+.wk-kv-row .v{ font-weight:600; font-variant-numeric:tabular-nums; text-align:right; }

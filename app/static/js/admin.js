@@ -249,21 +249,39 @@ export async function showAdminPanel(identity) {
   }
 
   // 月結設定（super_admin only）：唯讀顯示月結日/鎖定偏移（不提供編輯，後端 PATCH 對經理亦 403）。
-  // 此 task 只搬程式、維持舊樣式，wk 化留 Task 3。
+  // 只放後端確有回傳的欄位（label/start/end/status），不自行推算封月時刻（避免露錯時間）。
   async function renderClosing(container) {
-    container.innerHTML = `<div class="ap-form" id="mo-settings"><div class="ap-empty">載入中…</div></div>`;
-    const settingsBox = container.querySelector('#mo-settings');
+    container.innerHTML = `
+      <div class="wk-toolbar"><div class="wk-toolbar-row">
+        <span class="wk-toolbar-title">月結設定</span>
+        <span class="wk-badge wk-badge-locked">🔒 唯讀</span>
+      </div></div>
+      <div class="wk-page-body">
+        <div class="wk-ro-banner"><span>月結設定僅供檢視——只有<b>會計</b>可修改月結日與鎖定偏移。如需調整請聯絡會計。</span></div>
+        <div class="wk-grid-2" id="closing-cards"><div class="wk-empty">載入中…</div></div>
+      </div>`;
+    const cards = container.querySelector('#closing-cards');
     try {
-      const { status, data } = await periodsApi.getSettings();
-      if (status === 200 && data.status === 'ok') {
-        settingsBox.innerHTML = `
-          <div>月結日：${escapeHtml(String(data.period_close_day))} 號</div>
-          <div>鎖定偏移：${escapeHtml(String(data.period_lock_offset_hours))} 小時（換期日後 ${escapeHtml(String(data.period_lock_offset_hours))} 小時鎖定）</div>`;
-      } else {
-        settingsBox.innerHTML = '<div class="ap-empty">載入失敗，請重試</div>';
-      }
+      const [{ data: st }, { data: pl }] = await Promise.all([periodsApi.getSettings(), periodsApi.list()]);
+      const cur = (pl.periods || [])[0] || null; // 清單新到舊，[0]=最新一期
+      const closeDay = st.period_close_day, lockH = st.period_lock_offset_hours;
+      cards.innerHTML = `
+        <div class="wk-card wk-ro-card"><div class="wk-card-head"><span class="wk-card-title">目前設定</span>
+          <span class="wk-badge wk-badge-locked">僅會計可改</span></div>
+          <div class="wk-card-body">
+            <div class="wk-kv-row"><span class="k">月結日</span><span class="v">每月 ${escapeHtml(String(closeDay))} 日</span></div>
+            <div class="wk-kv-row"><span class="k">鎖定偏移</span><span class="v">封月後 ${escapeHtml(String(lockH))} 小時</span></div>
+            <div class="wk-kv-row"><span class="k">營業日分界</span><span class="v">08:00（台灣時間）</span></div>
+          </div></div>
+        <div class="wk-card wk-ro-card"><div class="wk-card-head"><span class="wk-card-title">本期時程</span>
+          <span class="wk-badge wk-badge-neutral">台灣時間</span></div>
+          <div class="wk-card-body">
+            <div class="wk-kv-row"><span class="k">期間</span><span class="v">${cur ? escapeHtml(cur.label) : '—'}</span></div>
+            <div class="wk-kv-row"><span class="k">起訖</span><span class="v">${cur ? `${escapeHtml(cur.start_date)} – ${escapeHtml(cur.end_date)}` : '—'}</span></div>
+            <div class="wk-kv-row"><span class="k">狀態</span><span class="v">${cur ? escapeHtml(cur.status) : '—'}</span></div>
+          </div></div>`;
     } catch (e) {
-      settingsBox.innerHTML = '<div class="ap-empty">載入失敗，請重試</div>';
+      cards.innerHTML = '<div class="wk-empty">載入失敗，請重試</div>';
     }
   }
 
