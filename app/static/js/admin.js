@@ -38,6 +38,19 @@ export async function showAdminPanel(identity) {
     { key: 'mypw', label: '我的密碼' },
   ];
 
+  // nav icon：report/audit/stores/closing/password 取自原型 manager-desktop.html:494-510；
+  // accounts/devices/logs 用同風格簡單 stroke icon（人/手機/清單）
+  const TAB_ICONS = {
+    report: '<path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/>',
+    audit: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8.5 11l1.8 1.8 3.4-3.4"/>',
+    stores: '<path d="M3 9l1.5-5h15L21 9M3 9v11h18V9M3 9h18M9 20v-6h6v6"/>',
+    closing: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>',
+    accounts: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/>',
+    devices: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
+    logs: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+    mypw: '<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+  };
+
   function shellHtml() {
     const scope = isSuper ? `
       <div class="wk-store-scope">
@@ -48,7 +61,7 @@ export async function showAdminPanel(identity) {
         </select>
       </div>` : '';
     const navBtns = tabs.map((t) =>
-      `<button class="wk-nav-item" data-tab="${t.key}"${t.key === state.tab ? ' aria-current="page"' : ''} type="button">${escapeHtml(t.label)}${t.ro ? '<span class="wk-nav-ro">🔒</span>' : ''}</button>`
+      `<button class="wk-nav-item" data-tab="${t.key}"${t.key === state.tab ? ' aria-current="page"' : ''} type="button"><span class="wk-nav-ico"><svg viewBox="0 0 24 24">${TAB_ICONS[t.key] || ''}</svg></span>${escapeHtml(t.label)}${t.ro ? '<span class="wk-nav-ro">🔒</span>' : ''}</button>`
     ).join('');
     const roleLabel = isSuper ? '經理・跨店管理' : '主管';
     return `

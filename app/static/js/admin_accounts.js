@@ -75,12 +75,12 @@ export function renderAccounts(container, ctx) {
     }).join('');
 
     listEl.innerHTML = `
-      <div class="table-wrap">
+      <div class="wk-card"><div class="table-wrap">
         <table class="wk-table">
           <thead><tr><th>姓名</th><th>角色</th><th>店</th><th>臉</th><th>操作</th></tr></thead>
           <tbody>${rows || '<tr><td colspan="5">尚無帳號</td></tr>'}</tbody>
         </table>
-      </div>`;
+      </div></div>`;
 
     listEl.querySelectorAll('tr[data-uid]').forEach((tr) => {
       const uid = parseInt(tr.dataset.uid, 10);
@@ -209,7 +209,7 @@ export function renderAccounts(container, ctx) {
         ${roleSel} ${storeSel}
         <button class="wk-btn wk-btn-secondary" id="acc-cap" type="button">錄臉</button>
         <span class="ap-face-status" id="acc-cap-status" style="color:#888;">未錄臉</span>
-        <button class="wk-btn wk-btn-secondary" id="acc-add" type="button">建立帳號</button>
+        <button class="wk-btn wk-btn-primary" id="acc-add" type="button">建立帳號</button>
       </div>`;
     const pw = createEl.querySelector('#acc-pw');
     pw.addEventListener('input', () => { pw.value = pw.value.replace(/\D/g, '').slice(0, 4); });

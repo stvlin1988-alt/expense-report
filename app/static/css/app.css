@@ -431,9 +431,12 @@ tr.au-open-row td { font-weight: 600; }
 
 /* ---- 窄視窗防爆版（照原型 fallback：側欄轉頂列） ---- */
 @media (max-width: 900px) {
-  .wk-sidebar { position: static; width: auto; flex-direction: row; align-items: center; border-right: 0; border-bottom: 1px solid var(--wk-line-soft); }
+  .wk-sidebar { position: static; width: auto; flex-direction: row; align-items: center; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--wk-line-soft); }
   .wk-brand { border-bottom: 0; padding: 12px 16px; }
+  .wk-store-scope { border-bottom: 0; padding: 8px 12px; flex: 0 0 168px; }
+  .wk-store-scope-label { display: none; }
   .wk-nav { flex-direction: row; padding: 8px; overflow-x: auto; }
+  .wk-nav-ro { display: none; }
   .wk-side-foot { border-top: 0; margin-left: auto; }
   .wk-side-foot .wk-btn { display: none; }
   .wk-main { margin-left: 0; }

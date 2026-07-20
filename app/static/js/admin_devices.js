@@ -56,12 +56,12 @@ export function renderDevices(container, ctx) {
     }).join('');
 
     listEl.innerHTML = `
-      <div class="table-wrap">
+      <div class="wk-card"><div class="table-wrap">
         <table class="wk-table">
           <thead><tr><th>裝置</th><th>UID</th><th>店</th><th>綁定</th><th>狀態</th><th>操作</th></tr></thead>
           <tbody>${rows || '<tr><td colspan="6">尚無裝置</td></tr>'}</tbody>
         </table>
-      </div>
+      </div></div>
       <div id="dev-approve-panel"></div>`;
 
     listEl.querySelectorAll('tr[data-did]').forEach((tr) => {
@@ -92,7 +92,7 @@ export function renderDevices(container, ctx) {
           ? `<label><input type="radio" name="ap-mode" value="bare"> 裸核准（僅指派店）</label><select class="wk-select" id="ap-bare-store">${storeOpts}</select>`
           : `<label><input type="radio" name="ap-mode" value="bare"> 裸核准（歸本店）</label>`}
         <div class="wk-rowbtns">
-          <button class="wk-btn wk-btn-secondary" id="ap-confirm" type="button">確認核准</button>
+          <button class="wk-btn wk-btn-primary" id="ap-confirm" type="button">確認核准</button>
           <button class="wk-btn wk-btn-secondary" id="ap-cancel" type="button">取消</button>
         </div>
       </div></div>`;

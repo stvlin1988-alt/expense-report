@@ -23,9 +23,9 @@ export async function renderLogs(container, identity, storeId) {
       日期：<input class="wk-input" type="date" id="lg-date" value="${date}" max="${date}">
       員工：<select class="wk-select" id="lg-actor"><option value="">全部</option></select>
     </div>
-    <div class="table-wrap"><table class="wk-table"><thead><tr>
+    <div class="wk-card"><div class="table-wrap"><table class="wk-table"><thead><tr>
       <th>時間</th><th>員工</th><th>單號</th><th>摘要</th><th>動作</th>
-    </tr></thead><tbody id="lg-body"></tbody></table></div>`;
+    </tr></thead><tbody id="lg-body"></tbody></table></div></div>`;
   const dinp = container.querySelector('#lg-date');
   const asel = container.querySelector('#lg-actor');
 
