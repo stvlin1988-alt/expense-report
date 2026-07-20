@@ -13,17 +13,17 @@ function todayTW() {
 export async function renderLogs(container, identity, storeId) {
   const isSuper = identity.role === 'super_admin';
   if (isSuper && !storeId) {
-    container.innerHTML = '<div class="ap-empty">請先於上方選擇一家店</div>';
+    container.innerHTML = '<div class="wk-empty">請先於上方選擇一家店</div>';
     return;
   }
   const sid = isSuper ? storeId : null;
   const date = todayTW();
   container.innerHTML = `
-    <div class="au-day-nav">
-      日期：<input type="date" id="lg-date" value="${date}" max="${date}">
-      員工：<select id="lg-actor"><option value="">全部</option></select>
+    <div class="wk-toolbar-row">
+      日期：<input class="wk-input" type="date" id="lg-date" value="${date}" max="${date}">
+      員工：<select class="wk-select" id="lg-actor"><option value="">全部</option></select>
     </div>
-    <div class="pd-table-wrap"><table class="pd-table"><thead><tr>
+    <div class="table-wrap"><table class="wk-table"><thead><tr>
       <th>時間</th><th>員工</th><th>單號</th><th>摘要</th><th>動作</th>
     </tr></thead><tbody id="lg-body"></tbody></table></div>`;
   const dinp = container.querySelector('#lg-date');

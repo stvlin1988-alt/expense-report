@@ -8,7 +8,7 @@ export function renderDevices(container, ctx) {
 
   container.innerHTML = `
     <div id="dev-list">載入中…</div>
-    <div class="ap-msg" id="dev-msg"></div>`;
+    <div class="wk-msg" id="dev-msg"></div>`;
   const msg = container.querySelector('#dev-msg');
   const setMsg = (t, ok) => { msg.textContent = t; msg.style.color = ok ? '#2e7d32' : '#c62828'; };
 
@@ -35,14 +35,14 @@ export function renderDevices(container, ctx) {
 
     const rows = sortPendingFirst(devices).map((d) => {
       const label = deviceStatusLabel(d);
-      const cls = d.is_revoked ? 'revoked' : (d.is_approved ? 'approved' : 'pending');
+      const cls = d.is_revoked ? 'wk-badge-bad' : (d.is_approved ? 'wk-badge-open' : 'wk-badge-pending');
       const tail = (d.client_uid || '').slice(-6);
       const bound = d.bound_user_id ? userName(d.bound_user_id) : '—';
       const storeCode = d.store_id != null ? (storeMap[d.store_id] || d.store_id) : '—';
       const actions = (!d.is_approved && !d.is_revoked)
-        ? `<button class="ap-btn" data-act="approve" type="button">核准</button>`
+        ? `<button class="wk-btn wk-btn-secondary" data-act="approve" type="button">核准</button>`
         : (d.is_approved && !d.is_revoked
-            ? `<button class="ap-btn danger" data-act="revoke" type="button">撤銷</button>`
+            ? `<button class="wk-btn wk-btn-danger-soft" data-act="revoke" type="button">撤銷</button>`
             : '');
       return `
         <tr data-did="${d.id}">
@@ -50,14 +50,14 @@ export function renderDevices(container, ctx) {
           <td>…${escapeHtml(tail)}</td>
           <td>${escapeHtml(String(storeCode))}</td>
           <td>${escapeHtml(bound)}</td>
-          <td><span class="ap-badge ${cls}">${label}</span></td>
-          <td class="ap-rowbtns">${actions}</td>
+          <td><span class="wk-badge ${cls}">${label}</span></td>
+          <td class="wk-rowbtns">${actions}</td>
         </tr>`;
     }).join('');
 
     listEl.innerHTML = `
-      <div class="ap-table-wrap">
-        <table class="ap-table">
+      <div class="table-wrap">
+        <table class="wk-table">
           <thead><tr><th>裝置</th><th>UID</th><th>店</th><th>綁定</th><th>狀態</th><th>操作</th></tr></thead>
           <tbody>${rows || '<tr><td colspan="6">尚無裝置</td></tr>'}</tbody>
         </table>
@@ -78,24 +78,24 @@ export function renderDevices(container, ctx) {
     const userOpts = users.map((u) => `<option value="${u.id}">${escapeHtml(u.name)}（${roleLabel(u.role)}）</option>`).join('');
     const storeOpts = stores.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
     panel.innerHTML = `
-      <div class="ap-form" style="flex-direction:column;align-items:stretch;">
+      <div class="wk-card"><div class="wk-card-body" style="display:flex;flex-direction:column;align-items:stretch;gap:10px;">
         <div><strong>核准裝置 #${did}</strong></div>
         <label><input type="radio" name="ap-mode" value="bind" checked> 綁到現有使用者</label>
-        <select id="ap-bind">${userOpts || '<option value="">（無可綁定使用者）</option>'}</select>
+        <select class="wk-select" id="ap-bind">${userOpts || '<option value="">（無可綁定使用者）</option>'}</select>
         <label><input type="radio" name="ap-mode" value="new"> 建新帳號並綁定</label>
-        <div class="ap-form">
-          <input type="text" id="ap-nu-name" placeholder="姓名" autocomplete="off">
-          <input type="password" id="ap-nu-pw" placeholder="4位密碼" inputmode="numeric" maxlength="4" autocomplete="off">
-          ${isSuper ? `<select id="ap-nu-role"><option value="employee">員工</option><option value="manager">主管</option><option value="accountant">會計</option><option value="super_admin">經理</option></select><select id="ap-nu-store">${storeOpts}</select>` : `<input type="hidden" id="ap-nu-role" value="employee">`}
+        <div class="wk-toolbar-row">
+          <input class="wk-input" type="text" id="ap-nu-name" placeholder="姓名" autocomplete="off">
+          <input class="wk-input" type="password" id="ap-nu-pw" placeholder="4位密碼" inputmode="numeric" maxlength="4" autocomplete="off">
+          ${isSuper ? `<select class="wk-select" id="ap-nu-role"><option value="employee">員工</option><option value="manager">主管</option><option value="accountant">會計</option><option value="super_admin">經理</option></select><select class="wk-select" id="ap-nu-store">${storeOpts}</select>` : `<input type="hidden" id="ap-nu-role" value="employee">`}
         </div>
         ${isSuper
-          ? `<label><input type="radio" name="ap-mode" value="bare"> 裸核准（僅指派店）</label><select id="ap-bare-store">${storeOpts}</select>`
+          ? `<label><input type="radio" name="ap-mode" value="bare"> 裸核准（僅指派店）</label><select class="wk-select" id="ap-bare-store">${storeOpts}</select>`
           : `<label><input type="radio" name="ap-mode" value="bare"> 裸核准（歸本店）</label>`}
-        <div class="ap-rowbtns">
-          <button class="ap-btn" id="ap-confirm" type="button">確認核准</button>
-          <button class="ap-btn secondary" id="ap-cancel" type="button">取消</button>
+        <div class="wk-rowbtns">
+          <button class="wk-btn wk-btn-secondary" id="ap-confirm" type="button">確認核准</button>
+          <button class="wk-btn wk-btn-secondary" id="ap-cancel" type="button">取消</button>
         </div>
-      </div>`;
+      </div></div>`;
     const pw = panel.querySelector('#ap-nu-pw');
     pw.addEventListener('input', () => { pw.value = pw.value.replace(/\D/g, '').slice(0, 4); });
     panel.querySelector('#ap-cancel').addEventListener('click', () => { panel.innerHTML = ''; });

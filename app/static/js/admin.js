@@ -95,12 +95,17 @@ export async function showAdminPanel(identity) {
 
   function renderMyPassword(container) {
     container.innerHTML = `
-      <div class="ap-form">
-        <input type="password" id="mp-old" placeholder="舊密碼" inputmode="numeric" maxlength="4" autocomplete="off">
-        <input type="password" id="mp-new" placeholder="新密碼(4位)" inputmode="numeric" maxlength="4" autocomplete="off">
-        <button class="ap-btn" id="mp-submit" type="button">變更密碼</button>
-        <div class="ap-msg" id="mp-msg"></div>
-      </div>`;
+      <div class="wk-toolbar"><div class="wk-toolbar-row"><span class="wk-toolbar-title">我的密碼</span>
+        <span class="wk-filter-label">變更登入用 4 位數密碼</span></div></div>
+      <div class="wk-page-body"><div class="wk-card wk-pw-card"><div class="wk-card-body">
+        <div class="wk-pw-field"><label for="mp-old">舊密碼</label>
+          <input class="wk-input wk-pw-input" id="mp-old" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"></div>
+        <div class="wk-pw-field"><label for="mp-new">新密碼</label>
+          <input class="wk-input wk-pw-input" id="mp-new" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••">
+          <span class="help">4 位數字，變更後其他裝置需重新登入。</span></div>
+        <button class="wk-btn wk-btn-primary" id="mp-submit" type="button">變更密碼</button>
+        <div class="wk-msg" id="mp-msg"></div>
+      </div></div></div>`;
     const old = container.querySelector('#mp-old');
     const neu = container.querySelector('#mp-new');
     const msg = container.querySelector('#mp-msg');

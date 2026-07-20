@@ -9,8 +9,8 @@ export function renderAccounts(container, ctx) {
 
   container.innerHTML = `
     <div id="acc-list">載入中…</div>
-    <div class="ap-form" id="acc-create"></div>
-    <div class="ap-msg" id="acc-msg"></div>
+    <div class="wk-card" id="acc-create"></div>
+    <div class="wk-msg" id="acc-msg"></div>
     <video id="acc-video" autoplay playsinline muted class="ap-video" style="display:none;"></video>
     <canvas id="acc-canvas" style="display:none;"></canvas>`;
 
@@ -59,24 +59,24 @@ export function renderAccounts(container, ctx) {
     // super_admin 選了店 → 後端已過濾；未選店時前端不再過濾（回全部）
     const rows = filterByStore(users, isSuper ? storeId : null).map((u) => {
       const face = u.has_face ? '有' : '—';
-      const activeBadge = u.active ? '' : '<span class="ap-badge inactive">停用</span>';
+      const activeBadge = u.active ? '' : '<span class="wk-badge wk-badge-neutral">停用</span>';
       return `
         <tr data-uid="${u.id}" data-role="${u.role}" data-active="${u.active}">
           <td>${escapeHtml(u.name)} ${activeBadge}</td>
           <td>${roleCell(u)}</td>
           <td>${storeCell(u)}</td>
           <td>${face}</td>
-          <td class="ap-rowbtns">
-            <button class="ap-btn" data-act="pw" type="button">改密碼</button>
-            <button class="ap-btn secondary" data-act="face" type="button">錄臉</button>
-            <button class="ap-btn ${u.active ? 'danger' : ''}" data-act="active" type="button">${u.active ? '停用' : '復用'}</button>
+          <td class="wk-rowbtns">
+            <button class="wk-btn wk-btn-secondary" data-act="pw" type="button">改密碼</button>
+            <button class="wk-btn wk-btn-secondary" data-act="face" type="button">錄臉</button>
+            <button class="wk-btn ${u.active ? 'wk-btn-danger-soft' : 'wk-btn-secondary'}" data-act="active" type="button">${u.active ? '停用' : '復用'}</button>
           </td>
         </tr>`;
     }).join('');
 
     listEl.innerHTML = `
-      <div class="ap-table-wrap">
-        <table class="ap-table">
+      <div class="table-wrap">
+        <table class="wk-table">
           <thead><tr><th>姓名</th><th>角色</th><th>店</th><th>臉</th><th>操作</th></tr></thead>
           <tbody>${rows || '<tr><td colspan="5">尚無帳號</td></tr>'}</tbody>
         </table>
@@ -190,7 +190,7 @@ export function renderAccounts(container, ctx) {
   function renderCreateForm() {
     const createEl = container.querySelector('#acc-create');
     const roleSel = isSuper
-      ? `<select id="acc-role">
+      ? `<select class="wk-select" id="acc-role">
            <option value="employee">員工</option>
            <option value="manager">主管</option>
            <option value="accountant">會計</option>
@@ -198,17 +198,19 @@ export function renderAccounts(container, ctx) {
          </select>`
       : `<input type="hidden" id="acc-role" value="employee"><span>員工</span>`;
     const storeSel = isSuper
-      ? `<select id="acc-store">
+      ? `<select class="wk-select" id="acc-store">
            ${stores.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('')}
          </select>`
       : '';
     createEl.innerHTML = `
-      <input type="text" id="acc-name" placeholder="姓名" autocomplete="off">
-      <input type="password" id="acc-pw" placeholder="4位密碼" inputmode="numeric" maxlength="4" autocomplete="off">
-      ${roleSel} ${storeSel}
-      <button class="ap-btn secondary" id="acc-cap" type="button">錄臉</button>
-      <span class="ap-face-status" id="acc-cap-status" style="color:#888;">未錄臉</span>
-      <button class="ap-btn" id="acc-add" type="button">建立帳號</button>`;
+      <div class="wk-card-body wk-toolbar-row">
+        <input class="wk-input" type="text" id="acc-name" placeholder="姓名" autocomplete="off">
+        <input class="wk-input" type="password" id="acc-pw" placeholder="4位密碼" inputmode="numeric" maxlength="4" autocomplete="off">
+        ${roleSel} ${storeSel}
+        <button class="wk-btn wk-btn-secondary" id="acc-cap" type="button">錄臉</button>
+        <span class="ap-face-status" id="acc-cap-status" style="color:#888;">未錄臉</span>
+        <button class="wk-btn wk-btn-secondary" id="acc-add" type="button">建立帳號</button>
+      </div>`;
     const pw = createEl.querySelector('#acc-pw');
     pw.addEventListener('input', () => { pw.value = pw.value.replace(/\D/g, '').slice(0, 4); });
     createEl.querySelector('#acc-cap').addEventListener('click', captureForCreate);

@@ -723,3 +723,24 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 .wk-empty-stores{ display:flex; gap:8px; justify-content:center; margin-top:14px; flex-wrap:wrap; }
 .wk-audit-back-bar{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
 .wk-msg{ font-size:13px; margin-top:8px; color:var(--wk-muted); }
+
+/* ---- 帳號 / 裝置 / 操作記錄 view（Task 6；純外觀 class swap 自舊 .ap-*/.pd-*）----
+   .wk-table：多欄清單通用表格，樣式精神同 .wk-store-table/.wk-audit-table 但不設 min-width（各頁欄數不一）。 */
+.wk-table{ border-collapse:separate; border-spacing:0; width:100%; }
+.wk-table th{
+  text-align:left; font-size:12px; font-weight:600; color:var(--wk-faint);
+  padding:9px 12px; border-bottom:1px solid var(--wk-line); white-space:nowrap; letter-spacing:.04em;
+  background:var(--wk-surface); }
+.wk-table td{
+  padding:9px 12px; border-bottom:1px solid var(--wk-line-soft);
+  font-size:13px; vertical-align:middle; background:var(--wk-surface); }
+.wk-table tbody tr:hover td{ background:var(--wk-surface-2); }
+.wk-table tr:last-child td{ border-bottom:0; }
+.wk-table select{ font-size:13px; padding:4px 6px; }
+.wk-rowbtns{ display:flex; gap:6px; flex-wrap:wrap; }
+/* 我的密碼（值逐字取自原型 manager-desktop.html:388-392） */
+.wk-pw-card{ max-width:420px; }
+.wk-pw-field{ display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+.wk-pw-field label{ font-size:13px; font-weight:600; }
+.wk-pw-field .help{ font-size:12px; color:var(--wk-faint); }
+.wk-pw-input{ width:160px; letter-spacing:.4em; font-variant-numeric:tabular-nums; text-align:center; }
