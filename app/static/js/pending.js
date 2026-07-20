@@ -96,7 +96,7 @@ function cardFor(e, tree, report) {
     </div>
     <div class="mb-field-row">
       <div class="mb-field"><select data-f="category"></select></div>
-      <div class="mb-field mb-f-amt"><input value="${e.amount ?? ''}" inputmode="decimal" data-f="amount"></div>
+      <div class="mb-field mb-f-amt"><input value="${e.amount ?? ''}" inputmode="decimal" data-f="amount" class="mb-amt${(e.amount ?? 0) < 0 ? ' neg' : ''}"></div>
     </div>
     <div class="mb-field">
       <input value="${escapeHtml(e.note || '')}" maxlength="200" placeholder="備註（可留空）" data-f="note">
@@ -126,6 +126,12 @@ function cardFor(e, tree, report) {
     } catch {
       setErr('分類儲存失敗，送出前會再試一次');
     }
+  });
+
+  const amtInput = card.querySelector('[data-f="amount"]');
+  amtInput.addEventListener('input', () => {
+    const parsed = parseAmountInput(amtInput.value);
+    amtInput.classList.toggle('neg', parsed.valid && parsed.value < 0);
   });
 
   const noteInput = card.querySelector('[data-f="note"]');
