@@ -262,9 +262,15 @@ export async function showAdminPanel(identity) {
       </div>`;
     const cards = container.querySelector('#closing-cards');
     try {
-      const [{ data: st }, { data: pl }] = await Promise.all([periodsApi.getSettings(), periodsApi.list()]);
+      const [{ status: s1, data: st }, { status: s2, data: pl }] =
+        await Promise.all([periodsApi.getSettings(), periodsApi.list()]);
+      if (s1 !== 200 || st.status !== 'ok' || s2 !== 200 || pl.status !== 'ok') {
+        cards.innerHTML = '<div class="wk-empty">載入失敗，請重試</div>';
+        return;
+      }
       const cur = (pl.periods || [])[0] || null; // 清單新到舊，[0]=最新一期
       const closeDay = st.period_close_day, lockH = st.period_lock_offset_hours;
+      const stLabel = { open: '進行中', closing: '寬限期', closed: '已封月' }[cur && cur.status] || (cur ? cur.status : '');
       cards.innerHTML = `
         <div class="wk-card wk-ro-card"><div class="wk-card-head"><span class="wk-card-title">目前設定</span>
           <span class="wk-badge wk-badge-locked">僅會計可改</span></div>
@@ -278,7 +284,7 @@ export async function showAdminPanel(identity) {
           <div class="wk-card-body">
             <div class="wk-kv-row"><span class="k">期間</span><span class="v">${cur ? escapeHtml(cur.label) : '—'}</span></div>
             <div class="wk-kv-row"><span class="k">起訖</span><span class="v">${cur ? `${escapeHtml(cur.start_date)} – ${escapeHtml(cur.end_date)}` : '—'}</span></div>
-            <div class="wk-kv-row"><span class="k">狀態</span><span class="v">${cur ? escapeHtml(cur.status) : '—'}</span></div>
+            <div class="wk-kv-row"><span class="k">狀態</span><span class="v">${cur ? escapeHtml(stLabel) : '—'}</span></div>
           </div></div>`;
     } catch (e) {
       cards.innerHTML = '<div class="wk-empty">載入失敗，請重試</div>';
