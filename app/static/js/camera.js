@@ -15,7 +15,7 @@ export class Camera {
     if (this.stream) return;
     if (_e2eSample) { this.stream = 'e2e'; return; } // 開發：跳過相機
     this.stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user' }, audio: false,
+      video: { facingMode: { ideal: 'environment' } }, audio: false,
     });
     this.video.srcObject = this.stream;
     this.video.muted = true;

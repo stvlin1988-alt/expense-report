@@ -5,6 +5,7 @@
 // 屆時只需在 renderPane() 內 import 並呼叫對應函式（呼叫慣例見下方註解）。
 import { Camera } from './camera.js';
 import { escapeHtml } from './admin_util.js';
+import { renderShootPane } from './capture.js';
 
 const root = () => document.getElementById('modal-root');
 
@@ -88,13 +89,13 @@ export function showEmployeeApp(identity) {
     renderPane(name);
   }
 
-  // eslint-disable-next-line no-unused-vars
   function renderPane(name) {
-    // Task 1：pane 內容留空，殼/tab 切換先行。
-    // Task 2/3/5 落地時的呼叫慣例（沿承 brief）：
-    //   shoot:   renderShootPane(panes.shoot, { onUploaded: () => showTab('confirm') })
+    // Task 3/5 落地時的呼叫慣例（沿承 brief）：
     //   confirm: renderConfirmPane(panes.confirm, { onCountChange: setConfirmBadge })
     //   review:  renderReviewPane(panes.review)
+    if (name === 'shoot') {
+      renderShootPane(panes.shoot, { onUploaded: () => { showTab('confirm'); } });
+    }
   }
 
   // 供 Task 3 renderConfirmPane 的 onCountChange 回呼沿用；Task 1 先定義、殼本身不驅動內容。

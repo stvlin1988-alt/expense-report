@@ -811,3 +811,75 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
   opacity:0; pointer-events:none; white-space:nowrap; transition:opacity .25s,transform .25s; z-index:90;
   max-width:88%; overflow:hidden; text-overflow:ellipsis; }
 .mb-toast.show{ opacity:.96; transform:translateX(-50%) translateY(0); }
+
+/* ---- 拍單 pane：取景框 / 快門 / cam-dock / 上傳（Task 2；值照原型 employee-mobile.html:111-158） ---- */
+#mb-pane-shoot.active{ padding:0; display:flex; flex-direction:column; height:100%; }
+.mb-viewfinder{ flex:1; position:relative; background:
+  radial-gradient(120% 90% at 50% 30%, var(--mb-cam-2), var(--mb-cam) 70%);
+  display:flex; align-items:center; justify-content:center; min-height:220px; overflow:hidden; }
+.mb-vf-frame{ width:68%; aspect-ratio:3/4; max-height:64%; position:relative; }
+.mb-vf-frame::before,.mb-vf-frame::after,
+.mb-vf-frame b::before,.mb-vf-frame b::after{ content:""; position:absolute; width:26px; height:26px;
+  border:3px solid rgba(255,255,255,.85); }
+.mb-vf-frame::before{ top:0; left:0; border-right:0; border-bottom:0; border-radius:6px 0 0 0; }
+.mb-vf-frame::after{ top:0; right:0; border-left:0; border-bottom:0; border-radius:0 6px 0 0; }
+.mb-vf-frame b::before{ bottom:0; left:0; border-right:0; border-top:0; border-radius:0 0 0 6px; }
+.mb-vf-frame b::after{ bottom:0; right:0; border-left:0; border-top:0; border-radius:0 0 6px 0; }
+.mb-vf-hint{ position:absolute; left:0; right:0; bottom:14px; text-align:center;
+  color:rgba(255,255,255,.75); font-size:12.5px; letter-spacing:.04em; }
+.mb-vf-flash{ position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; }
+.mb-vf-flash.on{ animation:mbFlash .28s ease-out; }
+@keyframes mbFlash{ 0%{ opacity:.85; } 100%{ opacity:0; } }
+.mb-shot-count{ position:absolute; top:12px; left:12px; background:rgba(0,0,0,.55);
+  color:#fff; font-size:12.5px; padding:6px 11px; border-radius:999px;
+  font-variant-numeric:tabular-nums; z-index:1; }
+.mb-cam-dock{ flex:none; background:var(--wk-surface); border-top:1px solid var(--wk-line);
+  padding:14px 18px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.mb-shutter{ width:74px; height:74px; border-radius:50%; border:none; flex:none;
+  background:var(--wk-accent); position:relative; box-shadow:0 6px 18px rgba(46,107,230,.35); }
+.mb-shutter::after{ content:""; position:absolute; inset:5px; border-radius:50%;
+  border:3px solid var(--wk-surface); background:var(--wk-accent); }
+.mb-shutter:active{ transform:scale(.94); }
+.mb-cam-side{ flex:1; display:flex; flex-direction:column; gap:8px; }
+.mb-cam-side .mb-btn{ width:100%; }
+.mb-upload-panel{ flex:none; background:var(--wk-surface); border-top:1px solid var(--wk-line);
+  padding:18px 16px 22px; display:none; flex-direction:column; gap:12px; text-align:center; }
+.mb-upload-panel.show{ display:flex; }
+.mb-upl-line{ font-size:14px; color:var(--wk-muted); }
+.mb-upl-bar{ height:6px; border-radius:999px; background:var(--wk-surface-2);
+  border:1px solid var(--wk-line); overflow:hidden; }
+.mb-upl-bar i{ display:block; height:100%; width:0; background:var(--wk-accent);
+  border-radius:999px; transition:width .5s ease; }
+.mb-upl-done{ display:none; flex-direction:column; gap:12px; align-items:center; }
+.mb-upl-done.show{ display:flex; }
+.mb-upl-done .big{ font-size:15px; font-weight:600; }
+.mb-upl-done .ok-chip{ display:inline-flex; align-items:center; gap:6px; background:var(--wk-ok-soft);
+  color:var(--wk-ok-ink); border-radius:999px; padding:7px 14px; font-size:13px; }
+
+/* ============================================================
+   橫式模式：tab bar → 左側直向 rail（三個 tab 全高常駐，不可 display:none）；
+   拍單相機填滿、快門靠右垂直置中。值照原型 employee-mobile.html:330-364。
+   ============================================================ */
+.mb-app.land .mb-tabbar{ position:absolute; left:0; top:0; bottom:0; width:76px;
+  flex-direction:column; justify-content:flex-start; gap:6px;
+  border-top:none; border-right:1px solid var(--wk-line);
+  padding:10px 7px calc(10px + env(safe-area-inset-bottom,0px)); z-index:5; }
+.mb-app.land .mb-tab{ flex:0 0 auto; min-height:60px; font-size:11px; }
+.mb-app.land .mb-appbar{ margin-left:76px; }
+.mb-app.land .mb-content{ margin-left:76px; }
+.mb-app.land #mb-pane-shoot{ padding:0; position:relative; }
+.mb-app.land .mb-viewfinder{ position:absolute; inset:0; }
+.mb-app.land .mb-vf-frame{ width:auto; height:70%; aspect-ratio:4/3; max-height:none; }
+.mb-app.land .mb-vf-hint{ bottom:16px; left:16px; right:auto; text-align:left; max-width:56%; }
+.mb-app.land .mb-cam-dock{ position:absolute; right:18px; top:0; bottom:0; left:auto;
+  width:auto; background:none; border:none; padding:0;
+  flex-direction:column; justify-content:center; gap:14px; z-index:2; }
+.mb-app.land .mb-cam-side{ width:112px; flex:0 0 auto; }
+.mb-app.land .mb-cam-side .mb-btn{ width:100%;
+  background:rgba(0,0,0,.5); border-color:rgba(255,255,255,.28); color:#fff;
+  backdrop-filter:blur(4px); }
+.mb-app.land .mb-cam-side .mb-btn-primary{ background:var(--wk-accent); border-color:var(--wk-accent); }
+.mb-app.land .mb-shot-count{ top:14px; left:14px; }
+.mb-app.land .mb-upload-panel.show{ position:absolute; inset:0; left:auto; margin:auto;
+  height:max-content; max-width:340px; border:1px solid var(--wk-line);
+  border-radius:var(--wk-radius); box-shadow:var(--mb-shadow); z-index:4; }
