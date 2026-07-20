@@ -950,3 +950,20 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 /* 無單據建帳表單卡：accent 邊框 + accent-soft 光暈（原型 #manualCard :270-274） */
 .mb-manual-card{ border-color:var(--wk-accent); box-shadow:0 0 0 3px var(--wk-accent-soft); }
 .mb-manual-card h3{ margin:0; font-size:14.5px; }
+
+/* ---------- Task 5：複查唯讀卡 + 合計 bar（值照原型 employee-mobile.html:281-296，加 mb- 前綴 + --wk- token） ---------- */
+.mb-ro-card{ gap:8px; }
+.mb-ro-line{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+.mb-ro-line .k{ font-size:12px; color:var(--wk-faint); }
+.mb-ro-line .v{ font-size:13.5px; color:var(--wk-ink); text-align:right; min-width:0; }
+.mb-ro-summary{ font-size:14.5px; font-weight:600; line-height:1.35; }
+.mb-chip{ display:inline-flex; align-items:center; border-radius:999px; padding:3px 10px;
+  font-size:11.5px; background:var(--wk-accent-soft); color:var(--wk-accent-ink); }
+.mb-ro-amt{ font-size:17px; font-weight:700; text-align:right; font-variant-numeric:tabular-nums; }
+.mb-total-bar{ position:sticky; bottom:0; margin-top:12px; background:var(--wk-surface);
+  border:1px solid var(--wk-line); border-radius:var(--wk-radius); padding:13px 14px;
+  display:flex; justify-content:space-between; align-items:center;
+  box-shadow:0 -8px 18px rgba(28,39,51,.06); }
+.mb-total-bar .lbl{ font-size:13.5px; color:var(--wk-muted); }
+.mb-total-bar .sum{ font-size:19px; font-weight:800; color:var(--wk-ok-ink);
+  font-variant-numeric:tabular-nums; }

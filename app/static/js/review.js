@@ -3,53 +3,33 @@ import { openImageLightbox } from './lightbox.js';
 import { formatAmount, sumAmounts } from './expenses_util.js';
 import { listSubmitted } from './expenses_api.js';
 
-const root = () => document.getElementById('modal-root');
-
 // 員工唯讀複查：本班已送出、主管尚未交/結班的單。只能看，不能改。
-export async function showReviewView(onBack) {
-  root().innerHTML = `
-    <div class="modal-backdrop"><div class="modal-box wide">
-      <h2>複查（本班已送出）</h2>
-      <button class="modal-btn" id="rv-refresh" type="button">↻ 重整</button>
-      <div id="rv-msg" class="modal-msg"></div>
-      <div class="pd-table-wrap">
-        <table id="rv-table"><thead><tr>
-          <th>單號</th><th>圖</th><th>摘要</th><th>分類</th><th>備註</th><th class="rv-amt">金額</th>
-        </tr></thead><tbody></tbody></table>
-      </div>
-      <div id="rv-total" class="rv-total" hidden></div>
-      <button class="modal-btn secondary" id="rv-back" type="button">返回</button>
-    </div></div>`;
-  document.getElementById('rv-back').addEventListener('click', onBack);
-  document.getElementById('rv-refresh').addEventListener('click', () => showReviewView(onBack));
-
+// 唯讀卡片 + sticky 合計 bar（原型 employee-mobile.html:281-296）。
+export async function renderReviewPane(container) {
+  container.innerHTML = `<h2 class="mb-pane-title">複查（本班已送出）</h2>
+    <p class="mb-pane-sub">唯讀 · 台灣時間</p>
+    <div class="mb-cardlist" id="mb-review-list"></div>
+    <div class="mb-total-bar" id="mb-review-total" hidden></div>`;
   const { data } = await listSubmitted();
   const rows = (data && data.expenses) || [];
-  const tbody = document.querySelector('#rv-table tbody');
+  const list = container.querySelector('#mb-review-list');
   rows.forEach((e) => {
-    const tr = document.createElement('tr');
+    const card = document.createElement('div'); card.className = 'mb-card mb-ro-card';
     const thumb = e.thumb_url
-      ? `<img src="${e.thumb_url}" loading="lazy" width="48" class="au-thumb" data-zoom="${e.image_url || ''}">`
-      : '—';
-    tr.innerHTML = `
-      <td>${escapeHtml(e.doc_no || '')}</td>
-      <td>${thumb}</td>
-      <td>${escapeHtml(e.summary || '')}</td>
-      <td>${escapeHtml(e.category_name || '')}</td>
-      <td>${e.note ? escapeHtml(e.note) : ''}</td>
-      <td class="rv-amt">${formatAmount(e.amount)}</td>`;
-    const thumbEl = tr.querySelector('.au-thumb');
-    if (thumbEl && thumbEl.dataset.zoom) {
-      thumbEl.addEventListener('click', () => openImageLightbox(thumbEl.dataset.zoom));
-    }
-    tbody.appendChild(tr);
+      ? `<button type="button" class="mb-thumb au-thumb" data-zoom="${e.image_url || ''}"><img src="${e.thumb_url}" loading="lazy" alt="收據"><span class="mb-zoom-badge">🔍</span></button>`
+      : '<span class="mb-thumb placeholder">—</span>';
+    card.innerHTML = `<div class="mb-card-head"><span class="mb-thumb-wrap">${thumb}</span>
+      <div class="mb-card-meta"><span class="mb-card-id">${escapeHtml(e.doc_no || '')}</span>
+        <p class="mb-ro-summary">${escapeHtml(e.summary || '')}</p>
+        <span><span class="mb-chip">${escapeHtml(e.category_name || '')}</span></span></div></div>
+      <div class="mb-ro-line"><span class="k">備註</span><span class="v">${e.note ? escapeHtml(e.note) : '—'}</span></div>
+      <div class="mb-ro-line"><span class="k">金額</span><span class="mb-ro-amt mb-amt">$${formatAmount(e.amount)}</span></div>`;
+    const t = card.querySelector('.au-thumb');
+    if (t && t.dataset.zoom) t.addEventListener('click', () => openImageLightbox(t.dataset.zoom));
+    list.appendChild(card);
   });
-  if (!rows.length) {
-    document.getElementById('rv-msg').textContent = '本班沒有已送出的單';
-  } else {
-    const totalEl = document.getElementById('rv-total');
-    totalEl.hidden = false;
-    totalEl.innerHTML = `<span class="rv-total-cnt">共 ${rows.length} 筆</span>`
-      + `<span>總額 <span class="rv-total-amt">$${formatAmount(sumAmounts(rows))}</span></span>`;
-  }
+  const total = container.querySelector('#mb-review-total');
+  if (rows.length) { total.hidden = false;
+    total.innerHTML = `<span class="lbl">共 ${rows.length} 筆</span><span class="sum mb-amt">總額 $${formatAmount(sumAmounts(rows))}</span>`; }
+  else { list.innerHTML = '<div class="mb-empty-state" style="display:block">本班沒有已送出的單</div>'; }
 }

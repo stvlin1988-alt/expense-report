@@ -2,7 +2,6 @@ import { Camera } from './camera.js';
 import { showAdminPanel } from './admin.js';
 import { showReconcilePanel } from './reconcile.js';
 import { escapeHtml } from './admin_util.js';
-import { showReviewView } from './review.js';
 import { showEmployeeApp } from './employee_app.js';
 
 const NEUTRAL_MSG = '無法計算，請重試';
@@ -23,7 +22,6 @@ async function postJSON(url, body) {
 export function showAppView(identity) {
   clearRoot();
   const roleZh = { employee: '員工', manager: '主管', accountant: '會計', super_admin: '經理' };
-  const isEmployee = identity.role === 'employee';
   root().innerHTML = `
     <div class="modal-backdrop">
       <div class="modal-box">
@@ -33,7 +31,6 @@ export function showAppView(identity) {
         </div>
         <video id="av-video" autoplay playsinline muted style="display:none;"></video>
         <canvas id="av-canvas" style="display:none;"></canvas>
-        ${isEmployee ? '<button class="modal-btn" id="av-review" type="button">複查</button>' : ''}
         <button class="modal-btn secondary" id="av-reface" type="button">更新人臉</button>
         <div class="modal-msg" id="av-msg" style="color:#4cd964;"></div>
         <button class="modal-btn" id="av-logout" type="button" style="margin-top:10px;">登出</button>
@@ -75,13 +72,6 @@ export function showAppView(identity) {
     await postJSON('/auth/logout');
     location.reload();
   });
-
-  if (isEmployee) {
-    document.getElementById('av-review').addEventListener('click', () => {
-      cam.stop();
-      showReviewView(() => showAppView(identity));
-    });
-  }
 }
 
 function loginModal() {

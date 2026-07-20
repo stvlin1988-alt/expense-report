@@ -1,11 +1,12 @@
 // 員工手機殼（UI 重塑 2026-07）：抬頭 + 3 pane 內容區 + 底部 tab bar。
 // 取代員工登入後原本逐頁 .modal-box 疊層流程（auth.js showAppView，非員工 fallback 仍保留）。
 // pane 內容：拍單（Task 2 capture.js renderShootPane）、確認區（Task 3 pending.js renderConfirmPane）
-// 已接上；複查 pane 留給 Task 5（review.js renderReviewPane）。
+// 全部 3 pane 已接上（拍單/確認區/複查）。
 import { Camera } from './camera.js';
 import { escapeHtml } from './admin_util.js';
 import { renderShootPane } from './capture.js';
 import { renderConfirmPane } from './pending.js';
+import { renderReviewPane } from './review.js';
 
 const root = () => document.getElementById('modal-root');
 
@@ -90,11 +91,12 @@ export function showEmployeeApp(identity) {
   }
 
   function renderPane(name) {
-    // Task 5 落地時的呼叫慣例（沿承 brief）：review: renderReviewPane(panes.review)
     if (name === 'shoot') {
       renderShootPane(panes.shoot, { onUploaded: () => { showTab('confirm'); } });
     } else if (name === 'confirm') {
       renderConfirmPane(panes.confirm, { onCountChange: setConfirmBadge });
+    } else if (name === 'review') {
+      renderReviewPane(panes.review);
     }
   }
 
