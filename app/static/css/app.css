@@ -288,6 +288,7 @@ tr.au-open-row td { font-weight: 600; }
   --wk-sidebar-w: 208px;
   --wk-toolbar-bg: rgba(244,246,250,.92);
   --wk-sticky-shadow: -1px 0 0 0 var(--wk-line),-9px 0 12px -8px rgba(20,28,40,.14);
+  --wk-sticky-col-shadow: 1px 0 0 0 var(--wk-line),9px 0 12px -8px rgba(20,28,40,.14);
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -310,6 +311,7 @@ tr.au-open-row td { font-weight: 600; }
     --wk-shadow-pop: 0 8px 32px rgba(0,0,0,.55);
     --wk-toolbar-bg: rgba(18,22,29,.92);
     --wk-sticky-shadow: -1px 0 0 0 var(--wk-line),-9px 0 14px -8px rgba(0,0,0,.55);
+    --wk-sticky-col-shadow: 1px 0 0 0 var(--wk-line),9px 0 14px -8px rgba(0,0,0,.55);
   }
 }
 :root[data-theme="dark"] {
@@ -325,6 +327,7 @@ tr.au-open-row td { font-weight: 600; }
   --wk-shadow-pop: 0 8px 32px rgba(0,0,0,.55);
   --wk-toolbar-bg: rgba(18,22,29,.92);
   --wk-sticky-shadow: -1px 0 0 0 var(--wk-line),-9px 0 14px -8px rgba(0,0,0,.55);
+  --wk-sticky-col-shadow: 1px 0 0 0 var(--wk-line),9px 0 14px -8px rgba(0,0,0,.55);
 }
 :root[data-theme="light"] {
   --wk-accent: #2E6BE6; --wk-accent-ink: #1E4FB8; --wk-accent-soft: #E8EFFC;
@@ -339,6 +342,7 @@ tr.au-open-row td { font-weight: 600; }
   --wk-shadow-pop: 0 8px 32px rgba(28,39,51,.18);
   --wk-toolbar-bg: rgba(244,246,250,.92);
   --wk-sticky-shadow: -1px 0 0 0 var(--wk-line),-9px 0 12px -8px rgba(20,28,40,.14);
+  --wk-sticky-col-shadow: 1px 0 0 0 var(--wk-line),9px 0 12px -8px rgba(20,28,40,.14);
 }
 
 /* ---- 殼：取代 .admin-panel 的全屏定位角色（覆蓋整頁，蓋在 covert 計算機外殼之上） ---- */
@@ -612,3 +616,31 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 .wk-badge-bad{ background:var(--wk-bad-soft); color:var(--wk-bad-ink); }
 .wk-badge-neutral,.wk-badge-locked{ background:var(--wk-neutral-soft,#EDF1F7); color:var(--wk-muted); }
 .wk-badge-scope{ background:var(--wk-accent-soft); color:var(--wk-accent-ink); font-variant-numeric:tabular-nums; }
+
+/* ---- 月報表交叉表 .wk-xt（Task 2；會計＋經理共用升級，取代舊 .pd-table.mr-table）----
+   ⚠️ sticky 首欄必須 border-collapse:separate + border-spacing:0，collapse 會讓 sticky
+   欄被裁掉（瀏覽器已知行為）；邊框只靠 border-bottom。值逐字取自原型 manager-desktop.html .xt。 */
+.wk-xt{ border-collapse:separate; border-spacing:0; width:100%; min-width:640px; font-size:13px; }
+.wk-xt th,.wk-xt td{ padding:10px 14px; text-align:right; border-bottom:1px solid var(--wk-line-soft);
+  white-space:nowrap; background:var(--wk-surface); }
+.wk-xt thead th{ font-size:12px; font-weight:600; color:var(--wk-faint); letter-spacing:.04em; border-bottom:1px solid var(--wk-line); }
+.wk-xt th:first-child,.wk-xt td:first-child{ text-align:left; position:sticky; left:0; z-index:2;
+  min-width:168px; box-shadow:var(--wk-sticky-col-shadow, 1px 0 0 0 var(--wk-line)); }
+.wk-xt td{ font-variant-numeric:tabular-nums; }
+.wk-xt tbody tr:hover td{ background:var(--wk-surface-2); }
+.wk-xt .wk-xt-tot{ background:var(--wk-accent-soft); color:var(--wk-accent-ink); font-weight:700; }
+.wk-xt tr.mr-total-row td{ font-weight:700; border-top:2px solid var(--wk-line); border-bottom:0; }
+.wk-xt tr.mr-child-row td{ background:var(--wk-surface-2); color:var(--wk-muted); font-size:12px; font-weight:400; }
+.wk-xt tr.mr-child-row td:first-child{ padding-left:38px; background:var(--wk-surface-2); }
+.wk-cat-toggle{ background:none; border:0; padding:0; display:inline-flex; align-items:center; gap:7px;
+  font-size:13px; font-weight:600; color:var(--wk-ink); }
+.wk-tri{ width:0; height:0; border-left:5px solid var(--wk-faint); border-top:4px solid transparent;
+  border-bottom:4px solid transparent; transition:transform .12s; flex:none; }
+.wk-cat-toggle[aria-expanded="true"] .wk-tri{ transform:rotate(90deg); }
+.wk-xt.wk-xt-one{ min-width:420px; max-width:560px; }
+
+/* ---- 工具列/報表小元件（Task 2；原型對應 .period-title/.spacer/.filter-label/.report-note）---- */
+.wk-toolbar-title{ font-size:17px; font-weight:700; }
+.wk-spacer{ flex:1; }
+.wk-filter-label{ font-size:12px; color:var(--wk-faint); }
+.wk-report-note{ font-size:12px; color:var(--wk-faint); padding:10px 18px 14px; }

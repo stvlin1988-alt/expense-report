@@ -216,15 +216,35 @@ export async function showAdminPanel(identity) {
     });
   }
 
-  // 月報表（super_admin only）：跟隨側欄的門市範圍選單（同一個選店同時管稽核與月結）：
+  // 月報表（super_admin only）：跟隨側欄的門市範圍選單（同一個選店同時管稽核與月結），
+  // 並在工具列鏡像同一個選店（兩處操作即時互相同步，改哪一個都一樣）。
   // 選特定店→只看該店；選「全部門市」(storeId null)→各店攤開。
-  // 此 task 只搬程式、維持舊樣式，wk 化留 Task 2。
   function renderReport(container) {
-    container.innerHTML = `<div id="mo-report"></div>`;
-    const reportDiv = container.querySelector('#mo-report');
-    renderMonthReport(reportDiv, {
-      storeId: state.storeId != null ? String(state.storeId) : '',
-      lockStore: true,
+    const scopeOpts = `<option value=""${state.storeId == null ? ' selected' : ''}>全部門市</option>` +
+      state.stores.filter((s) => s.viewable !== false).map((s) => `<option value="${s.id}"${s.id === state.storeId ? ' selected' : ''}>${escapeHtml(s.code)}</option>`).join('');
+    const label = state.storeId == null ? '全部門市' : `門市 ${escapeHtml((state.stores.find((s) => s.id === state.storeId) || {}).code || '')}`;
+    container.innerHTML = `
+      <div class="wk-toolbar"><div class="wk-toolbar-row">
+        <span class="wk-toolbar-title">月報表</span>
+        <span class="wk-spacer"></span>
+        <label class="wk-filter-label">範圍</label>
+        <select class="wk-select" id="report-scope-sel">${scopeOpts}</select>
+      </div></div>
+      <div class="wk-page-body"><div class="wk-card">
+        <div class="wk-card-head"><span class="wk-card-title">店 × 科目 交叉表</span>
+          <span class="wk-badge wk-badge-scope" id="report-scope-badge">${label}</span></div>
+        <div class="table-wrap" id="report-wrap"></div>
+        <div class="wk-report-note">金額單位：新台幣。僅計入「已核銷」單據；退回與挪期不列入。負數以紅字顯示。</div>
+      </div></div>`;
+    const draw = () => renderMonthReport(container.querySelector('#report-wrap'),
+      { storeId: state.storeId != null ? String(state.storeId) : '', lockStore: true });
+    draw();
+    container.querySelector('#report-scope-sel').addEventListener('change', (e) => {
+      state.storeId = e.target.value ? parseInt(e.target.value, 10) : null;
+      if (state.storeId != null) localStorage.setItem('admin_store_id', String(state.storeId));
+      else localStorage.removeItem('admin_store_id');
+      const side = document.getElementById('ap-store'); if (side) side.value = e.target.value;
+      renderReport(container);
     });
   }
 

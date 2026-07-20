@@ -21,9 +21,11 @@ export function pickCell(obj, storeId) {
   return (obj && obj.per_store && obj.per_store[storeId]) || { reconciled: 0, pending: 0 };
 }
 
-function cellHtml(cell) {
+// extraClass：目前用來標「總計」欄（.wk-xt-tot，見 app.css），其餘 cell 不帶。
+function cellHtml(cell, extraClass = '') {
   const { text, negative } = formatCell(cell);
-  return `<td><span class="rc-amt${negative ? ' rc-neg' : ''}">${escapeHtml(text)}</span></td>`;
+  const cls = `num${negative ? ' neg' : ''}${extraClass ? ` ${extraClass}` : ''}`;
+  return `<td class="${cls}">${escapeHtml(text)}</td>`;
 }
 
 // 全部門市模式：每家店一欄。回傳該列所有門市欄的 <td>。
@@ -31,17 +33,17 @@ function perStoreTds(obj, stores) {
   return stores.map((s) => cellHtml((obj.per_store && obj.per_store[s.id]) || null)).join('');
 }
 
-// 大類列：可展開鈕（有 children 才顯示）＋科目名稱＋金額欄。
+// 大類列：可展開鈕（有 children 才顯示，原型三角形 .wk-tri，靠 aria-expanded 轉向）＋科目名稱＋金額欄。
 function majorRowHtml(row, idx, stores, storeId) {
   const hasChildren = !!(row.children && row.children.length);
-  const toggle = hasChildren
-    ? `<button type="button" class="mr-toggle" data-idx="${idx}" aria-expanded="false">▶</button> `
-    : '';
+  const nameCell = hasChildren
+    ? `<button type="button" class="wk-cat-toggle" data-idx="${idx}" aria-expanded="false"><span class="wk-tri"></span>${escapeHtml(row.major_name)}</button>`
+    : escapeHtml(row.major_name);
   const amountTds = storeId
     ? cellHtml(pickCell(row, storeId))
-    : perStoreTds(row, stores) + cellHtml(row.total);
+    : perStoreTds(row, stores) + cellHtml(row.total, 'wk-xt-tot');
   return `<tr class="mr-major-row" data-idx="${idx}">
-    <td>${toggle}${escapeHtml(row.major_name)}</td>${amountTds}
+    <td>${nameCell}</td>${amountTds}
   </tr>`;
 }
 
@@ -49,7 +51,7 @@ function majorRowHtml(row, idx, stores, storeId) {
 function childRowHtml(child, parentIdx, stores, storeId) {
   const amountTds = storeId
     ? cellHtml(pickCell(child, storeId))
-    : perStoreTds(child, stores) + cellHtml(child.total);
+    : perStoreTds(child, stores) + cellHtml(child.total, 'wk-xt-tot');
   return `<tr class="mr-child-row" data-parent-idx="${parentIdx}" hidden>
     <td class="mr-child-name">${escapeHtml(child.major_name)}</td>${amountTds}
   </tr>`;
@@ -59,7 +61,7 @@ function footerRowHtml(data, stores, storeId) {
   const amountTds = storeId
     ? cellHtml((data.store_totals && data.store_totals[storeId]) || null)
     : stores.map((s) => cellHtml((data.store_totals && data.store_totals[s.id]) || null)).join('')
-      + cellHtml(data.grand_total);
+      + cellHtml(data.grand_total, 'wk-xt-tot');
   return `<tr class="mr-total-row"><td>總計</td>${amountTds}</tr>`;
 }
 
@@ -67,17 +69,20 @@ function tableHtml(data, storeId) {
   const stores = data.stores || [];
   const rows = data.rows || [];
   // 表頭：全部門市＝每店一欄＋總計；單店＝金額一欄。
+  // 店別欄顯示英文代號：data.stores[].name 後端回傳的其實就是 Store.code
+  // （app/reports/routes.py: {"id": s.id, "name": s.code}）——這裡優先取 .code
+  // （若未來 API 補上獨立 code 欄位），退回既有 .name，絕不顯示中文店名。
   const headCells = storeId
     ? '<th>金額</th>'
-    : stores.map((s) => `<th>${escapeHtml(s.name)}</th>`).join('') + '<th>總計</th>';
+    : stores.map((s) => `<th>${escapeHtml(s.code || s.name)}</th>`).join('') + '<th class="wk-xt-tot">總計</th>';
   const bodyRows = rows.map((row, idx) => {
     const childRows = (row.children || [])
       .map((child) => childRowHtml(child, idx, stores, storeId)).join('');
     return majorRowHtml(row, idx, stores, storeId) + childRows;
   }).join('');
   return `
-    <div class="pd-table-wrap">
-      <table class="pd-table mr-table${storeId ? ' mr-single' : ''}">
+    <div class="table-wrap">
+      <table class="wk-xt${storeId ? ' wk-xt-one' : ''}">
         <thead><tr><th>科目</th>${headCells}</tr></thead>
         <tbody>${bodyRows}${footerRowHtml(data, stores, storeId)}</tbody>
       </table>
@@ -104,12 +109,12 @@ function headerHtml(data, storeId, showPicker) {
 }
 
 function wireToggles(container) {
-  container.querySelectorAll('.mr-toggle').forEach((btn) => {
+  container.querySelectorAll('.wk-cat-toggle').forEach((btn) => {
     btn.addEventListener('click', () => {
       const idx = btn.dataset.idx;
       const expanded = btn.getAttribute('aria-expanded') === 'true';
       btn.setAttribute('aria-expanded', String(!expanded));
-      btn.textContent = expanded ? '▶' : '▼';
+      // 旋轉靠 CSS：.wk-cat-toggle[aria-expanded="true"] .wk-tri
       container.querySelectorAll(`.mr-child-row[data-parent-idx="${idx}"]`).forEach((tr) => {
         tr.hidden = expanded;
       });
