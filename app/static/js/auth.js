@@ -5,6 +5,7 @@ import { escapeHtml } from './admin_util.js';
 import { showCaptureView } from './capture.js';
 import { showPendingView } from './pending.js';
 import { showReviewView } from './review.js';
+import { showEmployeeApp } from './employee_app.js';
 
 const NEUTRAL_MSG = '無法計算，請重試';
 const root = () => document.getElementById('modal-root');
@@ -144,7 +145,8 @@ async function openLoginFlow() {
         const identity = { id: data.id, name: data.name, role: data.role, store_id: data.store_id ?? null };
         if (data.role === 'accountant') showReconcilePanel(identity);
         else if (data.role === 'manager' || data.role === 'super_admin') showAdminPanel(identity);
-        else showAppView({ name: data.name, role: data.role });
+        else if (data.role === 'employee') showEmployeeApp(identity);
+        else showAppView(identity);
         return;
       }
       // 其餘一律隱蔽

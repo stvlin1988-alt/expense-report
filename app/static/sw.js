@@ -7,7 +7,7 @@
  */
 // 靜態資產(js/css)變更時務必 bump 此版本號（如 calc-v2），
 // 否則 cache-first 會讓客戶端持續使用舊檔（見下方 STATIC_URLS 的 cache-first 分支）。
-const CACHE_NAME = 'calc-v61';
+const CACHE_NAME = 'calc-v62';
 const STATIC_URLS = [
   '/',
   '/static/css/app.css',
@@ -22,6 +22,7 @@ const STATIC_URLS = [
   '/static/js/expenses_api.js',
   '/static/js/capture.js',
   '/static/js/pending.js',
+  '/static/js/employee_app.js',
   '/static/manifest.json',
 ];
 

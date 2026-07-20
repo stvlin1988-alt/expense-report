@@ -747,3 +747,67 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 .wk-pw-field label{ font-size:13px; font-weight:600; }
 .wk-pw-field .help{ font-size:12px; color:var(--wk-faint); }
 .wk-pw-input{ width:160px; letter-spacing:.4em; font-variant-numeric:tabular-nums; text-align:center; }
+
+/* ============================================================
+   手機設計層（UI 重塑 2026-07；員工/主管/經理手機共用基底）
+   沿用既有 --wk-* token；本段新增手機殼/抬頭/tab/卡片/取景框等 .mb-* 元件。
+   視覺 SoT: docs/superpowers/ui-prototypes/employee-mobile.html
+   ============================================================ */
+:root{
+  --mb-stage:#E3E8F0; --mb-cam:#232B36; --mb-cam-2:#2C3542;
+  --mb-thumb-a:#E1E7F0; --mb-thumb-b:#CFD8E5;
+  --mb-shadow:0 18px 44px rgba(28,39,51,.18);
+}
+:root[data-theme="dark"]{ --mb-stage:#0C0F14; --mb-cam:#0E1319; --mb-cam-2:#1A222D;
+  --mb-thumb-a:#252E3B; --mb-thumb-b:#1E2632; --mb-shadow:0 18px 44px rgba(0,0,0,.5); }
+@media (prefers-color-scheme: dark){ :root{ --mb-stage:#0C0F14; --mb-cam:#0E1319; --mb-cam-2:#1A222D;
+  --mb-thumb-a:#252E3B; --mb-thumb-b:#1E2632; --mb-shadow:0 18px 44px rgba(0,0,0,.5); } }
+/* 殼：滿版（非原型的 phone 外框——那只是原型展示用）。#modal-root 掛載。 */
+.mb-app{ position:fixed; inset:0; z-index:50; display:flex; flex-direction:column;
+  background:var(--wk-ground); color:var(--wk-ink);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Segoe UI","Microsoft JhengHei",sans-serif; }
+.mb-appbar{ flex:none; display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding:12px 14px 10px; background:var(--wk-surface); border-bottom:1px solid var(--wk-line); }
+.mb-who{ display:flex; align-items:center; gap:9px; min-width:0; }
+.mb-store-badge{ flex:none; display:inline-flex; align-items:center; justify-content:center;
+  width:32px; height:32px; border-radius:9px; background:var(--wk-accent-soft); color:var(--wk-accent-ink);
+  font-weight:700; font-size:13px; letter-spacing:.05em; }
+.mb-who .mb-name{ font-weight:600; font-size:15px; }
+.mb-who .mb-sub{ font-size:11px; color:var(--wk-faint); display:block; margin-top:1px; }
+.mb-appbar-actions{ display:flex; gap:6px; }
+.mb-icon-btn{ width:44px; height:44px; border:1px solid var(--wk-line); background:var(--wk-surface-2);
+  border-radius:var(--wk-radius-sm); display:inline-flex; align-items:center; justify-content:center; color:var(--wk-muted); }
+.mb-orient{ flex:none; display:flex; background:var(--wk-surface-2); border:1px solid var(--wk-line);
+  border-radius:999px; padding:2px; gap:2px; }
+.mb-orient button{ min-height:40px; padding:0 11px; border:none; border-radius:999px; background:none;
+  color:var(--wk-muted); font-size:12.5px; font-weight:600; }
+.mb-orient button[aria-pressed="true"]{ background:var(--wk-accent); color:#fff; }
+.mb-content{ flex:1; overflow-y:auto; overflow-x:hidden; position:relative; overscroll-behavior:contain; }
+.mb-pane{ display:none; padding:14px 14px 20px; }
+.mb-pane.active{ display:block; }
+.mb-pane-title{ font-size:16px; font-weight:700; margin:2px 2px 4px; }
+.mb-pane-sub{ font-size:12px; color:var(--wk-muted); margin:0 2px 12px; }
+.mb-tabbar{ flex:none; display:flex; background:var(--wk-surface); border-top:1px solid var(--wk-line);
+  padding:6px 8px calc(8px + env(safe-area-inset-bottom,6px)); }
+.mb-tab{ flex:1; min-height:52px; border:none; background:none; border-radius:var(--wk-radius-sm);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  color:var(--wk-faint); font-size:11.5px; font-weight:600; position:relative; }
+.mb-tab svg{ width:23px; height:23px; }
+.mb-tab.active{ color:var(--wk-accent); background:var(--wk-accent-soft); }
+.mb-badge{ position:absolute; top:4px; left:calc(50% + 8px); min-width:18px; height:18px; padding:0 5px;
+  border-radius:999px; background:var(--wk-bad); color:#fff; font-size:11px; display:flex; align-items:center;
+  justify-content:center; font-variant-numeric:tabular-nums; }
+.mb-badge.zero{ display:none; }
+.mb-btn{ min-height:44px; padding:0 16px; border-radius:var(--wk-radius-sm); border:1px solid var(--wk-line);
+  background:var(--wk-surface); font-size:14.5px; font-weight:600; color:var(--wk-ink);
+  display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+.mb-btn-primary{ background:var(--wk-accent); border-color:var(--wk-accent); color:#fff; }
+.mb-btn-danger{ color:var(--wk-bad-ink); border-color:var(--wk-line); background:var(--wk-surface); }
+.mb-btn-ghost{ background:var(--wk-surface-2); color:var(--wk-muted); font-weight:500; }
+.mb-btn-sm{ font-size:13.5px; padding:0 13px; }
+.mb-amt{ font-variant-numeric:tabular-nums; } .mb-amt.neg{ color:var(--wk-bad); }
+.mb-toast{ position:fixed; left:50%; bottom:86px; transform:translateX(-50%) translateY(8px);
+  background:var(--wk-ink); color:var(--wk-ground); font-size:13px; padding:9px 16px; border-radius:999px;
+  opacity:0; pointer-events:none; white-space:nowrap; transition:opacity .25s,transform .25s; z-index:90;
+  max-width:88%; overflow:hidden; text-overflow:ellipsis; }
+.mb-toast.show{ opacity:.96; transform:translateX(-50%) translateY(0); }
