@@ -3,10 +3,11 @@ let _e2eSample = null;
 export function setE2ESample(dataUrl) { _e2eSample = dataUrl; }
 
 export class Camera {
-  constructor(videoEl, canvasEl) {
+  constructor(videoEl, canvasEl, { facingMode = 'user' } = {}) {
     this.video = videoEl;
     this.canvas = canvasEl;
     this.stream = null;
+    this.facingMode = facingMode;
   }
 
   get isRecording() { return this.stream !== null; }
@@ -15,7 +16,7 @@ export class Camera {
     if (this.stream) return;
     if (_e2eSample) { this.stream = 'e2e'; return; } // 開發：跳過相機
     this.stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' } }, audio: false,
+      video: { facingMode: this.facingMode }, audio: false,
     });
     this.video.srcObject = this.stream;
     this.video.muted = true;

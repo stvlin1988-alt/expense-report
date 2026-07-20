@@ -27,7 +27,7 @@ export function renderShootPane(container, { onUploaded } = {}) {
         <button class="mb-btn mb-btn-ghost mb-btn-sm" id="mb-shoot-again" type="button" style="width:100%">繼續拍下一批</button></div>
     </div>`;
 
-  const cam = new Camera(container.querySelector('#mb-cap-video'), container.querySelector('#mb-cap-canvas'));
+  const cam = new Camera(container.querySelector('#mb-cap-video'), container.querySelector('#mb-cap-canvas'), { facingMode: { ideal: 'environment' } });
   const shots = [];
   cam.start().catch(() => mbToast('無法開啟鏡頭'));
 

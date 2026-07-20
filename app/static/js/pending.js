@@ -238,7 +238,7 @@ function showNoReceiptForm(container, tree, onDone) {
 
   // 可選附一張佐證照（沿用 Camera，記憶體不落地）
   let photo = null;
-  const cam = new Camera(formEl.querySelector('#mb-nr-video'), formEl.querySelector('#mb-nr-canvas'));
+  const cam = new Camera(formEl.querySelector('#mb-nr-video'), formEl.querySelector('#mb-nr-canvas'), { facingMode: { ideal: 'environment' } });
   const camBox = formEl.querySelector('#mb-nr-cam');
   const preview = formEl.querySelector('#mb-nr-preview');
   const stopCam = () => { try { cam.stop(); } catch { /* noop */ } camBox.hidden = true; };
