@@ -29,7 +29,7 @@ export async function showAdminPanel(identity) {
 
   const tabs = [
     ...(isSuper ? [{ key: 'report', label: '月報表' }] : []),
-    { key: 'audit', label: '稽核' },
+    { key: 'audit', label: '稽核', ro: isSuper },
     ...(isSuper ? [{ key: 'stores', label: '店別管理' }] : []),
     ...(isSuper ? [{ key: 'closing', label: '月結設定', ro: true }] : []),
     { key: 'accounts', label: '帳號' },
@@ -307,7 +307,7 @@ export async function showAdminPanel(identity) {
     body.innerHTML = '';
     if (state.tab === 'accounts') renderAccounts(body, ctx());
     else if (state.tab === 'devices') renderDevices(body, ctx());
-    else if (state.tab === 'audit') renderAudit(body, identity, state.storeId);
+    else if (state.tab === 'audit') renderAudit(body, identity, state.storeId, state.stores);
     else if (state.tab === 'logs') renderLogs(body, identity, state.storeId);
     else if (state.tab === 'stores') renderStores(body);
     else if (state.tab === 'report') renderReport(body);

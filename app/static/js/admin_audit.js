@@ -5,13 +5,12 @@ import { formatMoney, formatDateTimeTW, renderTrailRows, status_label } from './
 import { openImageLightbox } from './lightbox.js';
 
 // storeId：super_admin 選定的店；manager 傳 null（後端用本店）
-export async function renderAudit(container, identity, storeId) {
+// stores：全店清單（{id, code, viewable, active}），供經理唯讀 render 的「選店/空狀態快速鍵」用。
+export async function renderAudit(container, identity, storeId, stores) {
   const isSuper = identity.role === 'super_admin';
-  if (isSuper && !storeId) {
-    container.innerHTML = '<div class="ap-empty">請先於上方選擇一家店</div>';
-    return;
-  }
-  const sid = isSuper ? storeId : undefined;
+  if (isSuper) return renderAuditReadonly(container, storeId, stores);
+  // 主管：沿用現行可操作流程（待稽核／總表兩個 sub-tab），外觀 wk 化、行為不變。
+  const sid = undefined;
   container.innerHTML = `
     <div class="audit-sub">
       <button class="ap-tab active" id="au-tab-pending" type="button">待稽核</button>
@@ -28,6 +27,100 @@ export async function renderAudit(container, identity, storeId) {
   tabS.addEventListener('click', () => { setActive(tabS); renderSummary(body, sid); });
   setActive(tabP);
   renderPending(body, sid);
+}
+
+// ===== 經理（super_admin）唯讀 render =====
+// 全部門市（storeId 為 null）→ 空狀態卡＋各可見店快速鍵；選定店 → 依班別分組唯讀表
+// （縮圖／摘要／單號·建立者·時間、店別、分類、金額、燈號＋徽章）。無編輯/打勾/交班。
+// 選店/返回全部門市透過全域 #ap-store（isSuper 才存在）dispatch change，讓 admin.js 更新 state 並重繪。
+function pickStore(id) {
+  const sel = document.getElementById('ap-store');
+  if (!sel) return;
+  sel.value = id == null ? '' : String(id);
+  sel.dispatchEvent(new Event('change'));
+}
+
+function readonlyRowHtml(e, storeCode) {
+  const thumb = e.thumb_url
+    ? `<img src="${e.thumb_url}" loading="lazy" class="wk-rcp-thumb au-thumb" data-zoom="${e.image_url || ''}" alt="收據">`
+    : '<span class="wk-rcp-none">—</span>';
+  const checked = e.status !== 'submitted';
+  const lamp = checked
+    ? '<span class="wk-lamp"><span class="wk-dot wk-dot-g"></span>已稽核</span>'
+    : '<span class="wk-lamp"><span class="wk-dot wk-dot-y"></span>待稽核</span>';
+  const badgeCls = {
+    submitted: 'wk-badge-pending', audited: 'wk-badge-neutral',
+    reconciled: 'wk-badge-open', rejected: 'wk-badge-bad',
+  }[e.status] || 'wk-badge-neutral';
+  const badge = `<span class="wk-badge ${badgeCls}">${escapeHtml(status_label(e.status))}</span>`;
+  const amt = Number(e.amount);
+  const neg = Number.isFinite(amt) && amt < 0;
+  return `<tr>
+    <td><div class="wk-doc-cell wk-audit-doc">${thumb}
+      <div class="wk-doc-meta"><span class="wk-doc-summary">${escapeHtml(e.summary || '')}${e.is_no_receipt ? ' <span class="au-mod">無單據</span>' : ''}</span>
+        <span class="wk-doc-sub">${escapeHtml(e.doc_no || `#${e.id}`)} · ${escapeHtml(e.created_by_name || '')} · ${formatDateTimeTW(e.created_at)}</span>
+        ${e.note ? `<span class="wk-doc-note">備註：${escapeHtml(e.note)}</span>` : ''}
+      </div></div></td>
+    <td><span class="wk-store-tag">${escapeHtml(storeCode)}</span></td>
+    <td><span class="wk-chip">${escapeHtml(e.category_name || '未分類')}</span></td>
+    <td class="num${neg ? ' neg' : ''}">${formatMoney(e.amount)}</td>
+    <td><div class="wk-lamp-cell">${lamp}${badge}</div></td>
+  </tr>`;
+}
+
+async function renderAuditReadonly(container, storeId, stores) {
+  const viewableStores = (stores || []).filter((s) => s.viewable !== false);
+  const scopeLabel = storeId == null
+    ? '全部門市'
+    : escapeHtml((viewableStores.find((s) => s.id === storeId) || {}).code || '');
+  const toolbar = `
+    <div class="wk-toolbar"><div class="wk-toolbar-row">
+      <span class="wk-toolbar-title">交接班稽核</span>
+      <span class="wk-badge wk-badge-locked">唯讀</span>
+      <span class="wk-filter-label">打勾稽核由各店主管於交接班執行，經理僅檢視結果</span>
+      <span class="wk-spacer"></span>
+      <span class="wk-badge wk-badge-scope">${scopeLabel}</span>
+    </div></div>`;
+
+  if (storeId == null) {
+    const btns = viewableStores.map((s) =>
+      `<button class="wk-btn wk-btn-secondary" data-pick="${s.id}" type="button">${escapeHtml(s.code)}</button>`).join('');
+    container.innerHTML = `${toolbar}
+      <div class="wk-page-body"><div class="wk-empty-tip">
+        請先在左側「<b>門市範圍</b>」選擇一家店<br>
+        <span style="font-size:12px;color:var(--wk-faint)">選店同時決定稽核與月報表看哪家</span>
+        <div class="wk-empty-stores">${btns}</div>
+      </div></div>`;
+    container.querySelectorAll('[data-pick]').forEach((b) =>
+      b.addEventListener('click', () => pickStore(Number(b.dataset.pick))));
+    return;
+  }
+
+  container.innerHTML = `${toolbar}<div class="wk-page-body"><div class="wk-empty">載入中…</div></div>`;
+  const storeCode = scopeLabel;
+  const { data: dd } = await api.auditSummaryDates(storeId);
+  const dates = (dd && dd.dates) || [];
+  const today = dates[0] || '';
+  const { data } = today ? await api.auditByDate(storeId, today) : { data: { shifts: [] } };
+  const shifts = data.shifts || [];
+  const rows = shifts.map((sh) => `
+    <tr class="wk-day-head"><td colspan="5">${escapeHtml(shiftLabel(sh))}　小計 ${formatMoney(sh.subtotal)}（${sh.count} 筆）</td></tr>
+    ${sh.items.map((e) => readonlyRowHtml(e, storeCode)).join('')}`).join('');
+
+  const pageBody = container.querySelector('.wk-page-body');
+  pageBody.innerHTML = `
+    <div class="wk-audit-back-bar">
+      <button class="wk-btn wk-btn-secondary" id="au-ro-back" type="button">‹ 返回全部門市</button>
+      <span class="wk-filter-label">目前檢視　<span class="wk-store-tag">${escapeHtml(storeCode)}</span></span>
+    </div>
+    <div class="wk-card"><div class="table-wrap">
+      <table class="wk-audit-table"><thead><tr>
+        <th>單據</th><th>店別</th><th>分類</th><th class="num-h">金額</th><th>稽核狀態</th>
+      </tr></thead><tbody>${rows || '<tr><td colspan="5" class="wk-empty">目前沒有單據</td></tr>'}</tbody></table>
+    </div></div>`;
+  pageBody.querySelector('#au-ro-back').addEventListener('click', () => pickStore(null));
+  pageBody.querySelectorAll('.au-thumb').forEach((img) =>
+    img.addEventListener('click', () => openImageLightbox(img.dataset.zoom)));
 }
 
 function shiftLabel(sh) {
@@ -96,17 +189,17 @@ async function renderSummary(body, sid, dateStr) {
   const { data } = sel ? await api.auditByDate(sid, sel) : { data: { shifts: [], total: 0, count: 0 } };
   const shifts = data.shifts || [];
   const shiftBlocks = shifts.map((sh) => `
-    <div class="au-group">
-      <div class="au-group-head">${shiftLabel(sh)}　小計 ${formatMoney(sh.subtotal)}（${sh.count} 筆）</div>
-      <div class="pd-table-wrap">
-      <table class="pd-table"><thead><tr>
+    <div class="wk-card au-group">
+      <div class="wk-card-head au-group-head">${shiftLabel(sh)}　小計 ${formatMoney(sh.subtotal)}（${sh.count} 筆）</div>
+      <div class="table-wrap">
+      <table class="wk-audit-table"><thead><tr>
         <th>單號</th><th>建立</th><th>建立者</th><th>圖</th><th>摘要</th><th>分類</th><th>金額</th><th>備註</th><th>燈</th><th>狀態</th><th>稽核者</th><th>歷程</th>
       </tr></thead><tbody>${sh.items.map(summaryRowHtml).join('')}</tbody></table>
       </div>
     </div>`).join('');
   body.innerHTML = `
     <div class="au-day-nav">日期：<input type="date" id="au-day-date" value="${sel}"${today ? ` max="${today}"` : ''}></div>
-    ${shiftBlocks || '<div class="ap-empty">當天沒有單據</div>'}
+    ${shiftBlocks || '<div class="wk-empty">當天沒有單據</div>'}
     <div class="au-daytotal">當日總額 <b>${formatMoney(data.total)}</b>（${data.count} 筆）</div>`;
   const dinp = body.querySelector('#au-day-date');
   if (dinp) dinp.addEventListener('change', (ev) => {
@@ -138,16 +231,18 @@ async function renderPending(body, sid) {
   const tree = (catResp && catResp.categories) || [];
   const groups = (data && data.groups) || [];
   if (!groups.length) {
-    body.innerHTML = `${banner}<div class="ap-empty">沒有待稽核單據</div>`;
+    body.innerHTML = `${banner}<div class="wk-empty">沒有待稽核單據</div>`;
   } else {
     body.innerHTML = banner + groups.map((g) => `
-      <div class="au-group">
-        <div class="au-group-head">${g.business_date}　日小計 ${formatMoney(g.subtotal)}</div>
-        <table class="pd-table"><thead><tr>
+      <div class="wk-card au-group">
+        <div class="wk-card-head au-group-head">${g.business_date}　日小計 ${formatMoney(g.subtotal)}</div>
+        <div class="table-wrap">
+        <table class="wk-audit-table"><thead><tr>
           <th>單號</th><th>圖</th><th>建立</th><th>建立者</th><th>摘要</th><th>分類</th><th>金額</th><th>備註</th><th>燈</th><th></th>
         </tr></thead><tbody>
         ${g.items.map((e) => rowHtml(e, tree)).join('')}
         </tbody></table>
+        </div>
       </div>`).join('');
     wireRows(body, sid);
     wireTrails(body, 10);
@@ -170,9 +265,9 @@ function actionBar(sid, body) {
   const bar = document.createElement('div');
   bar.className = 'au-actionbar';
   bar.innerHTML = `
-    <button class="modal-btn" id="au-shift" type="button">交班</button>
-    <button class="modal-btn" id="au-day" type="button">結班</button>
-    <button class="modal-btn secondary" id="au-undo" type="button">取消上一次</button>
+    <button class="wk-btn wk-btn-primary" id="au-shift" type="button">交班</button>
+    <button class="wk-btn wk-btn-primary" id="au-day" type="button">結班</button>
+    <button class="wk-btn wk-btn-secondary" id="au-undo" type="button">取消上一次</button>
     <span class="au-subtotal" id="au-subtotal"></span>
     <span class="pd-row-err" id="au-bar-err"></span>`;
   const barErr = bar.querySelector('#au-bar-err');
@@ -208,12 +303,12 @@ function rowHtml(e, tree) {
     <td>${escapeHtml(e.created_by_name || '')}</td>
     <td>${escapeHtml(e.summary || '')}</td>
     <td><select data-f="category">${categoryOptionsHtml(tree, e.category_id)}</select>${lastModTag(e, 'category')}</td>
-    <td><input value="${e.amount ?? ''}" inputmode="decimal" data-f="amount" style="width:80px">${lastModTag(e, 'amount')}</td>
-    <td><input value="${escapeHtml(e.note || '')}" maxlength="200" placeholder="備註（可留空）" data-f="note" class="pd-note"></td>
+    <td><input value="${e.amount ?? ''}" inputmode="decimal" data-f="amount" class="wk-input"></td>
+    <td><input value="${escapeHtml(e.note || '')}" maxlength="200" placeholder="備註（可留空）" data-f="note" class="wk-input"></td>
     <td>${lightLabel(e.light)}</td>
     <td>
       ${e.is_rejected ? `<div class="ap-reject-reason">會計退回：${escapeHtml(e.reject_reason || '')}</div>` : ''}
-      <button data-act="check">打勾</button>${e.has_audit_log ? `<button class="au-trail-btn" data-trail="${e.id}" type="button">歷程</button>` : ''}<div class="pd-row-err" data-f="err"></div>
+      <button class="wk-btn wk-btn-sm wk-btn-primary" data-act="check" type="button">打勾</button>${e.has_audit_log ? `<button class="au-trail-btn" data-trail="${e.id}" type="button">歷程</button>` : ''}<div class="pd-row-err" data-f="err"></div>
     </td>
   </tr>`;
 }

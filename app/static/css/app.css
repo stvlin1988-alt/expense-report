@@ -684,4 +684,42 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 .wk-add-row .wk-input::placeholder{ text-transform:none; letter-spacing:0; font-weight:400; color:var(--wk-faint); }
 .wk-legend-hint{ font-size:12.5px; color:var(--wk-muted); line-height:1.8; }
 .wk-legend-hint b{ color:var(--wk-ink); }
+
+/* ---- 稽核 view（Task 5）----
+   經理端（唯讀）：值逐字取自原型 manager-desktop.html:308-348（.audit-table/.day-head/.doc-cell/
+   .lamp/.dot*/.chip/.empty-tip/.empty-stores/.audit-back-bar），wk- 前綴、var(--x)→var(--wk-x)。
+   主管端（可操作，待稽核/總表）沿用同一份 .wk-audit-table，機械 class swap（原 .pd-table）。 */
+.wk-audit-table{ border-collapse:separate; border-spacing:0; width:100%; min-width:760px; }
+.wk-audit-table th{
+  text-align:left; font-size:12px; font-weight:600; color:var(--wk-faint);
+  padding:9px 12px; border-bottom:1px solid var(--wk-line); white-space:nowrap; letter-spacing:.04em;
+  background:var(--wk-surface); }
+.wk-audit-table th.num-h{ text-align:right; }
+.wk-audit-table td{
+  padding:9px 12px; border-bottom:1px solid var(--wk-line-soft);
+  font-size:13px; vertical-align:middle; background:var(--wk-surface); }
+.wk-audit-table tbody tr:hover td{ background:var(--wk-surface-2); }
+.wk-audit-table tr.wk-day-head td{
+  background:var(--wk-ground); color:var(--wk-muted); font-size:12px; font-weight:700;
+  letter-spacing:.05em; padding:8px 12px; }
+.wk-audit-table tr.wk-day-head:hover td{ background:var(--wk-ground); }
+/* 表格內行內編輯（主管待稽核用）：.wk-input 原是 modal 專用（width:100%/margin-top:10px），
+   表格列內要收成內容寬、貼齊欄位，按 data-f 各給合宜寬度。 */
+.wk-audit-table .wk-input{ width:auto; height:28px; margin-top:0; padding:0 8px; font-size:13px; }
+.wk-audit-table input[data-f="amount"].wk-input{ width:84px; text-align:right; font-variant-numeric:tabular-nums; }
+.wk-audit-table input[data-f="note"].wk-input{ width:150px; }
+/* 稽核列的單據格：縮圖＋摘要＋單號·建立者·時間（＋備註），比核銷表 .wk-doc-cell 稍寬 */
+.wk-audit-doc{ min-width:220px; max-width:340px; }
+.wk-doc-note{ display:block; font-size:12px; color:var(--wk-faint); margin-top:3px; white-space:normal; }
+.wk-chip{ font-size:11px; padding:2px 8px; border-radius:999px; background:var(--wk-neutral-soft); color:var(--wk-muted); white-space:nowrap; }
+.wk-lamp{ display:inline-flex; align-items:center; gap:6px; font-size:12px; white-space:nowrap; }
+.wk-dot{ width:9px; height:9px; border-radius:50%; flex:none; }
+.wk-dot-g{ background:var(--wk-ok); box-shadow:0 0 0 3px var(--wk-ok-soft); }
+.wk-dot-y{ background:var(--wk-warn); box-shadow:0 0 0 3px var(--wk-warn-soft); }
+.wk-empty-tip{
+  text-align:center; padding:52px 24px; color:var(--wk-muted); font-size:14px;
+  background:var(--wk-surface); border:1px dashed var(--wk-line); border-radius:var(--wk-radius); }
+.wk-empty-tip b{ color:var(--wk-accent-ink); }
+.wk-empty-stores{ display:flex; gap:8px; justify-content:center; margin-top:14px; flex-wrap:wrap; }
+.wk-audit-back-bar{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
 .wk-msg{ font-size:13px; margin-top:8px; color:var(--wk-muted); }
