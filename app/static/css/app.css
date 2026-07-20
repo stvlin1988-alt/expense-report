@@ -225,7 +225,8 @@ tr.au-open-row td { font-weight: 600; }
 .rc-msg { font-size: 14px; color: #c62828; }
 .rc-manual-form { margin-bottom: 16px; }
 .rc-reject-reason { color: #c62828; font-size: .78rem; margin-top: 2px; }
-.rc-rowbtns { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+/* 註：核銷工作台的 .rc-rowbtns 是 <td>（見 reconcile.js rowHtml），操作鈕排列改由
+   .wk-rc-table td.rc-rowbtns 處理（保持 table-cell，勿在此把 td 變成 flex 容器）。 */
 /* Addendum 10.1：重送標記徽章——會計要一眼認出「主管重新確認過的單」，配色刻意跟
    .rc-reject-reason（紅）/ .au-mod（橘）區隔，用醒目的藍紫底色 + 粗體。 */
 .rc-resubmit {
@@ -249,6 +250,7 @@ tr.au-open-row td { font-weight: 600; }
 /* ---- 會計月結管理 tab（期間狀態/挪期/提前封月/上期未處理單/月結設定，Task 17）---- */
 .rc-period-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
 .rc-period-label { font-size: 15px; font-weight: 600; }
+.rc-period-next { font-size: 14px; font-weight: 600; color: var(--wk-muted); }
 .ap-badge.open { background: #d4edda; color: #155724; }
 .ap-badge.closing { background: #fff3cd; color: #856404; }
 .ap-badge.closed { background: #e2e3e5; color: #6c757d; }
@@ -258,7 +260,7 @@ tr.au-open-row td { font-weight: 600; }
 
 /* ============================================================
    工作台設計系統（UI 重塑 2026-07；會計桌機 pilot，各角色沿用）
-   token + 側欄工作台殼。與舊 .ap-*/.rc-*/.mr-* 並存，本段只新增不改動上方。
+   token + 側欄工作台殼。與舊 .ap-* / .rc-* / .mr-* 並存，本段只新增不改動上方。
    視覺 SoT: docs/superpowers/ui-prototypes/accountant-desktop.html
    ============================================================ */
 
@@ -561,5 +563,24 @@ tr[data-status="audited"] .wk-status { background: var(--wk-warn-soft); color: v
 tr[data-status="reconciled"] .wk-status { background: var(--wk-ok-soft); color: var(--wk-ok-ink); }
 tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: var(--wk-bad-ink); }
 
-/* ---- 操作欄：內容寬即可，不搶「單據」欄空間 ---- */
-.wk-rc-table td.rc-rowbtns { width: 1%; white-space: nowrap; }
+/* ---- 操作欄：table-cell（勿 flex，否則欄寬塌成 1% 且按鈕溢出格外、hover 底色蓋不到）；
+   內容寬即可，不搶「單據」欄空間。按鈕靠右並排，rowbtns 內 pd-row-err 換行落下方 ---- */
+.wk-rc-table td.rc-rowbtns { display: table-cell; width: 1%; white-space: nowrap; text-align: right; }
+.wk-rc-table td.rc-rowbtns .wk-btn { margin-left: 6px; }
+.wk-rc-table td.rc-rowbtns .wk-btn:first-child { margin-left: 0; }
+/* 挪下期為 ghost（透明底），在一排實心/外框按鈕中易被誤認成純文字；補上外框讓它明顯是按鈕 */
+.wk-rc-table td.rc-rowbtns .wk-btn-ghost { border-color: var(--wk-line); }
+
+/* ---- 窄桌機（側欄仍固定 208px，但表格可用寬不足）收斂欄距，免橫捲 ----
+   worst-case（可編輯列：金額 input + 分類 select + 三顆操作鈕）表格本徵寬約 792px；
+   側欄固定的版位在 ~900–1090px 視窗會擠不下。<900px 走手機版側欄橫排、表格已滿寬，不受此段影響。
+   本段共回收約 110px 欄距，讓 ~940px 起免橫捲。 */
+@media (min-width: 901px) and (max-width: 1100px) {
+  .wk-page-body { padding-left: 18px; padding-right: 18px; }
+  .wk-rc-table th, .wk-rc-table td { padding: 8px 6px; }
+  .wk-doc-cell { min-width: 156px; }
+  .wk-rc-table select[data-f="category"] { min-width: 78px; }
+  .wk-amt-input { width: 72px; }
+  .wk-rc-table td.rc-rowbtns .wk-btn { margin-left: 4px; }
+  .wk-rc-table .wk-btn-sm { padding: 0 6px; }
+}

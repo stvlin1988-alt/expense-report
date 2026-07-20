@@ -68,6 +68,7 @@ def two_period_audited(app):
             "prev_period_id": prev_period.id,
             "cur_period_label": cur_period.label,
             "prev_period_label": prev_period.label,
+            "cur_period_end": cur_period.end_date.isoformat(),
         }
     return result
 
@@ -82,6 +83,8 @@ def test_pending_defaults_to_current_period(client, app, two_period_audited):
     assert data["period"]["id"] == two_period_audited["cur_period_id"]
     assert data["period"]["label"] == two_period_audited["cur_period_label"]
     assert data["period"]["status"] in ("open", "closing", "closed")
+    # 月結管理最上面「下次月結」用的本期截止日
+    assert data["period"]["end_date"] == two_period_audited["cur_period_end"]
 
     items = [i for g in data["groups"] for i in g["items"]]
     ids = {i["id"] for i in items}

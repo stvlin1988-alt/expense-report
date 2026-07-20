@@ -146,6 +146,8 @@ export async function showReconcilePanel(identity) {
     total: { reconciled: 0, pending: 0, count: 0 },
     batchMsg: '',
     period: null, // 最近一次 pending() 回傳的 {id, label, status}（給期間抬頭 + 月結管理 tab 共用）
+    periods: [],  // 所有會計期間清單（新到舊），供月份下拉 / 月報表選期
+    reportPeriodId: '', // 月報表分頁目前選的期間 id（''＝當期）
   };
 
   try {
@@ -157,9 +159,29 @@ export async function showReconcilePanel(identity) {
     if (status === 200 && data.status === 'ok') state.categories = data.categories;
   } catch (e) { /* 靜默 */ }
 
+  async function loadPeriods() {
+    try {
+      const { status, data } = await periodsApi.list();
+      if (status === 200 && data.status === 'ok') state.periods = data.periods || [];
+    } catch (e) { /* 靜默：下拉自行處理空清單 */ }
+  }
+  await loadPeriods();
+
+  // 月份下拉共用選項：value=期間 id，label 帶狀態（已封月/寬限期）。sel 為目前選中的 id 字串。
+  // includeCurrent=true 時最前面補一個「目前期間」空值選項（核銷頁切期用）。
+  function periodOptionsHtml(sel, includeCurrent) {
+    const badge = { closed: '（已封月）', closing: '（寬限期）', open: '' };
+    const head = includeCurrent
+      ? `<option value=""${String(sel) === '' ? ' selected' : ''}>目前期間</option>` : '';
+    return head + state.periods.map((p) =>
+      `<option value="${p.id}"${String(p.id) === String(sel) ? ' selected' : ''}>${escapeHtml(p.label)}${badge[p.status] || ''}</option>`
+    ).join('');
+  }
+
   const tabs = [
     { key: 'reconcile', label: '核銷' },
     { key: 'period', label: '月結管理' },
+    { key: 'report', label: '月報表' },
     { key: 'mypw', label: '我的密碼' },
   ];
 
@@ -185,11 +207,13 @@ export async function showReconcilePanel(identity) {
   // ---- 我的密碼（/admin/me/password 對任何登入者開放，非 admin-only，沿用既有 api） ----
   function renderMyPassword(container) {
     container.innerHTML = `
+      <div class="wk-page-body">
       <div class="ap-form">
         <input type="password" id="mp-old" placeholder="舊密碼" inputmode="numeric" maxlength="4" autocomplete="off">
         <input type="password" id="mp-new" placeholder="新密碼(4位)" inputmode="numeric" maxlength="4" autocomplete="off">
         <button class="ap-btn" id="mp-submit" type="button">變更密碼</button>
         <div class="ap-msg" id="mp-msg"></div>
+      </div>
       </div>`;
     const old = container.querySelector('#mp-old');
     const neu = container.querySelector('#mp-new');
@@ -323,14 +347,12 @@ export async function showReconcilePanel(identity) {
 
   function periodBarHtml() {
     const p = state.period;
-    const label = p ? escapeHtml(p.label) : '（無期間）';
     return `
       <div class="wk-toolbar-row">
-        <span class="rc-period-label">目前期間：${label}</span>
+        <label class="rc-period-label">檢視期間：
+          <select id="rc-period-select" class="wk-select" style="margin-left:6px">${periodOptionsHtml(state.filters.period_id, true)}</select>
+        </label>
         ${periodBadgeHtml(p)}
-        <input type="number" id="rc-period-switch" class="wk-input" placeholder="期間 ID" value="${state.filters.period_id}" style="width:90px">
-        <button class="wk-btn wk-btn-sm wk-btn-secondary" id="rc-period-go" type="button">切換</button>
-        ${state.filters.period_id !== '' ? '<button class="wk-btn wk-btn-sm wk-btn-secondary" id="rc-period-clear" type="button">回目前期間</button>' : ''}
       </div>`;
   }
 
@@ -543,15 +565,9 @@ export async function showReconcilePanel(identity) {
     });
     body.querySelector('#rc-manual-open').addEventListener('click', () => toggleManualForm(body));
 
-    body.querySelector('#rc-period-go').addEventListener('click', () => {
-      const v = body.querySelector('#rc-period-switch').value;
+    body.querySelector('#rc-period-select').addEventListener('change', (e) => {
+      const v = e.target.value;
       state.filters.period_id = v ? Number(v) : '';
-      state.batchMsg = '';
-      renderReconcile(body);
-    });
-    const periodClearBtn = body.querySelector('#rc-period-clear');
-    if (periodClearBtn) periodClearBtn.addEventListener('click', () => {
-      state.filters.period_id = '';
       state.batchMsg = '';
       renderReconcile(body);
     });
@@ -599,11 +615,13 @@ export async function showReconcilePanel(identity) {
   function periodTabHtml(period, settings, items) {
     const disabled = period ? '' : 'disabled';
     return `
+      <div class="wk-page-body">
       <section class="rc-period-section">
         <h3>目前期間</h3>
         <div class="rc-period-bar">
           <span class="rc-period-label">${period ? escapeHtml(period.label) : '（無期間）'}</span>
           ${periodBadgeHtml(period)}
+          ${period && period.end_date ? `<span class="rc-period-next">下次月結：${escapeHtml(period.end_date)}</span>` : ''}
         </div>
         <div class="ap-form">
           <input type="date" id="rc-enddate-input" ${disabled}>
@@ -631,11 +649,7 @@ export async function showReconcilePanel(identity) {
           <div class="ap-msg" id="rc-set-msg"></div>
         </div>
       </section>
-
-      <section class="rc-period-section">
-        <h3>月報表</h3>
-        <div id="rc-mr-report"></div>
-      </section>`;
+      </div>`;
   }
 
   function wirePeriodTab(body, period) {
@@ -723,8 +737,37 @@ export async function showReconcilePanel(identity) {
 
     body.innerHTML = periodTabHtml(period, settings, items);
     wirePeriodTab(body, period);
-    const reportDiv = body.querySelector('#rc-mr-report');
-    if (reportDiv) renderMonthReport(reportDiv, period ? { periodId: period.id } : {});
+  }
+
+  // ---- 月報表分頁：月份下拉 + 交叉表（重用 month_report.js）----
+  function reportTabHtml() {
+    return `
+      <div class="wk-toolbar">
+        <div class="wk-toolbar-row">
+          <label class="rc-period-label">月報表期間：
+            <select id="rc-report-select" class="wk-select" style="margin-left:6px">${periodOptionsHtml(state.reportPeriodId, false)}</select>
+          </label>
+        </div>
+      </div>
+      <div class="wk-page-body">
+        <div id="rc-report-body"></div>
+      </div>`;
+  }
+
+  async function renderReport(body) {
+    if (!state.periods.length) await loadPeriods();
+    // 預設選最新一期（清單第一筆＝start_date 最新），讓下拉選中項與畫出來的報表一致
+    if (state.reportPeriodId === '' && state.periods.length) {
+      state.reportPeriodId = String(state.periods[0].id);
+    }
+    body.innerHTML = reportTabHtml();
+    const reportDiv = body.querySelector('#rc-report-body');
+    const draw = (pid) => renderMonthReport(reportDiv, pid ? { periodId: Number(pid) } : {});
+    draw(state.reportPeriodId);
+    body.querySelector('#rc-report-select').addEventListener('change', (e) => {
+      state.reportPeriodId = e.target.value;
+      draw(state.reportPeriodId);
+    });
   }
 
   async function renderActiveTab() {
@@ -733,6 +776,7 @@ export async function showReconcilePanel(identity) {
     body.innerHTML = '';
     if (state.tab === 'reconcile') await renderReconcile(body);
     else if (state.tab === 'period') await renderPeriod(body);
+    else if (state.tab === 'report') await renderReport(body);
     else renderMyPassword(body);
   }
 

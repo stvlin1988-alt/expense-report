@@ -1,11 +1,26 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from flask import request, jsonify
 from app.extensions import db
 from app.models import AccountingPeriod
 from app.auth.decorators import role_required
 from app.periods import period_bp
 from app.periods.settings import get_close_day, get_lock_offset_hours, set_setting
-from app.periods.service import lock_at_for, successor_bounds
+from app.periods.service import lock_at_for, successor_bounds, effective_status
+
+
+@period_bp.get("/")
+@role_required("accountant", "super_admin")   # 會計 + 經理可看；給月份下拉／月報表選期用
+def list_periods():
+    now = datetime.now(timezone.utc)
+    periods = AccountingPeriod.query.order_by(AccountingPeriod.start_date.desc()).all()
+    out = [{
+        "id": p.id,
+        "label": p.label,
+        "status": effective_status(p, now),   # open / closing / closed（衍生，不動 DB）
+        "start_date": p.start_date.isoformat(),
+        "end_date": p.end_date.isoformat(),
+    } for p in periods]
+    return jsonify(status="ok", periods=out)
 
 
 @period_bp.get("/settings")

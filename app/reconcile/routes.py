@@ -116,7 +116,8 @@ def pending():
     for e in rows:
         key = e.business_date.isoformat() if e.business_date else "none"
         by_date.setdefault(key, []).append(e)
-    for bd in sorted(by_date):
+    # 營業日新到舊排（最新在最上面，月底不用往下拉）；未歸日的 "none" 一律殿後
+    for bd in sorted(by_date, key=lambda k: (k != "none", k), reverse=True):
         items = by_date[bd]
         groups.append({
             "business_date": bd,
@@ -133,7 +134,8 @@ def pending():
         "count": len(rows),
     }
     period_out = ({"id": period.id, "label": period.label,
-                  "status": effective_status(period, now)} if period else None)
+                  "status": effective_status(period, now),
+                  "end_date": period.end_date.isoformat()} if period else None)
     return jsonify(status="ok", groups=groups, total=total, period=period_out)
 
 
