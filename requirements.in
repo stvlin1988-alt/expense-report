@@ -1,0 +1,32 @@
+# expense-report 直接執行期依賴（來源清單）。鎖檔產生：
+#   PYTHONPATH=... python -m piptools compile --generate-hashes \
+#       --output-file=requirements.txt requirements.in
+# 版本鎖到「2026-07-20 已測綠（後端 567 passed）」那一組，避免 image 重建時 pip 漂到新版。
+#
+# face_recognition 刻意「不」列在這裡（比照 webapp/Weather 做法）：
+# 它在 Dockerfile 用 --no-deps 安裝——dlib + face_recognition_models 來自 wheels/
+# （已預編 / 100MB），face_recognition 本身是純 python。若列進來，會把 dlib +
+# face_recognition_models 拉進 hash lock、在 --require-hashes 下強制回 PyPI 重編/重載，
+# 破壞 vendored wheels 的優化。其執行期依賴（numpy / Pillow / Click）仍有鎖：
+# numpy / Pillow 於下方直接鎖、Click 經由 Flask 帶入。
+Flask==3.1.3
+Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.50
+Flask-Migrate==4.1.0
+Flask-Limiter==3.12
+python-dotenv==1.2.2
+numpy==2.4.6
+Pillow==11.3.0
+gunicorn==23.0.0
+boto3==1.35.99
+# prod Postgres driver（比照 webapp/Weather）。dev 走 sqlite 用不到，但 image 需內含
+# 才能在 DATABASE_URL 指向 Postgres 時連得上（否則 prod 部署會連 DB 失敗）。
+psycopg2-binary==2.9.12
+
+# 以下為 transitive 依賴，釘到「2026-07-20 已測綠」的 patch 版（否則 pip-compile 會漂到更新 patch，
+# 與實測環境不符）。之後升版時可移除這幾行讓其自由解析、再重測。
+alembic==1.18.4
+click==8.4.1
+greenlet==3.5.1
+typing-extensions==4.15.0
+wrapt==2.2.1

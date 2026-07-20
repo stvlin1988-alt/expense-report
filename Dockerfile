@@ -18,6 +18,12 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 COPY wheels/ /tmp/wheels/
 RUN pip install --no-cache-dir --no-deps /tmp/wheels/*.whl && rm -rf /tmp/wheels
 
+# face_recognition wrapper（純 python）用 --no-deps 裝：比照 webapp/Weather，避免把 dlib +
+# face_recognition_models 從 PyPI 重拉/重編（那兩個已由上面的 vendored wheels 提供）。
+# 其執行期依賴（numpy / Pillow / Click）由下方 hash-locked requirements.txt 提供。
+RUN pip install --no-cache-dir --no-deps face_recognition==1.3.0
+
+# hash-locked（pip-compile --generate-hashes 產；有 hash 時 pip 自動 --require-hashes）
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -34,4 +40,4 @@ EXPOSE 8080
 ENV PYTHONUNBUFFERED=1
 ENV SESSION_COOKIE_SECURE=true
 
-CMD ["gunicorn", "-b", "0.0.0.0:8080", "wsgi:app"]
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "wsgi:app"]
