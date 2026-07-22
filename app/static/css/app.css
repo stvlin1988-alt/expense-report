@@ -1083,3 +1083,13 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 .mb-au-daynav input[type=date]{ min-height:44px; flex:1; border:1px solid var(--wk-line);
   border-radius:var(--wk-radius-sm); background:var(--wk-surface); padding:0 10px;
   font-size:14.5px; color:var(--wk-ink); }
+
+/* 操作記錄/帳號/裝置（Task 4）：重用桌面 renderLogs/renderAccounts/renderDevices，
+   .mb-admin-embed 把桌面 .wk-*/.ap-*/.pd-* 元件收進手機殼——單欄、可橫捲、觸控尺寸。
+   不改桌面元件本身，只在此 scope 內覆蓋關鍵幾點。 */
+.mb-admin-embed{ padding:2px; }
+.mb-admin-embed .wk-toolbar,.mb-admin-embed .wk-page-body{ padding-left:0; padding-right:0; }
+.mb-admin-embed .table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.mb-admin-embed table{ min-width:520px; }            /* 表格窄於視窗就橫捲，不擠壓 */
+.mb-admin-embed input,.mb-admin-embed select,.mb-admin-embed button{ min-height:40px; } /* 觸控尺寸 */
+.mb-admin-embed .wk-card{ margin-bottom:12px; }

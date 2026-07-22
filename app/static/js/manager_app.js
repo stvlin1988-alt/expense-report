@@ -59,11 +59,14 @@ export function showManagerApp(identity) {
     if (name === 'audit') {
       renderAuditPane(el, { onSubtotalChange: paintSubtotal });
     } else if (name === 'logs') {
-      renderLogs(el, identity, null);              // Task 4：主管本店，storeId=null
+      el.innerHTML = '<div class="mb-pane-title" style="padding:12px 14px 0">操作記錄</div><div class="mb-admin-embed"></div>';
+      renderLogs(el.querySelector('.mb-admin-embed'), identity, null); // Task 4：主管本店，storeId=null
     } else if (name === 'accounts') {
-      renderAccounts(el, ctx());                   // Task 4
+      el.innerHTML = '<div class="mb-pane-title" style="padding:12px 14px 0">帳號</div><div class="mb-admin-embed"></div>';
+      renderAccounts(el.querySelector('.mb-admin-embed'), ctx());      // Task 4
     } else if (name === 'devices') {
-      renderDevices(el, ctx());                    // Task 4
+      el.innerHTML = '<div class="mb-pane-title" style="padding:12px 14px 0">裝置</div><div class="mb-admin-embed"></div>';
+      renderDevices(el.querySelector('.mb-admin-embed'), ctx());       // Task 4
     } else if (name === 'mypw') {
       renderMyPasswordPane(el);                    // Task 5
     }
