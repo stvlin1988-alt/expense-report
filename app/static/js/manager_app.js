@@ -112,6 +112,7 @@ export function showManagerApp(identity) {
 
   refreshStores().then(() => {
     renderPane('audit');           // 進站預設稽核
+    actionbar.hidden = (state.tab !== 'audit');
     wireActionBar(actionbar, { onSubtotalChange: paintSubtotal }); // Task 2 提供；Task 1 若尚未有可先 no-op
   });
 }
