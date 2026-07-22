@@ -4,7 +4,7 @@
 import { api } from './admin_api.js';
 import { escapeHtml } from './admin_util.js';
 import { categoryOptionsHtml, lightLabel, parseAmountInput } from './expenses_util.js';
-import { formatMoney, formatDateTimeTW, renderTrailRows } from './audit_util.js';
+import { formatMoney, formatDateTimeTW, status_label, renderTrailRows } from './audit_util.js';
 import { openImageLightbox } from './lightbox.js';
 
 const SID = undefined; // 主管鎖本店，後端用本店
@@ -27,9 +27,49 @@ export async function renderAuditPane(container, { onSubtotalChange } = {}) {
   setSub('pending');
 }
 
-// 總表查詢：Task 3 佔位，避免子分頁切過去時整頁掛掉。
-function renderSummary(body) {
-  body.innerHTML = '<div class="mb-ph-card"><h3>總表查詢（Task 3）</h3></div>';
+// 總表查詢：依營業日 + 班別分組的唯讀卡片（沿用 admin_audit.js:renderSummary 同一資料流）。
+function shiftLabel(sh) {
+  if (sh.handover_id === null) return '當前未歸班';
+  const kind = sh.type === 'day' ? '結班' : '交班';
+  return `第 ${sh.seq} 班（${kind} ${formatDateTimeTW(sh.closed_at)}）`;
+}
+const CHIP = { reconciled: 'chip-ok', rejected: 'chip-bad', audited: 'chip-line', submitted: 'chip-warn' };
+function roCardHtml(e) {
+  const thumb = e.thumb_url
+    ? `<img src="${e.thumb_url}" loading="lazy" class="mb-au-thumb au-thumb" data-zoom="${e.image_url || ''}" alt="收據">`
+    : '<span class="mb-au-thumb none">—</span>';
+  const amt = Number(e.amount); const neg = Number.isFinite(amt) && amt < 0;
+  return `<article class="mb-ro-card">
+    <div class="mb-ro-top">${thumb}
+      <div class="mb-ro-main">
+        <div class="mb-ro-line1"><span class="mb-au-docno">${escapeHtml(e.doc_no || `#${e.id}`)}</span>
+          <span class="mb-ro-amt num${neg ? ' neg' : ''}">${formatMoney(e.amount)}</span></div>
+        <div class="mb-ro-sum">${escapeHtml(e.summary || '')}${e.is_no_receipt ? ' <span class="au-mod">無單據</span>' : ''}</div>
+        <div class="mb-ro-tags"><span class="chip chip-line">${escapeHtml(e.category_name || '未分類')}</span>
+          <span class="chip ${CHIP[e.status] || 'chip-line'}">${escapeHtml(status_label(e.status))}</span></div>
+        ${e.note ? `<div class="mb-ro-note">備註：${escapeHtml(e.note)}</div>` : ''}
+        <div class="mb-ro-audit">稽核：${escapeHtml(e.audited_by_name || '—')}</div>
+      </div></div></article>`;
+}
+async function renderSummary(body, dateStr) {
+  body.innerHTML = '<div class="mb-empty-state" style="display:block">載入中…</div>';
+  const { data: dd } = await api.auditSummaryDates(SID);
+  const dates = (dd && dd.dates) || [];
+  const today = dates[0] || '';
+  const sel = dateStr || today;
+  const { data } = sel ? await api.auditByDate(SID, sel) : { data: { shifts: [], total: 0, count: 0 } };
+  const shifts = data.shifts || [];
+  const blocks = shifts.map((sh) => `
+    <div class="mb-shift-head"><span class="s">${escapeHtml(shiftLabel(sh))}</span>
+      <span class="sum">小計 <b class="num">${formatMoney(sh.subtotal)}</b>（${sh.count} 筆）</span></div>
+    <div class="mb-cardlist">${sh.items.map(roCardHtml).join('')}</div>`).join('');
+  body.innerHTML = `
+    <div class="mb-au-daynav">營業日 <input type="date" id="mb-au-date" value="${sel}"${today ? ` max="${today}"` : ''}></div>
+    ${blocks || '<div class="mb-empty-state" style="display:block">當天沒有單據</div>'}
+    <div class="mb-day-total"><span class="l">當日總額</span><span class="v num">${formatMoney(data.total)}（${data.count} 筆）</span></div>`;
+  const dinp = body.querySelector('#mb-au-date');
+  if (dinp) dinp.addEventListener('change', (ev) => { if (ev.target.value) renderSummary(body, ev.target.value); });
+  body.querySelectorAll('.au-thumb').forEach((img) => img.addEventListener('click', () => openImageLightbox(img.dataset.zoom)));
 }
 
 async function overdueHtml() {

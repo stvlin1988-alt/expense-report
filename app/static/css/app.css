@@ -1043,3 +1043,43 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 .mb-au-hist[hidden]{ display:none; }
 .mb-au-err{ font-size:12px; color:var(--wk-bad); min-height:1em; }
 .mb-au-lastmod{ font-size:12px; color:var(--wk-warn-ink); }
+
+/* chip 家族（原型 .chip/.chip-ok/.chip-warn/.chip-bad/.chip-line；桌面稽核未建，Task 2「主管改」
+   徽章與 Task 3 分類/狀態徽章共用，此處一併補齊） */
+.chip{ display:inline-flex; align-items:center; padding:1px 7px; border-radius:999px;
+  font-size:11px; font-weight:700; line-height:1.5; }
+.chip-warn{ background:var(--wk-warn-soft); color:var(--wk-warn-ink); }
+.chip-ok{ background:var(--wk-ok-soft); color:var(--wk-ok-ink); }
+.chip-bad{ background:var(--wk-bad-soft); color:var(--wk-bad-ink); }
+.chip-line{ background:var(--wk-surface-2); color:var(--wk-muted); border:1px solid var(--wk-line); }
+
+/* 總表查詢唯讀班別卡（Task 3）：原型 manager-audit.html .shift-head/.rcard 家族，mb-/mb-ro- 前綴。
+   .mb-ro-card/.mb-ro-amt 於 Task 5（複查唯讀卡，review.js）已定義局部樣式；這裡在 #mb-au-body 範圍內
+   補齊本卡外觀，避免動到既有複查卡樣式（gap:8px／text-align:right 等沿用該共用規則）。 */
+#mb-au-body .mb-ro-card{ background:var(--wk-surface); border:1px solid var(--wk-line);
+  border-radius:var(--wk-radius); padding:11px 12px; display:flex; flex-direction:column; }
+.mb-ro-top{ display:flex; gap:10px; align-items:flex-start; }
+.mb-ro-main{ flex:1; min-width:0; }
+.mb-ro-line1{ display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+#mb-au-body .mb-ro-amt{ font-weight:700; font-variant-numeric:tabular-nums; font-size:15.5px; flex:none; }
+.mb-ro-sum{ font-size:13.5px; color:var(--wk-ink); margin-top:1px; }
+.mb-ro-tags{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:5px; }
+.mb-ro-note{ font-size:12.5px; color:var(--wk-muted); }
+.mb-ro-audit{ font-size:12px; color:var(--wk-faint); }
+
+.mb-shift-head{ display:flex; justify-content:space-between; align-items:baseline; gap:8px;
+  padding:2px 4px 8px; margin-top:8px; flex-wrap:wrap; }
+.mb-shift-head .s{ font-weight:700; font-size:14px; color:var(--wk-muted); }
+.mb-shift-head .sum{ font-size:13px; color:var(--wk-faint); }
+.mb-shift-head .sum b{ color:var(--wk-ink); font-weight:700; }
+
+.mb-day-total{ margin-top:4px; padding:13px 14px; border-radius:var(--wk-radius);
+  background:var(--wk-surface); border:1px solid var(--wk-line);
+  display:flex; justify-content:space-between; align-items:baseline; font-weight:700; }
+.mb-day-total .l{ font-size:13.5px; color:var(--wk-muted); }
+.mb-day-total .v{ font-size:17px; font-variant-numeric:tabular-nums; }
+
+.mb-au-daynav{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.mb-au-daynav input[type=date]{ min-height:44px; flex:1; border:1px solid var(--wk-line);
+  border-radius:var(--wk-radius-sm); background:var(--wk-surface); padding:0 10px;
+  font-size:14.5px; color:var(--wk-ink); }
