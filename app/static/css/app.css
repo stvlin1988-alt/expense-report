@@ -766,6 +766,14 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 .mb-app{ position:fixed; inset:0; z-index:50; display:flex; flex-direction:column;
   background:var(--wk-ground); color:var(--wk-ink);
   font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Segoe UI","Microsoft JhengHei",sans-serif; }
+/* 平板/寬視窗：把手機殼框在 760px 置中（對齊原型 manager-audit / employee-mobile 的
+   @media(min-width:768px)：手機滿版、平板以上收成置中的 app 欄）。<768px 維持滿版不變。
+   兩側鋪中性 backdrop（--mb-stage），避免露出底層計算機頁。 */
+@media (min-width:768px){
+  .mb-app{ max-width:760px; margin-inline:auto;
+    border-inline:1px solid var(--wk-line); box-shadow:0 0 48px rgba(20,30,45,.16); }
+  .mb-app::before{ content:""; position:fixed; inset:0; z-index:-1; background:var(--mb-stage); }
+}
 .mb-appbar{ flex:none; display:flex; align-items:center; justify-content:space-between; gap:8px;
   padding:12px 14px 10px; background:var(--wk-surface); border-bottom:1px solid var(--wk-line); }
 .mb-who{ display:flex; align-items:center; gap:9px; min-width:0; }
