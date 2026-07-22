@@ -763,7 +763,7 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 @media (prefers-color-scheme: dark){ :root{ --mb-stage:#0C0F14; --mb-cam:#0E1319; --mb-cam-2:#1A222D;
   --mb-thumb-a:#252E3B; --mb-thumb-b:#1E2632; --mb-shadow:0 18px 44px rgba(0,0,0,.5); } }
 /* 殼：滿版（非原型的 phone 外框——那只是原型展示用）。#modal-root 掛載。 */
-.mb-app{ position:fixed; inset:0; z-index:50; display:flex; flex-direction:column;
+.mb-app{ position:fixed; inset:0; z-index:50; display:flex; flex-direction:column; line-height:1.45;
   background:var(--wk-ground); color:var(--wk-ink);
   font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Segoe UI","Microsoft JhengHei",sans-serif; }
 /* 平板/寬視窗：把手機殼框在 760px 置中（對齊原型 manager-audit / employee-mobile 的
@@ -988,29 +988,29 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
   border-bottom:1px solid var(--wk-line); overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
 .mb-toptabs::-webkit-scrollbar{ display:none; }
 .mb-toptab{ flex:none; min-height:46px; padding:0 14px; border:0; background:none;
-  color:var(--wk-muted); font-weight:600; font-size:14.5px; white-space:nowrap;
+  color:var(--wk-muted); font-weight:600; font-size:15.5px; white-space:nowrap;
   border-bottom:2.5px solid transparent; margin-bottom:-1px; }
 .mb-toptab.active{ color:var(--wk-accent-ink); border-bottom-color:var(--wk-accent); }
 /* segmented 子分頁（原型 .subtabs/.subtab；稽核用 待稽核/總表） */
 .mb-subtabs{ display:flex; gap:4px; padding:4px; margin-bottom:12px;
   background:var(--wk-surface-2); border:1px solid var(--wk-line); border-radius:var(--wk-radius); }
 .mb-subtab{ flex:1; min-height:40px; border:0; border-radius:var(--wk-radius-sm); background:none;
-  font-weight:600; font-size:14px; color:var(--wk-muted); }
+  font-weight:600; font-size:15px; color:var(--wk-muted); }
 .mb-subtab.active{ background:var(--wk-surface); color:var(--wk-accent-ink); box-shadow:var(--mb-shadow,0 1px 2px rgba(28,39,51,.08)); }
 /* 常駐底部 action bar（原型 .actionbar/.ab-*；僅稽核分頁顯示） */
 .mb-actionbar{ flex:none; background:var(--wk-surface); border-top:1px solid var(--wk-line);
   padding:9px 12px calc(10px + env(safe-area-inset-bottom,0px)); box-shadow:0 -4px 16px rgba(20,30,45,.08); }
 .mb-actionbar[hidden]{ display:none; }
 .mb-ab-sub{ display:flex; justify-content:space-between; align-items:baseline;
-  font-size:12.5px; color:var(--wk-muted); padding:0 2px 8px; }
-.mb-ab-sub b{ font-size:15px; color:var(--wk-ink); font-variant-numeric:tabular-nums; }
+  font-size:13.5px; color:var(--wk-muted); padding:0 2px 8px; }
+.mb-ab-sub b{ font-size:16px; color:var(--wk-ink); font-variant-numeric:tabular-nums; }
 .mb-ab-btns{ display:flex; gap:8px; }
-.mb-ab-btn{ flex:1; min-height:46px; border-radius:var(--wk-radius-sm); border:1px solid transparent;
-  font-weight:700; font-size:14.5px; }
+.mb-ab-btn{ flex:1; min-height:48px; border-radius:var(--wk-radius-sm); border:1px solid transparent;
+  font-weight:700; font-size:15.5px; }
 .mb-ab-primary{ background:var(--wk-accent); color:#fff; border-color:var(--wk-accent); }
 .mb-ab-secondary{ background:var(--wk-accent-soft); color:var(--wk-accent-ink);
   border-color:color-mix(in srgb, var(--wk-accent) 30%, transparent); }
-.mb-ab-err{ display:block; font-size:12px; color:var(--wk-bad); padding:6px 2px 0; min-height:1em; }
+.mb-ab-err{ display:block; font-size:12.5px; color:var(--wk-bad); padding:6px 2px 0; min-height:1em; }
 /* 佔位卡（Task 5 前，帳號/裝置/操作記錄/我的密碼 pane 暫時空殼用） */
 .mb-ph-card{ background:var(--wk-surface); border:1px solid var(--wk-line); border-radius:var(--wk-radius);
   box-shadow:var(--mb-shadow,0 1px 2px rgba(28,39,51,.08)); padding:14px; margin-bottom:12px; }
@@ -1018,11 +1018,11 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 
 /* 稽核卡（待稽核，Task 2）：原型 manager-audit.html .card 家族，mb-au- 前綴 */
 .mb-day-head{ display:flex; justify-content:space-between; align-items:baseline; padding:2px 4px 8px; margin-top:6px; }
-.mb-day-head .d{ font-weight:700; font-size:14px; color:var(--wk-muted); }
-.mb-day-head .sum{ font-size:13px; color:var(--wk-faint); } .mb-day-head .sum b{ color:var(--wk-ink); font-weight:700; }
+.mb-day-head .d{ font-weight:700; font-size:15px; color:var(--wk-muted); }
+.mb-day-head .sum{ font-size:13.5px; color:var(--wk-faint); } .mb-day-head .sum b{ color:var(--wk-ink); font-weight:700; }
 .mb-overdue{ display:flex; gap:10px; align-items:flex-start; background:var(--wk-warn-soft);
   border:1px solid color-mix(in srgb, var(--wk-warn) 35%, transparent); color:var(--wk-warn-ink);
-  border-radius:var(--wk-radius); padding:11px 13px; margin-bottom:14px; font-size:13.5px; font-weight:600; }
+  border-radius:var(--wk-radius); padding:11px 13px; margin-bottom:14px; font-size:14px; font-weight:600; }
 .mb-au-card{ background:var(--wk-surface); border:1px solid var(--wk-line); border-radius:var(--wk-radius);
   box-shadow:var(--mb-shadow,0 1px 2px rgba(28,39,51,.08)); padding:12px; display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
 .mb-au-top{ display:flex; gap:10px; align-items:flex-start; }
@@ -1030,32 +1030,32 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
   border:1px solid var(--wk-line); cursor:zoom-in; background:var(--wk-surface-2); }
 .mb-au-thumb.none{ display:flex; align-items:center; justify-content:center; color:var(--wk-faint); font-size:12px; }
 .mb-au-meta{ flex:1; min-width:0; }
-.mb-au-docno{ font-weight:700; font-size:14.5px; letter-spacing:.2px; font-variant-numeric:tabular-nums; }
-.mb-au-byline{ font-size:12px; color:var(--wk-faint); margin-top:2px; }
-.mb-au-summary{ font-size:14.5px; color:var(--wk-ink); }
-.mb-au-flag{ display:flex; gap:8px; align-items:flex-start; font-size:13px; font-weight:600;
+.mb-au-docno{ font-weight:700; font-size:15.5px; letter-spacing:.2px; font-variant-numeric:tabular-nums; }
+.mb-au-byline{ font-size:13px; color:var(--wk-faint); margin-top:2px; }
+.mb-au-summary{ font-size:15.5px; color:var(--wk-ink); }
+.mb-au-flag{ display:flex; gap:8px; align-items:flex-start; font-size:13.5px; font-weight:600;
   background:var(--wk-bad-soft); color:var(--wk-bad-ink);
   border:1px solid color-mix(in srgb, var(--wk-bad) 30%, transparent); border-radius:var(--wk-radius-sm); padding:8px 10px; }
 .mb-au-fields{ display:grid; grid-template-columns:1fr 116px; gap:8px; }
 .mb-au-field{ display:flex; flex-direction:column; gap:4px; min-width:0; }
 .mb-au-field.full{ grid-column:1 / -1; }
-.mb-au-field label{ font-size:11.5px; color:var(--wk-faint); }
+.mb-au-field label{ font-size:13px; color:var(--wk-faint); }
 .mb-au-field select,.mb-au-field input{ min-height:44px; width:100%; border:1px solid var(--wk-line);
-  border-radius:var(--wk-radius-sm); background:var(--wk-surface-2); padding:0 10px; font-size:14.5px; color:var(--wk-ink); }
+  border-radius:var(--wk-radius-sm); background:var(--wk-surface-2); padding:0 10px; font-size:16px; color:var(--wk-ink); }
 .mb-au-field input.amt{ text-align:right; font-variant-numeric:tabular-nums; font-weight:700; }
 .mb-au-check{ min-height:48px; border:0; border-radius:var(--wk-radius-sm); background:var(--wk-accent);
-  color:#fff; font-weight:700; font-size:15.5px; }
+  color:#fff; font-weight:700; font-size:16.5px; }
 .mb-au-hist-toggle{ align-self:flex-start; min-height:40px; padding:0 4px; border:0; background:none;
-  color:var(--wk-accent-ink); font-size:13px; font-weight:600; }
-.mb-au-hist{ border-top:1px dashed var(--wk-line); padding-top:9px; font-size:12.5px; color:var(--wk-muted); }
+  color:var(--wk-accent-ink); font-size:14px; font-weight:600; }
+.mb-au-hist{ border-top:1px dashed var(--wk-line); padding-top:9px; font-size:13px; color:var(--wk-muted); }
 .mb-au-hist[hidden]{ display:none; }
-.mb-au-err{ font-size:12px; color:var(--wk-bad); min-height:1em; }
-.mb-au-lastmod{ font-size:12px; color:var(--wk-warn-ink); }
+.mb-au-err{ font-size:12.5px; color:var(--wk-bad); min-height:1em; }
+.mb-au-lastmod{ font-size:12.5px; color:var(--wk-warn-ink); }
 
 /* chip 家族（原型 .chip/.chip-ok/.chip-warn/.chip-bad/.chip-line；桌面稽核未建，Task 2「主管改」
    徽章與 Task 3 分類/狀態徽章共用，此處一併補齊） */
-.chip{ display:inline-flex; align-items:center; padding:1px 7px; border-radius:999px;
-  font-size:11px; font-weight:700; line-height:1.5; }
+.chip{ display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px;
+  font-size:12px; font-weight:700; line-height:1.5; }
 .chip-warn{ background:var(--wk-warn-soft); color:var(--wk-warn-ink); }
 .chip-ok{ background:var(--wk-ok-soft); color:var(--wk-ok-ink); }
 .chip-bad{ background:var(--wk-bad-soft); color:var(--wk-bad-ink); }
@@ -1069,11 +1069,11 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 .mb-ro-top{ display:flex; gap:10px; align-items:flex-start; }
 .mb-ro-main{ flex:1; min-width:0; }
 .mb-ro-line1{ display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
-#mb-au-body .mb-ro-amt{ font-weight:700; font-variant-numeric:tabular-nums; font-size:15.5px; flex:none; }
-.mb-ro-sum{ font-size:13.5px; color:var(--wk-ink); margin-top:1px; }
+#mb-au-body .mb-ro-amt{ font-weight:700; font-variant-numeric:tabular-nums; font-size:16.5px; flex:none; }
+.mb-ro-sum{ font-size:14px; color:var(--wk-ink); margin-top:1px; }
 .mb-ro-tags{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:5px; }
-.mb-ro-note{ font-size:12.5px; color:var(--wk-muted); }
-.mb-ro-audit{ font-size:12px; color:var(--wk-faint); }
+.mb-ro-note{ font-size:13px; color:var(--wk-muted); }
+.mb-ro-audit{ font-size:12.5px; color:var(--wk-faint); }
 
 .mb-shift-head{ display:flex; justify-content:space-between; align-items:baseline; gap:8px;
   padding:2px 4px 8px; margin-top:8px; flex-wrap:wrap; }
