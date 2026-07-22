@@ -1,6 +1,6 @@
 // 主管手機殼（UI 重塑 2026-07）：抬頭 + 可橫捲主分頁 + 5 pane + 常駐 action bar（僅稽核）。
 // 取代主管原本與經理共用的桌面側邊欄工作台（admin.js showAdminPanel）。經理仍走 admin.js。
-import { escapeHtml } from './admin_util.js';
+import { escapeHtml, isValidPin } from './admin_util.js';
 import { api } from './admin_api.js';
 import { mbToast, stopPaneCamera, postJSON } from './mb_util.js';
 import { renderAuditPane, wireActionBar } from './manager_audit_mobile.js'; // Task 2/3 提供
@@ -108,9 +108,42 @@ export function showManagerApp(identity) {
     </div>
     <span class="mb-ab-err" id="mb-ab-err"></span>`;
 
-  // 我的密碼 pane（Task 5 實作；Task 1 先放佔位避免 undefined）
+  // 我的密碼 pane（Task 5 實作；沿用 admin.js renderMyPassword 的 api.changeMyPassword 流程，
+  // 密碼規則對齊後端 /admin/me/password：4 位數字 PIN，見 admin_util.js isValidPin）
   function renderMyPasswordPane(el) {
-    el.innerHTML = '<div class="mb-ph-card"><h3>我的密碼</h3></div>';
+    el.innerHTML = `
+      <div class="mb-ph-card"><h3>變更我的密碼</h3>
+        <div class="mb-form-field"><label for="mb-pw-old">舊密碼</label><input type="password" id="mb-pw-old" inputmode="numeric" maxlength="4" autocomplete="current-password"></div>
+        <div class="mb-form-field"><label for="mb-pw-new">新密碼</label><input type="password" id="mb-pw-new" inputmode="numeric" maxlength="4" autocomplete="new-password"></div>
+        <div class="mb-form-field"><label for="mb-pw-new2">確認新密碼</label><input type="password" id="mb-pw-new2" inputmode="numeric" maxlength="4" autocomplete="new-password"></div>
+        <button class="mb-pw-btn" id="mb-pw-submit" type="button">更新密碼</button>
+        <div class="mb-au-err" id="mb-pw-err"></div></div>`;
+    const oldEl = el.querySelector('#mb-pw-old');
+    const newEl = el.querySelector('#mb-pw-new');
+    const new2El = el.querySelector('#mb-pw-new2');
+    [oldEl, newEl, new2El].forEach((inp) => inp.addEventListener('input', () => {
+      inp.value = inp.value.replace(/\D/g, '').slice(0, 4);
+    }));
+    el.querySelector('#mb-pw-submit').addEventListener('click', async () => {
+      const oldp = oldEl.value;
+      const np = newEl.value;
+      const np2 = new2El.value;
+      const err = el.querySelector('#mb-pw-err');
+      err.textContent = '';
+      if (!isValidPin(np)) { err.textContent = '新密碼需為 4 位數字'; return; }
+      if (np !== np2) { err.textContent = '兩次新密碼不一致'; return; }
+      try {
+        const { status } = await api.changeMyPassword(oldp, np);
+        if (status === 200) {
+          mbToast('密碼已更新');
+          oldEl.value = ''; newEl.value = ''; new2El.value = '';
+        } else {
+          err.textContent = '更新失敗（舊密碼可能不正確）';
+        }
+      } catch {
+        err.textContent = '更新失敗，請重試';
+      }
+    });
   }
 
   refreshStores().then(() => {

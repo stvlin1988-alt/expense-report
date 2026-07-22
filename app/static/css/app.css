@@ -1093,3 +1093,11 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 .mb-admin-embed table{ min-width:520px; }            /* 表格窄於視窗就橫捲，不擠壓 */
 .mb-admin-embed input,.mb-admin-embed select,.mb-admin-embed button{ min-height:40px; } /* 觸控尺寸 */
 .mb-admin-embed .wk-card{ margin-bottom:12px; }
+
+/* 我的密碼（Task 5）：原型 manager-audit.html .form-field/.pw-btn，mb- 前綴、var(--x)→var(--wk-x) */
+.mb-form-field{ display:flex; flex-direction:column; gap:5px; margin-bottom:12px; }
+.mb-form-field label{ font-size:12.5px; color:var(--wk-muted); font-weight:600; }
+.mb-form-field input{ min-height:44px; border:1px solid var(--wk-line); border-radius:var(--wk-radius-sm);
+  background:var(--wk-surface-2); padding:0 12px; font-size:15px; color:var(--wk-ink); }
+.mb-pw-btn{ width:100%; min-height:46px; border:0; border-radius:var(--wk-radius-sm);
+  background:var(--wk-accent); color:#fff; font-weight:700; font-size:15px; }
