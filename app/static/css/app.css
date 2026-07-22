@@ -968,3 +968,42 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 .mb-total-bar .lbl{ font-size:13.5px; color:var(--wk-muted); }
 .mb-total-bar .sum{ font-size:19px; font-weight:800; color:var(--wk-ok-ink);
   font-variant-numeric:tabular-nums; }
+
+/* ============================================================
+   手機設計層－主管稽核（UI 重塑 2026-07；manager 手機/平板）
+   沿用員工手機段落的 .mb-app/.mb-appbar/.mb-content/.mb-pane/.mb-toast 基底。
+   本段新增主管專屬：可橫捲主分頁 / segmented 子分頁 / 稽核卡 / 常駐 action bar /
+   唯讀班別卡 / 佔位卡。視覺 SoT: docs/superpowers/ui-prototypes/manager-audit.html
+   ============================================================ */
+/* 可橫捲主分頁（原型 .tabs/.tab；置於 .mb-appbar 下方） */
+.mb-toptabs{ flex:none; display:flex; gap:2px; padding:0 8px; background:var(--wk-surface);
+  border-bottom:1px solid var(--wk-line); overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.mb-toptabs::-webkit-scrollbar{ display:none; }
+.mb-toptab{ flex:none; min-height:46px; padding:0 14px; border:0; background:none;
+  color:var(--wk-muted); font-weight:600; font-size:14.5px; white-space:nowrap;
+  border-bottom:2.5px solid transparent; margin-bottom:-1px; }
+.mb-toptab.active{ color:var(--wk-accent-ink); border-bottom-color:var(--wk-accent); }
+/* segmented 子分頁（原型 .subtabs/.subtab；稽核用 待稽核/總表） */
+.mb-subtabs{ display:flex; gap:4px; padding:4px; margin-bottom:12px;
+  background:var(--wk-surface-2); border:1px solid var(--wk-line); border-radius:var(--wk-radius); }
+.mb-subtab{ flex:1; min-height:40px; border:0; border-radius:var(--wk-radius-sm); background:none;
+  font-weight:600; font-size:14px; color:var(--wk-muted); }
+.mb-subtab.active{ background:var(--wk-surface); color:var(--wk-accent-ink); box-shadow:var(--mb-shadow,0 1px 2px rgba(28,39,51,.08)); }
+/* 常駐底部 action bar（原型 .actionbar/.ab-*；僅稽核分頁顯示） */
+.mb-actionbar{ flex:none; background:var(--wk-surface); border-top:1px solid var(--wk-line);
+  padding:9px 12px calc(10px + env(safe-area-inset-bottom,0px)); box-shadow:0 -4px 16px rgba(20,30,45,.08); }
+.mb-actionbar[hidden]{ display:none; }
+.mb-ab-sub{ display:flex; justify-content:space-between; align-items:baseline;
+  font-size:12.5px; color:var(--wk-muted); padding:0 2px 8px; }
+.mb-ab-sub b{ font-size:15px; color:var(--wk-ink); font-variant-numeric:tabular-nums; }
+.mb-ab-btns{ display:flex; gap:8px; }
+.mb-ab-btn{ flex:1; min-height:46px; border-radius:var(--wk-radius-sm); border:1px solid transparent;
+  font-weight:700; font-size:14.5px; }
+.mb-ab-primary{ background:var(--wk-accent); color:#fff; border-color:var(--wk-accent); }
+.mb-ab-secondary{ background:var(--wk-accent-soft); color:var(--wk-accent-ink);
+  border-color:color-mix(in srgb, var(--wk-accent) 30%, transparent); }
+.mb-ab-err{ display:block; font-size:12px; color:var(--wk-bad); padding:6px 2px 0; min-height:1em; }
+/* 佔位卡（Task 5 前，帳號/裝置/操作記錄/我的密碼 pane 暫時空殼用） */
+.mb-ph-card{ background:var(--wk-surface); border:1px solid var(--wk-line); border-radius:var(--wk-radius);
+  box-shadow:var(--mb-shadow,0 1px 2px rgba(28,39,51,.08)); padding:14px; margin-bottom:12px; }
+.mb-ph-card h3{ margin:0 0 10px; font-size:14.5px; }

@@ -7,40 +7,10 @@ import { escapeHtml } from './admin_util.js';
 import { renderShootPane } from './capture.js';
 import { renderConfirmPane } from './pending.js';
 import { renderReviewPane } from './review.js';
+import { mbToast, stopPaneCamera, postJSON } from './mb_util.js';
+export { mbToast, stopPaneCamera };   // 保留對外名稱：capture.js/pending.js 仍 `import { mbToast } from './employee_app.js'`
 
 const root = () => document.getElementById('modal-root');
-
-async function postJSON(url, body) {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body || {}),
-  });
-  return { status: res.status, data: await res.json().catch(() => ({})) };
-}
-
-let toastTimer = null;
-// 供 Task 2/3/5 的 pane 模組 import 使用：`import { mbToast } from './employee_app.js';`
-export function mbToast(msg) {
-  const el = document.getElementById('mb-toast');
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
-}
-
-// 切走 pane 前停止該 pane 容器內任何 live 相機串流（影像不落地）。
-// 沿用 admin.js:320-323 的 querySelector('video') + srcObject.getTracks().stop() pattern。
-function stopPaneCamera(container) {
-  if (!container) return;
-  container.querySelectorAll('video').forEach((v) => {
-    if (v.srcObject) {
-      v.srcObject.getTracks().forEach((t) => t.stop());
-      v.srcObject = null;
-    }
-  });
-}
 
 export function showEmployeeApp(identity) {
   const store = identity.store_code || ''; // identity 現無 store_code，店徽不顯示（不造假、不動後端）
