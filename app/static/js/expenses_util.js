@@ -42,9 +42,11 @@ export function categoryOptionsHtml(tree, selectedId) {
   (tree || []).forEach((grp) => {
     const items = grp.items || [];
     if (items.length === 0) {
-      // 無子類的大類（如「特支」）→ 直接當可選 option（大類 id）；粗體對齊 optgroup 標題
+      // 無子類的大類（如「特支」）→ 用 optgroup 讓大類名稱與其他大類一樣「原生粗體」，
+      // 底下放一個同名可選 option（值＝大類 id）供選取。
+      // （原生 <select> 不會呈現單一 <option> 的 font-weight，故無法靠 style 讓它變粗體。）
       const sel = String(grp.id) === String(selectedId) ? ' selected' : '';
-      html += `<option value="${grp.id}" style="font-weight:bold"${sel}>${esc(grp.name)}</option>`;
+      html += `<optgroup label="${esc(grp.name)}"><option value="${grp.id}"${sel}>${esc(grp.name)}</option></optgroup>`;
       return;
     }
     html += `<optgroup label="${esc(grp.name)}">`;
