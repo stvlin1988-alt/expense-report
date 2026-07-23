@@ -66,9 +66,9 @@ export function showSuperApp(identity) {
       el.innerHTML = '<div class="mb-admin-embed"></div>';
       renderAudit(el.querySelector('.mb-admin-embed'), identity, state.storeId, state.stores);
     } else if (name === 'month') {
-      renderMonthPane(el);                         // Task 1 佔位；Task 2 真作
+      renderMonthPane(el);
     } else if (name === 'stores') {
-      renderStoresPaneWrap(el);                    // Task 1 佔位；Task 3 真作
+      renderStoresPaneWrap(el);
     } else if (name === 'accounts') {
       el.innerHTML = '<div class="mb-pane-title" style="padding:12px 14px 0">帳號</div><div class="mb-admin-embed"></div>';
       renderAccounts(el.querySelector('.mb-admin-embed'), ctx());
@@ -139,7 +139,7 @@ export function showSuperApp(identity) {
     });
   }
 
-  // 月結（Task 2 真作）：原生月結設定唯讀卡（🔒，資料同 admin.js renderClosing）
+  // 月結：原生月結設定唯讀卡（🔒，資料同 admin.js renderClosing）
   // ＋範圍標籤＋重用 renderMonthReport 交叉表（門市由抬頭選店 state.storeId 鎖定）
   async function renderMonthPane(el) {
     el.innerHTML = `
@@ -156,7 +156,7 @@ export function showSuperApp(identity) {
       if (s1 === 200 && st.status === 'ok' && s2 === 200 && pl.status === 'ok') {
         const cur = (pl.periods || [])[0] || null;
         const stLabel = { open: '進行中', closing: '寬限期', closed: '已封月' }[cur && cur.status] || (cur ? cur.status : '');
-        head.innerHTML = `<h2>${cur ? escapeHtml(cur.label) : '本期'}</h2>${cur ? `<span class="mb-badge mb-badge-open">${escapeHtml(stLabel)}</span>` : ''}`;
+        head.innerHTML = `<h2>${cur ? escapeHtml(cur.label) : '本期'}</h2>${cur ? `<span class="mb-badge${cur.status === 'open' ? ' mb-badge-open' : ''}">${escapeHtml(stLabel)}</span>` : ''}`;
         box.innerHTML = `
           <div class="mb-ro-head"><h3>月結設定</h3><span class="mb-ro-lock">🔒 唯讀（僅會計可改）</span></div>
           <div class="mb-kv"><span class="k">月結日</span><span class="v">每月 ${escapeHtml(String(st.period_close_day))} 日</span></div>

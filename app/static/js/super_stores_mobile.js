@@ -66,7 +66,7 @@ export async function renderStoresPane(container, { onChanged } = {}) {
     try {
       const { status, data } = await api.createStore(raw, raw);
       if (status === 200 || status === 201) { mbToast(`已新增店別 ${raw}`); inp.value = ''; if (onChanged) onChanged(); draw(); }
-      else err.textContent = (data && data.error) || '新增失敗（代號可能重複）';
+      else err.textContent = (data && (data.message || data.error)) || '新增失敗（代號可能重複）';
     } catch { err.textContent = '新增失敗，請重試'; }
   });
 
