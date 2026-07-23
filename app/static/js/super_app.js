@@ -9,6 +9,8 @@ import { renderAudit } from './admin_audit.js';
 import { renderAccounts } from './admin_accounts.js';
 import { renderDevices } from './admin_devices.js';
 import { renderLogs } from './admin_logs.js';
+import { renderMonthReport } from './month_report.js';
+import { periodsApi } from './periods_api.js';
 
 const root = () => document.getElementById('modal-root');
 // 分頁順序對齊原型（稽核 首、月結 預設選中）
@@ -136,9 +138,40 @@ export function showSuperApp(identity) {
     });
   }
 
-  // Task 1 佔位：月結／店別（Task 2/3 換真作）
-  function renderMonthPane(el) {
-    el.innerHTML = '<div class="mb-ph-card"><h3>月結（待實作）</h3></div>';
+  // 月結（Task 2 真作）：原生月結設定唯讀卡（🔒，資料同 admin.js renderClosing）
+  // ＋範圍標籤＋重用 renderMonthReport 交叉表（門市由抬頭選店 state.storeId 鎖定）
+  async function renderMonthPane(el) {
+    el.innerHTML = `
+      <div class="mb-month-head" id="mb-month-head"><h2>本期</h2></div>
+      <div class="mb-closing-card" id="mb-closing"><div class="mb-empty-state" style="display:block">載入中…</div></div>
+      <div class="mb-month-scope" id="mb-month-scope"></div>
+      <div class="mb-admin-embed" id="mb-report-wrap"></div>`;
+    // 月結設定唯讀卡（資料同 admin.js renderClosing：getSettings + list[0]=當期）
+    try {
+      const [{ status: s1, data: st }, { status: s2, data: pl }] =
+        await Promise.all([periodsApi.getSettings(), periodsApi.list()]);
+      const head = el.querySelector('#mb-month-head');
+      const box = el.querySelector('#mb-closing');
+      if (s1 === 200 && st.status === 'ok' && s2 === 200 && pl.status === 'ok') {
+        const cur = (pl.periods || [])[0] || null;
+        const stLabel = { open: '進行中', closing: '寬限期', closed: '已封月' }[cur && cur.status] || (cur ? cur.status : '');
+        head.innerHTML = `<h2>${cur ? escapeHtml(cur.label) : '本期'}</h2>${cur ? `<span class="mb-badge mb-badge-open">${escapeHtml(stLabel)}</span>` : ''}`;
+        box.innerHTML = `
+          <div class="mb-ro-head"><h3>月結設定</h3><span class="mb-ro-lock">🔒 唯讀（僅會計可改）</span></div>
+          <div class="mb-kv"><span class="k">月結日</span><span class="v">每月 ${escapeHtml(String(st.period_close_day))} 日</span></div>
+          <div class="mb-kv"><span class="k">鎖定偏移</span><span class="v">封月後 ${escapeHtml(String(st.period_lock_offset_hours))} 小時</span></div>
+          <div class="mb-kv"><span class="k">營業日分界</span><span class="v">08:00（台灣時間）</span></div>`;
+      } else {
+        box.innerHTML = '<div class="mb-empty-state" style="display:block">月結設定載入失敗</div>';
+      }
+    } catch { el.querySelector('#mb-closing').innerHTML = '<div class="mb-empty-state" style="display:block">月結設定載入失敗</div>'; }
+    // 範圍標籤 + 月報表交叉表（重用 renderMonthReport，門市由抬頭選店鎖定）
+    const scope = el.querySelector('#mb-month-scope');
+    scope.textContent = state.storeId == null
+      ? '月報表：全部門市（左右滑動看各店欄位）'
+      : `月報表：門市 ${(state.stores.find((s) => s.id === state.storeId) || {}).code || ''}`;
+    renderMonthReport(el.querySelector('#mb-report-wrap'),
+      { storeId: state.storeId != null ? String(state.storeId) : '', lockStore: true });
   }
   function renderStoresPaneWrap(el) {
     el.innerHTML = '<div class="mb-ph-card"><h3>店別管理（待實作）</h3></div>';

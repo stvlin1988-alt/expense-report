@@ -1123,3 +1123,18 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   background-repeat:no-repeat; background-position:right 8px center; }
 .mb-store-sel:focus{ outline:none; box-shadow:0 0 0 3px var(--wk-accent-soft); border-color:var(--wk-accent); }
+
+/* 月結 pane（Task 2）：原型 .ro-card/.ro-head/.ro-lock/.kv/.badge，mb- 前綴、var(--x)→var(--wk-x) */
+.mb-month-head{ display:flex; align-items:baseline; gap:8px; padding:2px 4px 10px; }
+.mb-month-head h2{ margin:0; font-size:17px; }
+.mb-badge{ font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+  background:var(--wk-surface-2); color:var(--wk-muted); }
+.mb-badge-open{ background:var(--wk-warn-soft); color:var(--wk-warn-ink); }
+.mb-closing-card{ background:var(--wk-surface); border:1px solid var(--wk-line); border-radius:var(--wk-radius);
+  box-shadow:var(--mb-shadow,0 1px 2px rgba(28,39,51,.08)); padding:13px 14px; margin-bottom:14px; }
+.mb-ro-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.mb-ro-head h3{ margin:0; font-size:14.5px; }
+.mb-ro-lock{ font-size:12px; font-weight:600; color:var(--wk-muted); }
+.mb-kv{ display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid var(--wk-line-soft); font-size:13.5px; }
+.mb-kv .k{ color:var(--wk-muted); } .mb-kv .v{ color:var(--wk-ink); font-weight:600; font-variant-numeric:tabular-nums; }
+.mb-month-scope{ font-size:12.5px; color:var(--wk-faint); font-weight:600; padding:0 2px 8px; }
