@@ -1138,3 +1138,28 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
 .mb-kv{ display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid var(--wk-line-soft); font-size:13.5px; }
 .mb-kv .k{ color:var(--wk-muted); } .mb-kv .v{ color:var(--wk-ink); font-weight:600; font-variant-numeric:tabular-nums; }
 .mb-month-scope{ font-size:12.5px; color:var(--wk-faint); font-weight:600; padding:0 2px 8px; }
+
+/* 店別管理 pane（Task 3）：原型 .store-card/.sc-top/.sc-code/.sc-conn/.sc-toggle/.sc-kill/.add-box，
+   mb- 前綴、var(--x)→var(--wk-x) */
+.mb-store-hint{ font-size:12.5px; line-height:1.6; color:var(--wk-muted); background:var(--wk-surface-2);
+  border:1px solid var(--wk-line); border-radius:var(--wk-radius); padding:10px 12px; margin:0 0 14px; }
+.mb-store-card{ background:var(--wk-surface); border:1px solid var(--wk-line); border-radius:var(--wk-radius);
+  box-shadow:var(--mb-shadow,0 1px 2px rgba(28,39,51,.08)); padding:13px 14px; margin-bottom:12px;
+  display:flex; flex-direction:column; gap:11px; }
+.mb-store-top{ display:flex; align-items:center; gap:10px; }
+.mb-store-code{ font-weight:800; font-size:16px; letter-spacing:.5px; }
+.mb-store-conn{ margin-left:auto; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px; }
+.mb-store-conn.on{ background:var(--wk-ok-soft); color:var(--wk-ok-ink); }
+.mb-store-conn.off{ background:var(--wk-bad-soft); color:var(--wk-bad-ink); }
+.mb-store-toggle{ display:flex; gap:9px; align-items:flex-start; font-size:13.5px; color:var(--wk-ink); }
+.mb-store-toggle input{ width:20px; height:20px; margin-top:1px; flex:none; accent-color:var(--wk-accent); }
+.mb-store-kill{ min-height:44px; border-radius:var(--wk-radius-sm); border:1px solid color-mix(in srgb, var(--wk-bad) 32%, transparent);
+  background:var(--wk-bad-soft); color:var(--wk-bad-ink); font-weight:700; font-size:13.5px; }
+.mb-store-kill.is-off{ border-color:color-mix(in srgb, var(--wk-ok) 32%, transparent);
+  background:var(--wk-ok-soft); color:var(--wk-ok-ink); }
+.mb-store-add{ background:var(--wk-surface); border:1px dashed var(--wk-line); border-radius:var(--wk-radius);
+  padding:13px 14px; margin-top:4px; }
+.mb-store-add h3{ margin:0 0 10px; font-size:14px; }
+.mb-store-add input{ width:100%; min-height:44px; border:1px solid var(--wk-line); border-radius:var(--wk-radius-sm);
+  background:var(--wk-surface-2); padding:0 12px; font-size:15px; color:var(--wk-ink); margin-bottom:10px;
+  text-transform:uppercase; }

@@ -11,6 +11,7 @@ import { renderDevices } from './admin_devices.js';
 import { renderLogs } from './admin_logs.js';
 import { renderMonthReport } from './month_report.js';
 import { periodsApi } from './periods_api.js';
+import { renderStoresPane } from './super_stores_mobile.js';
 
 const root = () => document.getElementById('modal-root');
 // 分頁順序對齊原型（稽核 首、月結 預設選中）
@@ -174,7 +175,7 @@ export function showSuperApp(identity) {
       { storeId: state.storeId != null ? String(state.storeId) : '', lockStore: true });
   }
   function renderStoresPaneWrap(el) {
-    el.innerHTML = '<div class="mb-ph-card"><h3>店別管理（待實作）</h3></div>';
+    renderStoresPane(el, { onChanged: refreshStores });   // 顯示切換/新增店後刷新抬頭選店
   }
 
   refreshStores().then(() => { renderPane(state.tab); });   // 進站預設月結
