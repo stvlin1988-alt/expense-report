@@ -4,6 +4,7 @@ import { showReconcilePanel } from './reconcile.js';
 import { escapeHtml } from './admin_util.js';
 import { showEmployeeApp } from './employee_app.js';
 import { showManagerApp } from './manager_app.js';
+import { showSuperApp } from './super_app.js';
 
 const NEUTRAL_MSG = '無法計算，請重試';
 const root = () => document.getElementById('modal-root');
@@ -123,7 +124,10 @@ async function openLoginFlow() {
         cam.stop();
         const identity = { id: data.id, name: data.name, role: data.role, store_id: data.store_id ?? null };
         if (data.role === 'accountant') showReconcilePanel(identity);
-        else if (data.role === 'super_admin') showAdminPanel(identity);
+        else if (data.role === 'super_admin') {
+          if (window.matchMedia('(pointer: coarse)').matches) showSuperApp(identity);
+          else showAdminPanel(identity);
+        }
         else if (data.role === 'manager') showManagerApp(identity);
         else if (data.role === 'employee') showEmployeeApp(identity);
         else showAppView(identity);

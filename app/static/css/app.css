@@ -1109,3 +1109,17 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
   background:var(--wk-surface-2); padding:0 12px; font-size:15px; color:var(--wk-ink); }
 .mb-pw-btn{ width:100%; min-height:46px; border:0; border-radius:var(--wk-radius-sm);
   background:var(--wk-accent); color:#fff; font-weight:700; font-size:15px; }
+
+/* ============================================================
+   手機設計層－經理（UI 重塑 2026-07；super_admin 手機/平板）
+   沿用員工/主管手機段落的 .mb-app/.mb-appbar/.mb-toptabs/.mb-admin-embed/.mb-ph-card 基底。
+   本段新增經理專屬：抬頭跨店選店 / 月結唯讀卡 / 店別管理卡。
+   視覺 SoT: docs/superpowers/ui-prototypes/super-mobile.html
+   ============================================================ */
+/* 抬頭跨店選店（原型 .store-sel；置於 .mb-appbar-actions） */
+.mb-store-sel{ max-width:104px; min-height:36px; padding:0 26px 0 10px; font-size:14px; font-weight:600;
+  color:var(--wk-ink); background:var(--wk-surface-2); border:1px solid var(--wk-line);
+  border-radius:var(--wk-radius-sm); appearance:none; -webkit-appearance:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat:no-repeat; background-position:right 8px center; }
+.mb-store-sel:focus{ outline:none; box-shadow:0 0 0 3px var(--wk-accent-soft); border-color:var(--wk-accent); }
