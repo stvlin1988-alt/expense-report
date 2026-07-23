@@ -58,14 +58,12 @@ export function renderAccounts(container, ctx) {
 
     // super_admin 選了店 → 後端已過濾；未選店時前端不再過濾（回全部）
     const rows = filterByStore(users, isSuper ? storeId : null).map((u) => {
-      const face = u.has_face ? '有' : '—';
       const activeBadge = u.active ? '' : '<span class="wk-badge wk-badge-neutral">停用</span>';
       return `
         <tr data-uid="${u.id}" data-role="${u.role}" data-active="${u.active}">
           <td data-label="姓名">${escapeHtml(u.name)} ${activeBadge}</td>
           <td data-label="角色">${roleCell(u)}</td>
           <td data-label="店">${storeCell(u)}</td>
-          <td data-label="臉">${face}</td>
           <td class="wk-rowbtns">
             <button class="wk-btn wk-btn-secondary" data-act="pw" type="button">改密碼</button>
             <button class="wk-btn wk-btn-secondary" data-act="face" type="button">錄臉</button>
@@ -77,8 +75,8 @@ export function renderAccounts(container, ctx) {
     listEl.innerHTML = `
       <div class="wk-card"><div class="table-wrap">
         <table class="wk-table">
-          <thead><tr><th>姓名</th><th>角色</th><th>店</th><th>臉</th><th>操作</th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="5">尚無帳號</td></tr>'}</tbody>
+          <thead><tr><th>姓名</th><th>角色</th><th>店</th><th>操作</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="4">尚無帳號</td></tr>'}</tbody>
         </table>
       </div></div>`;
 
