@@ -1097,10 +1097,34 @@ tr[data-status="rejected"] .wk-status { background: var(--wk-bad-soft); color: v
    不改桌面元件本身，只在此 scope 內覆蓋關鍵幾點。 */
 .mb-admin-embed{ padding:2px; }
 .mb-admin-embed .wk-toolbar,.mb-admin-embed .wk-page-body{ padding-left:0; padding-right:0; }
-.mb-admin-embed .table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
-.mb-admin-embed table{ min-width:520px; }            /* 表格窄於視窗就橫捲，不擠壓 */
 .mb-admin-embed input,.mb-admin-embed select,.mb-admin-embed button{ min-height:40px; } /* 觸控尺寸 */
 .mb-admin-embed .wk-card{ margin-bottom:12px; }
+/* 重用桌面 .wk-table 在手機殼內改「單欄卡片」呈現（每列一張卡、欄位加 data-label 標籤、
+   操作鈕換行），不再需要往右橫捲。桌面版 .wk-table（不在 .mb-admin-embed 內）完全不受影響。 */
+.mb-admin-embed .table-wrap{ overflow-x:visible; }
+.mb-admin-embed .wk-card:has(.wk-table){ border:0; background:none; box-shadow:none; padding:0; } /* 攤平外層卡，只留每列卡 */
+.mb-admin-embed .wk-table{ min-width:0; width:100%; border-collapse:collapse; }
+.mb-admin-embed .wk-table thead{ display:none; }                       /* 隱藏表頭，改用每格標籤 */
+.mb-admin-embed .wk-table tbody,
+.mb-admin-embed .wk-table tr,
+.mb-admin-embed .wk-table td{ display:block; width:auto; }
+.mb-admin-embed .wk-table tr{ background:var(--wk-surface); border:1px solid var(--wk-line);
+  border-radius:var(--wk-radius); box-shadow:var(--mb-shadow,0 1px 2px rgba(28,39,51,.08));
+  padding:8px 12px; margin-bottom:10px; }
+.mb-admin-embed .wk-table td{ display:flex; align-items:center; justify-content:space-between;
+  gap:12px; padding:7px 0; border:0; border-bottom:1px solid var(--wk-line-soft); text-align:right; }
+.mb-admin-embed .wk-table td:last-child{ border-bottom:0; }
+.mb-admin-embed .wk-table td::before{ content:attr(data-label); flex:none; text-align:left;
+  font-size:12px; font-weight:600; color:var(--wk-faint); }
+.mb-admin-embed .wk-table td select,
+.mb-admin-embed .wk-table td input{ max-width:62%; }
+/* 操作欄：整列、按鈕換行平均分，不加標籤 */
+.mb-admin-embed .wk-table td.wk-rowbtns{ flex-wrap:wrap; justify-content:stretch; padding-top:10px; }
+.mb-admin-embed .wk-table td.wk-rowbtns::before{ content:none; }
+.mb-admin-embed .wk-table td.wk-rowbtns .wk-btn{ flex:1 1 auto; min-width:92px; }
+/* 空狀態列（colspan）：置中、不加標籤 */
+.mb-admin-embed .wk-table td[colspan]{ justify-content:center; text-align:center; color:var(--wk-muted); }
+.mb-admin-embed .wk-table td[colspan]::before{ content:none; }
 
 /* 我的密碼（Task 5）：原型 manager-audit.html .form-field/.pw-btn，mb- 前綴、var(--x)→var(--wk-x) */
 .mb-form-field{ display:flex; flex-direction:column; gap:5px; margin-bottom:12px; }

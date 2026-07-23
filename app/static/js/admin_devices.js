@@ -46,11 +46,11 @@ export function renderDevices(container, ctx) {
             : '');
       return `
         <tr data-did="${d.id}">
-          <td>${escapeHtml(d.device_name || 'Unknown')}</td>
-          <td>…${escapeHtml(tail)}</td>
-          <td>${escapeHtml(String(storeCode))}</td>
-          <td>${escapeHtml(bound)}</td>
-          <td><span class="wk-badge ${cls}">${label}</span></td>
+          <td data-label="裝置">${escapeHtml(d.device_name || 'Unknown')}</td>
+          <td data-label="UID">…${escapeHtml(tail)}</td>
+          <td data-label="店">${escapeHtml(String(storeCode))}</td>
+          <td data-label="綁定">${escapeHtml(bound)}</td>
+          <td data-label="狀態"><span class="wk-badge ${cls}">${label}</span></td>
           <td class="wk-rowbtns">${actions}</td>
         </tr>`;
     }).join('');

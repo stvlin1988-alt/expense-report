@@ -62,10 +62,10 @@ export function renderAccounts(container, ctx) {
       const activeBadge = u.active ? '' : '<span class="wk-badge wk-badge-neutral">停用</span>';
       return `
         <tr data-uid="${u.id}" data-role="${u.role}" data-active="${u.active}">
-          <td>${escapeHtml(u.name)} ${activeBadge}</td>
-          <td>${roleCell(u)}</td>
-          <td>${storeCell(u)}</td>
-          <td>${face}</td>
+          <td data-label="姓名">${escapeHtml(u.name)} ${activeBadge}</td>
+          <td data-label="角色">${roleCell(u)}</td>
+          <td data-label="店">${storeCell(u)}</td>
+          <td data-label="臉">${face}</td>
           <td class="wk-rowbtns">
             <button class="wk-btn wk-btn-secondary" data-act="pw" type="button">改密碼</button>
             <button class="wk-btn wk-btn-secondary" data-act="face" type="button">錄臉</button>

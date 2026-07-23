@@ -44,11 +44,11 @@ export async function renderLogs(container, identity, storeId) {
     const items = data.items || [];
     body.innerHTML = items.length
       ? items.map((i) => `<tr>
-          <td class="au-time">${formatDateTimeTW(i.ts)}</td>
-          <td>${escapeHtml(i.actor_name || '')}</td>
-          <td>${escapeHtml(i.doc_no || `#${i.expense_id}`)}</td>
-          <td>${escapeHtml(i.summary || '')}</td>
-          <td>${action_label(i.action)}</td>
+          <td class="au-time" data-label="時間">${formatDateTimeTW(i.ts)}</td>
+          <td data-label="員工">${escapeHtml(i.actor_name || '')}</td>
+          <td data-label="單號">${escapeHtml(i.doc_no || `#${i.expense_id}`)}</td>
+          <td data-label="摘要">${escapeHtml(i.summary || '')}</td>
+          <td data-label="動作">${action_label(i.action)}</td>
         </tr>`).join('')
       : '<tr><td colspan="5">當天沒有操作記錄</td></tr>';
   }
